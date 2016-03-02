@@ -1,0 +1,2 @@
+data_dir = "./data"
+http_root = "https://ci.riot-labs.de/"
