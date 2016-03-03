@@ -33,7 +33,7 @@ class ShellWorker(threading.Thread):
         self.start()
 
     def run(s):
-        print("ShellWorker started...")
+        print("ShellWorker: started.")
         while True:
             try:
                 s.job = None
@@ -44,16 +44,23 @@ class ShellWorker(threading.Thread):
             except Empty:
                 return
             if job.state == JobState.finished:
-                print("ShellWorker skipping finished job", job.name)
+                print("ShellWorker: skipping finished job", job.name)
                 s.queue.task_done()
                 continue
             else:
-                print("ShellWorker building job", job.name)
+                print("ShellWorker: building job", job.name)
 
             s.job = job
             job.worker = s
             s.job.set_state(JobState.running)
-            os.makedirs(os.path.join(s.job.data_dir(), "build"))
+
+            build_dir = os.path.join(s.job.data_dir(), "build")
+            try:
+                os.makedirs(build_dir)
+            except FileExistsError:
+                shutil.rmtree(build_dir)
+                os.makedirs(build_dir)
+
             output_file = open(os.path.join(s.job.data_dir(), "output.txt"), mode='wb')
             s.process = p = subprocess.Popen(s.job.cmd,
                          stdout=subprocess.PIPE,
@@ -68,7 +75,7 @@ class ShellWorker(threading.Thread):
             finally:
                 output_file.close()
 
-            print("job finished")
+            print("ShellWorker: Job", s.job.name, "finished. result:", s.job.result)
             s.process.wait()
 
             if s.canceled:
@@ -82,7 +89,7 @@ class ShellWorker(threading.Thread):
                     s.job.set_state(JobState.finished, JobResult.errored)
 
             try:
-                shutil.rmtree(os.path.join(s.job.data_dir(), "build"))
+                shutil.rmtree(build_dir)
             except FileNotFoundError:
                 pass
 
@@ -110,27 +117,25 @@ class PullRequest(object):
         pr = PullRequest._map.get(pull_url)
         if pr:
             pr.data = data
-            print("updating")
+            print("PR", pr.url, "updated")
         else:
             pr = PullRequest(data)
             pr.update_labels()
-            print("new PR", pr.url, pr.labels)
+            print("PR", pr.url, "added")
         return pr
 
     def update(s):
         head_sha1 = s.data["pull_request"]["head"]["sha"]
-        if head_sha1 == s.head:
-            print("same head")
-        else:
+        if head_sha1 != s.head:
             s.head = head_sha1
-            print("new head:", s.head)
+            print("PR", s.url, "has new head:", s.head)
             if "Ready for CI build" in s.labels:
                 s.start_job()
         return s
 
     def cancel_job(s):
         if s.current_job:
-            print("JobServer: Canceling current job")
+            print("PR", s.url, "canceling build of commit", s.current_job.arg)
             s.current_job.cancel()
             s.current_job = None
         return s
@@ -153,6 +158,7 @@ class PullRequest(object):
         queue.put(s.current_job)
 
         s.current_job.set_state(JobState.queued)
+        print("PR", s.url, "queueing build of commit", s.head)
         return s
 
     def get_job_path(s, commit):
@@ -242,9 +248,9 @@ def handle_pull_request(request):
     if data["pull_request"]["base"]["ref"] != "master":
         return
 
-    print(json.dumps(data, sort_keys=False, indent=4))
+    #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
-    print(action)
+    print("received PR action:", action)
 
     pr = PullRequest.get(data).update()
     if action == "unlabeled":
@@ -260,7 +266,7 @@ def handle_push(request):
 
 handlers = {
         "pull_request" : handle_pull_request,
-        "push" : handle_push,
+#        "push" : handle_push,
         }
 
 github = GitHub(config.github_username, config.github_password)
