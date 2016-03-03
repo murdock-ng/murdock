@@ -46,6 +46,7 @@ class ShellWorker(threading.Thread):
             if job.state == JobState.finished:
                 print("ShellWorker skipping finished job", job.name)
                 s.queue.task_done()
+                continue
             else:
                 print("ShellWorker building job", job.name)
 
