@@ -70,6 +70,6 @@ class Job(object):
 
     def cancel(s):
         if s.worker:
-            s.worker.cancel()
+            s.worker.cancel(s)
         else:
             s.set_state(JobState.finished, JobResult.canceled)

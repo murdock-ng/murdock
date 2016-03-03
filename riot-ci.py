@@ -28,13 +28,19 @@ class ShellWorker(threading.Thread):
         threading.Thread.__init__(self)
         self.process = None
         self.queue = queue
+        self.canceled = False
+        self.job = None
         self.start()
 
     def run(s):
         print("ShellWorker started...")
         while True:
             try:
+                s.job = None
+                s.process = None
+                s.canceled = False
                 job = s.queue.get()
+                s.job = job
             except Empty:
                 return
             if job.state == JobState.finished:
@@ -52,6 +58,7 @@ class ShellWorker(threading.Thread):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT,
                          cwd=s.job.data_dir(), env=s.job.env)
+            s.job.worker = s
             try:
                 for line in p.stdout:
                     output_file.write(line)
@@ -61,16 +68,17 @@ class ShellWorker(threading.Thread):
                 output_file.close()
 
             print("job finished")
-            s.job.worker = None
             s.process.wait()
-            ret = s.process.returncode
-            s.process = None
-            if ret == 0:
-                s.job.set_state(JobState.finished, JobResult.passed)
-            elif ret == -15:
+
+            if s.canceled:
                 s.job.set_state(JobState.finished, JobResult.canceled)
             else:
-                s.job.set_state(JobState.finished, JobResult.errored)
+                ret = s.process.returncode
+                s.process = None
+                if ret == 0:
+                    s.job.set_state(JobState.finished, JobResult.passed)
+                else:
+                    s.job.set_state(JobState.finished, JobResult.errored)
 
             try:
                 shutil.rmtree(os.path.join(s.job.data_dir(), "build"))
@@ -79,11 +87,11 @@ class ShellWorker(threading.Thread):
 
             s.queue.task_done()
 
-    def cancel(s):
-        if s.process is not None:
-            print("killing job")
+    def cancel(s, job):
+        if s.process is not None and s.job==job:
             s.process.terminate()
             s.process.wait()
+            s.canceled=True
 
 class PullRequest(object):
     _map = {}
