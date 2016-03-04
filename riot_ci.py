@@ -353,7 +353,7 @@ def main():
     signal.signal(signal.SIGINT, sig_handler)
     log.info("riot CI initialized.")
 
-    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
+#    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
     g = GithubWebhook(3000, PullRequest, github_handlers)
     g.run()
