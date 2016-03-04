@@ -281,7 +281,7 @@ class PullRequest(object):
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
     data = data["pull_request"]
-    if data["pull_request"]["base"]["ref"] != "master":
+    if data["base"]["ref"] != "master":
         return
 
     #print(json.dumps(data, sort_keys=False, indent=4))
