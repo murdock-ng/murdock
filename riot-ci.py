@@ -7,7 +7,9 @@ import sys
 import pprint
 import json
 import time
+import signal
 import shutil
+import tornado.ioloop
 
 from log import log
 
@@ -27,7 +29,7 @@ import config
 
 class ShellWorker(threading.Thread):
     def __init__(self, queue):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, daemon=True)
         self.process = None
         self.queue = queue
         self.canceled = False
@@ -276,7 +278,17 @@ queue = Queue()
 ShellWorker(queue)
 scripts_dir = os.getcwd() + "/scripts"
 
+def shutdown():
+    log.info("riot-ci: shutting down.")
+    tornado.ioloop.IOLoop.instance().stop()
+
+def sig_handler(sig, frame):
+    log.warning('Caught signal: %s', sig)
+    shutdown()
+
 def main():
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGINT, sig_handler)
     log.info("riot ci initialized.")
     g = GithubWebhook(3000, handlers)
     g.run()
