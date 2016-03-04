@@ -4,7 +4,6 @@ import os
 import pickle
 import subprocess
 import sys
-import pprint
 import json
 import time
 import signal
@@ -23,7 +22,7 @@ from queue import Queue, Empty
 from enum import Enum
 
 from jobs import *
-from github_webhook import GithubWebhook
+from github_webhook import *
 
 import config
 
@@ -266,8 +265,8 @@ class PullRequest(object):
                     if not "Ready for CI build" in pr.labels:
                         continue
                     state = pr.get_state()
-                    if state == "canceled" or state == "pending":
-                        pr.start_job()
+   #                 if state == "canceled" or state == "pending":
+                    pr.start_job()
 
     def get_state(s):
         code, result = github.repos[s.base_full_name].statuses[s.head].get()
@@ -283,7 +282,25 @@ class PullRequest(object):
 
         return "unknown"
 
+    def list():
+        building = []
+        queued = []
+        finished = []
+        for name, pr in PullRequest._map.items():
+            job = pr.current_job
+            if job:
+                if job.state==JobState.finished:
+                    finished.append((pr, job))
+                elif job.state==JobState.running:
+                    building.append((pr, job))
+                else:
+                    queued.append((pr, job))
 
+        building = sorted(building, key=lambda x: x[1].time_started)
+        queued = sorted(queued, key=lambda x: x[1].time_queued)
+        finished = sorted(finished, key=lambda x: x[1].time_finished)
+
+        return (building, queued, finished)
 
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
@@ -337,7 +354,7 @@ def main():
 
     threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
-    g = GithubWebhook(3000)
+    g = GithubWebhook(3000, PullRequest, github_handlers)
     g.run()
 
     # tornado loop ended
