@@ -285,15 +285,15 @@ class PullRequest(object):
 
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
-    data = data["pull_request"]
-    if data["base"]["ref"] != "master":
+    pr_data = data["pull_request"]
+    if pr_data["base"]["ref"] != "master":
         return
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
     log.info("received PR action: %s", action)
 
-    pr = PullRequest.get(data).update()
+    pr = PullRequest.get(pr_data).update()
     if action == "unlabeled":
         pr.remove_label(data["label"]["name"])
     elif action == "labeled":
