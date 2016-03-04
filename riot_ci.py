@@ -156,7 +156,8 @@ class PullRequest(object):
                 "CI_BASE_REPO" : s.base_repo,
                 "CI_BASE_BRANCH" : s.base_branch,
                 "CI_BASE_COMMIT" : s.base_commit,
-                "CI_SCRIPTS_DIR" : scripts_dir
+                "CI_SCRIPTS_DIR" : scripts_dir,
+                "CI_PULL_LABELS" : " ".join(sorted(list(s.labels))),
                 }
 
         s.current_job = Job(s.get_job_path(s.head), os.path.abspath("./build.sh"), env, s.job_hook, s.head)
@@ -179,12 +180,14 @@ class PullRequest(object):
         return s
 
     def add_label(s, label):
+        log.info("PR %s added label: %s", s.url, label)
         s.labels.add(label)
         if label == "Ready for CI build":
             s.start_job()
         return s
 
     def remove_label(s, label):
+        log.info("PR %s removed label: %s", s.url, label)
         s.labels.discard(label)
         if label == "Ready for CI build":
             s.cancel_job()
@@ -209,6 +212,10 @@ class PullRequest(object):
             return s.data["head"]["repo"]["clone_url"]
         elif field == "head":
             return s.data["head"]["sha"]
+        elif field == "user":
+            return s.data["head"]["user"]["login"]
+        elif field == "title":
+            return s.data["title"]
         else:
             raise AttributeError
 
@@ -247,6 +254,7 @@ class PullRequest(object):
         if target_url:
             status["target_url"] = target_url
 
+        log.info("PR %s setting github status: %s", s.url, state)
         github.repos[s.base_full_name].statuses[arg].post(body=json.dumps(status))
 
     def cancel_all():
@@ -311,7 +319,6 @@ def handle_pull_request(request):
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
-    log.info("received PR action: %s", action)
 
     pr = PullRequest.get(pr_data).update()
     if action == "unlabeled":
