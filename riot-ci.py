@@ -247,6 +247,12 @@ class PullRequest(object):
 
         github.repos[s.base_full_name].statuses[arg].post(body=json.dumps(status))
 
+    def cancel_all():
+        log.info("canceling jobs...")
+        for url, pr in PullRequest._map.items():
+            if pr.current_job:
+                pr.current_job.cancel()
+
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
     if data["pull_request"]["base"]["ref"] != "master":
@@ -289,9 +295,11 @@ def sig_handler(sig, frame):
 def main():
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
-    log.info("riot ci initialized.")
+    log.info("riot CI initialized.")
     g = GithubWebhook(3000, handlers)
     g.run()
+    PullRequest.cancel_all()
+    log.info("riot CI shut down.")
 
 if __name__ == "__main__":
     main()
