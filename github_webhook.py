@@ -1,6 +1,9 @@
+import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 import json
+
+from log import log
 
 class GithubWebhook(object):
     def __init__(s, port, handler):
@@ -10,10 +13,11 @@ class GithubWebhook(object):
             (r"/", GithubWebhook.MainHandler),
             (r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=handler)),
                 ])
-        s.application.listen(port)
-        s.handlers = {}
+        s.server = tornado.httpserver.HTTPServer(s.application)
+        s.server.listen(s.port)
 
     def run(s):
+        log.info("tornado IOLoop started.")
         tornado.ioloop.IOLoop.instance().start()
 
     class MainHandler(tornado.web.RequestHandler):
@@ -32,4 +36,4 @@ class GithubWebhook(object):
             if handler:
                 handler(s.request)
             else:
-                print("unhandled github event:", hook_type)
+                log.warning("unhandled github event:", hook_type)
