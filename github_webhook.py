@@ -6,12 +6,13 @@ import json
 from log import log
 
 class GithubWebhook(object):
-    def __init__(s, port, handler):
+    def __init__(s, port):
+        from riot_ci import github_handlers, PullRequest
         s.secret = "__secret"
         s.port = port
         s.application = tornado.web.Application([
             (r"/", GithubWebhook.MainHandler),
-            (r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=handler)),
+            (r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=github_handlers)),
                 ])
         s.server = tornado.httpserver.HTTPServer(s.application)
         s.server.listen(s.port)

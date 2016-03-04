@@ -306,7 +306,7 @@ def handle_push(request):
 
     log.info(json.dumps(data, sort_keys=False, indent=4))
 
-handlers = {
+github_handlers = {
         "pull_request" : handle_pull_request,
 #        "push" : handle_push,
         }
@@ -337,7 +337,7 @@ def main():
 
     threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
-    g = GithubWebhook(3000, handlers)
+    g = GithubWebhook(3000)
     g.run()
 
     # tornado loop ended
