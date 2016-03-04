@@ -111,13 +111,16 @@ class PullRequest(object):
 
     def __init__(s, data):
         s.data = data
-        s._map[data["pull_request"]["_links"]["html"]["href"]] = s
+        s._map[data["_links"]["html"]["href"]] = s
         s.current_job = None
         s.jobs = []
         s.labels = None
 
     def get(data):
-        pull_url = data["pull_request"]["_links"]["html"]["href"]
+        if "pull_request" in data:
+            data = data["pull_request"]
+
+        pull_url = data["_links"]["html"]["href"]
         pr = PullRequest._map.get(pull_url)
         if pr:
             pr.data = data
@@ -129,7 +132,7 @@ class PullRequest(object):
         return pr
 
     def update(s):
-        head_sha1 = s.data["pull_request"]["head"]["sha"]
+        head_sha1 = s.data["head"]["sha"]
         if head_sha1 != s.head:
             s.head = head_sha1
             log.info("PR %s has new head: %s", s.url, s.head)
@@ -190,23 +193,23 @@ class PullRequest(object):
 
     def __getattr__(s, field):
         if field == "url":
-            return s.data["pull_request"]["_links"]["html"]["href"]
+            return s.data["_links"]["html"]["href"]
         elif field == "base_repo":
-            return s.data["pull_request"]["base"]["repo"]["clone_url"]
+            return s.data["base"]["repo"]["clone_url"]
         elif field == "base_branch":
-            return s.data["pull_request"]["base"]["ref"]
+            return s.data["base"]["ref"]
         elif field == "base_commit":
-            return s.data["pull_request"]["base"]["sha"]
+            return s.data["base"]["sha"]
         elif field == "base_full_name":
-            return s.data["pull_request"]["base"]["repo"]["full_name"]
+            return s.data["base"]["repo"]["full_name"]
         elif field == "nr":
-            return s.data["pull_request"]["number"]
+            return s.data["number"]
         elif field == "branch":
-            return s.data["pull_request"]["head"]["ref"]
+            return s.data["head"]["ref"]
         elif field == "repo":
-            return s.data["pull_request"]["head"]["repo"]["clone_url"]
+            return s.data["head"]["repo"]["clone_url"]
         elif field == "commit":
-            return s.data["pull_request"]["head"]["sha"]
+            return s.data["head"]["sha"]
         else:
             raise AttributeError
 
@@ -253,8 +256,17 @@ class PullRequest(object):
             if pr.current_job:
                 pr.current_job.cancel()
 
+    def load(repo):
+        code, result = github.repos[repo].pulls.get()
+        if code==200:
+            for data in result:
+                log.info(json.dumps(data, sort_keys=False, indent=4))
+                if data["state"] == "open":
+                    PullRequest.get(data)
+
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
+    data = data["pull_request"]
     if data["pull_request"]["base"]["ref"] != "master":
         return
 
