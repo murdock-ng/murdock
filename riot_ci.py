@@ -261,6 +261,8 @@ class PullRequest(object):
             for data in result:
                 if data["state"] == "open":
                     pr = PullRequest.get(data)
+                    if pr.current_job:
+                        continue
                     if not "Ready for CI build" in pr.labels:
                         continue
                     state = pr.get_state()
@@ -322,13 +324,18 @@ def sig_handler(sig, frame):
     log.warning('Caught signal: %s', sig)
     shutdown()
 
+def startup_load_pull_requests():
+    log.info("Loading pull requests...")
+    for repo in config.repos:
+        PullRequest.load(repo)
+    log.info("All pull request loaded.")
+
 def main():
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     log.info("riot CI initialized.")
 
-    for repo in config.repos:
-        PullRequest.load(repo)
+    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
     g = GithubWebhook(3000, handlers)
     g.run()
