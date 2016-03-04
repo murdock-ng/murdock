@@ -36,4 +36,4 @@ class GithubWebhook(object):
             if handler:
                 handler(s.request)
             else:
-                log.warning("unhandled github event:", hook_type)
+                log.warning("unhandled github event: %s", hook_type)
