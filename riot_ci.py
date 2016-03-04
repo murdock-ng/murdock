@@ -265,8 +265,8 @@ class PullRequest(object):
                     if not "Ready for CI build" in pr.labels:
                         continue
                     state = pr.get_state()
-   #                 if state == "canceled" or state == "pending":
-                    pr.start_job()
+                    if state == "canceled" or state == "pending":
+                        pr.start_job()
 
     def get_state(s):
         code, result = github.repos[s.base_full_name].statuses[s.head].get()
