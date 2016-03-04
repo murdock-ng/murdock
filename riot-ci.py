@@ -107,7 +107,6 @@ class ShellWorker(threading.Thread):
 
 class PullRequest(object):
     _map = {}
-    head = None
 
     def __init__(s, data):
         s.data = data
@@ -115,6 +114,7 @@ class PullRequest(object):
         s.current_job = None
         s.jobs = []
         s.labels = None
+        s.old_head = None
 
     def get(data):
         if "pull_request" in data:
@@ -132,9 +132,8 @@ class PullRequest(object):
         return pr
 
     def update(s):
-        head_sha1 = s.data["head"]["sha"]
-        if head_sha1 != s.head:
-            s.head = head_sha1
+        if s.head != s.old_head:
+            s.old_head = s.head
             log.info("PR %s has new head: %s", s.url, s.head)
             if "Ready for CI build" in s.labels:
                 s.start_job()
@@ -150,7 +149,7 @@ class PullRequest(object):
     def start_job(s):
         s.cancel_job()
 
-        env = { "CI_PULL_COMMIT" : s.commit,
+        env = { "CI_PULL_COMMIT" : s.head,
                 "CI_PULL_REPO" : s.repo,
                 "CI_PULL_NR" : str(s.nr),
                 "CI_PULL_URL" : s.url,
@@ -208,7 +207,7 @@ class PullRequest(object):
             return s.data["head"]["ref"]
         elif field == "repo":
             return s.data["head"]["repo"]["clone_url"]
-        elif field == "commit":
+        elif field == "head":
             return s.data["head"]["sha"]
         else:
             raise AttributeError
@@ -265,12 +264,11 @@ class PullRequest(object):
                     if not "Ready for CI build" in pr.labels:
                         continue
                     state = pr.get_state()
-                    print(state)
-                    if state is "canceled" or state is "pending":
+                    if state == "canceled" or state == "pending":
                         pr.start_job()
 
     def get_state(s):
-        code, result = github.repos[s.base_full_name].statuses[s.commit].get()
+        code, result = github.repos[s.base_full_name].statuses[s.head].get()
         if code==200:
             for data in result:
                 if data["context"] == "RIOT CI":
@@ -278,6 +276,8 @@ class PullRequest(object):
                         return "canceled"
                     else:
                         return data["state"]
+        else:
+            log.warning("PullRequest: couldn't get statuses: code %s", code)
 
         return "unknown"
 
