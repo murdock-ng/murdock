@@ -262,7 +262,11 @@ class PullRequest(object):
             for data in result:
                 if data["state"] == "open":
                     pr = PullRequest.get(data)
-                    if "Ready for CI build" in pr.labels and pr.get_state()=="canceled":
+                    if not "Ready for CI build" in pr.labels:
+                        continue
+                    state = pr.get_state()
+                    print(state)
+                    if state is "canceled" or state is "pending":
                         pr.start_job()
 
     def get_state(s):
@@ -273,9 +277,10 @@ class PullRequest(object):
                     if data["description"] == "The build has been canceled.":
                         return "canceled"
                     else:
-                        break
+                        return data["state"]
 
         return "unknown"
+
 
 
 def handle_pull_request(request):
