@@ -260,9 +260,23 @@ class PullRequest(object):
         code, result = github.repos[repo].pulls.get()
         if code==200:
             for data in result:
-                log.info(json.dumps(data, sort_keys=False, indent=4))
                 if data["state"] == "open":
-                    PullRequest.get(data)
+                    pr = PullRequest.get(data)
+                    if "Ready for CI build" in pr.labels and pr.get_state()=="canceled":
+                        pr.start_job()
+
+    def get_state(s):
+        code, result = github.repos[s.base_full_name].statuses[s.commit].get()
+        if code==200:
+            for data in result:
+                if data["context"] == "RIOT CI":
+                    if data["description"] == "The build has been canceled.":
+                        return "canceled"
+                    else:
+                        break
+
+        return "unknown"
+
 
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
@@ -307,8 +321,15 @@ def main():
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     log.info("riot CI initialized.")
+
+    for repo in config.repos:
+        PullRequest.load(repo)
+
     g = GithubWebhook(3000, handlers)
     g.run()
+
+    # tornado loop ended
+
     PullRequest.cancel_all()
     log.info("riot CI shut down.")
 
