@@ -150,6 +150,7 @@ class PullRequest(object):
 
         env = { "CI_PULL_COMMIT" : s.head,
                 "CI_PULL_REPO" : s.repo,
+                "CI_PULL_BRANCH" : s.branch,
                 "CI_PULL_NR" : str(s.nr),
                 "CI_PULL_URL" : s.url,
                 "CI_BASE_REPO" : s.base_repo,
