@@ -9,6 +9,8 @@ import json
 import time
 import shutil
 
+from log import log
+
 from agithub.GitHub import GitHub
 
 from os.path import abspath
@@ -33,7 +35,7 @@ class ShellWorker(threading.Thread):
         self.start()
 
     def run(s):
-        print("ShellWorker: started.")
+        log.info("ShellWorker: started.")
         while True:
             try:
                 s.job = None
@@ -44,11 +46,11 @@ class ShellWorker(threading.Thread):
             except Empty:
                 return
             if job.state == JobState.finished:
-                print("ShellWorker: skipping finished job", job.name)
+                log.info("ShellWorker: skipping finished job", job.name)
                 s.queue.task_done()
                 continue
             else:
-                print("ShellWorker: building job", job.name)
+                log.info("ShellWorker: building job", job.name)
 
             s.job = job
             job.worker = s
@@ -71,11 +73,11 @@ class ShellWorker(threading.Thread):
                 for line in p.stdout:
                     output_file.write(line)
             except Exception as e:
-                print(e)
+                log.info(e)
             finally:
                 output_file.close()
 
-            print("ShellWorker: Job", s.job.name, "finished. result:", s.job.result)
+            log.info("ShellWorker: Job", s.job.name, "finished. result:", s.job.result)
             s.process.wait()
 
             if s.canceled:
@@ -117,25 +119,25 @@ class PullRequest(object):
         pr = PullRequest._map.get(pull_url)
         if pr:
             pr.data = data
-            print("PR", pr.url, "updated")
+            log.info("PR", pr.url, "updated")
         else:
             pr = PullRequest(data)
             pr.update_labels()
-            print("PR", pr.url, "added")
+            log.info("PR", pr.url, "added")
         return pr
 
     def update(s):
         head_sha1 = s.data["pull_request"]["head"]["sha"]
         if head_sha1 != s.head:
             s.head = head_sha1
-            print("PR", s.url, "has new head:", s.head)
+            log.info("PR", s.url, "has new head:", s.head)
             if "Ready for CI build" in s.labels:
                 s.start_job()
         return s
 
     def cancel_job(s):
         if s.current_job:
-            print("PR", s.url, "canceling build of commit", s.current_job.arg)
+            log.info("PR", s.url, "canceling build of commit", s.current_job.arg)
             s.current_job.cancel()
             s.current_job = None
         return s
@@ -158,7 +160,7 @@ class PullRequest(object):
         queue.put(s.current_job)
 
         s.current_job.set_state(JobState.queued)
-        print("PR", s.url, "queueing build of commit", s.head)
+        log.info("PR", s.url, "queueing build of commit", s.head)
         return s
 
     def get_job_path(s, commit):
@@ -250,7 +252,7 @@ def handle_pull_request(request):
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
-    print("received PR action:", action)
+    log.info("received PR action:", action)
 
     pr = PullRequest.get(data).update()
     if action == "unlabeled":
@@ -262,7 +264,7 @@ def handle_pull_request(request):
 def handle_push(request):
     data = json.loads(request.body.decode("utf-8"))
 
-    print(json.dumps(data, sort_keys=False, indent=4))
+    log.info(json.dumps(data, sort_keys=False, indent=4))
 
 handlers = {
         "pull_request" : handle_pull_request,
@@ -275,7 +277,7 @@ ShellWorker(queue)
 scripts_dir = os.getcwd() + "/scripts"
 
 def main():
-    print("riot ci started.")
+    log.info("riot ci initialized.")
     g = GithubWebhook(3000, handlers)
     g.run()
 

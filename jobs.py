@@ -4,6 +4,7 @@ from enum import Enum
 from threading import Lock
 import time
 
+from log import log
 import config
 
 class JobState(Enum):
@@ -59,7 +60,7 @@ class Job(object):
             elif s.state == JobState.finished:
                 s.time_finished = time.time()
 
-            print("Job" , s.name, "new state:", s.state, s.result, s.time_created, s.time_queued, s.time_started, s.time_finished)
+            log.info("Job" , s.name, "new state:", s.state, s.result, s.time_created, s.time_queued, s.time_started, s.time_finished)
 
         if s.hook:
             s.hook(s.arg, s)
