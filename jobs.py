@@ -60,7 +60,7 @@ class Job(object):
             elif s.state == JobState.finished:
                 s.time_finished = time.time()
 
-            log.info("Job" , s.name, "new state:", s.state, s.result, s.time_created, s.time_queued, s.time_started, s.time_finished)
+            log.info("Job %s: new state: %s %s %s %s %s %s " , s.name, s.state, s.result, s.time_created, s.time_queued, s.time_started, s.time_finished)
 
         if s.hook:
             s.hook(s.arg, s)

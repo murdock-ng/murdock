@@ -48,11 +48,11 @@ class ShellWorker(threading.Thread):
             except Empty:
                 return
             if job.state == JobState.finished:
-                log.info("ShellWorker: skipping finished job", job.name)
+                log.info("ShellWorker: skipping finished job %s", job.name)
                 s.queue.task_done()
                 continue
             else:
-                log.info("ShellWorker: building job", job.name)
+                log.info("ShellWorker: building job %s", job.name)
 
             s.job = job
             job.worker = s
@@ -79,7 +79,7 @@ class ShellWorker(threading.Thread):
             finally:
                 output_file.close()
 
-            log.info("ShellWorker: Job", s.job.name, "finished. result:", s.job.result)
+            log.info("ShellWorker: Job %s finished. result: %s", s.job.name, s.job.result)
             s.process.wait()
 
             if s.canceled:
@@ -121,25 +121,25 @@ class PullRequest(object):
         pr = PullRequest._map.get(pull_url)
         if pr:
             pr.data = data
-            log.info("PR", pr.url, "updated")
+            log.info("PR %s updated", pr.url)
         else:
             pr = PullRequest(data)
             pr.update_labels()
-            log.info("PR", pr.url, "added")
+            log.info("PR %s added", pr.url)
         return pr
 
     def update(s):
         head_sha1 = s.data["pull_request"]["head"]["sha"]
         if head_sha1 != s.head:
             s.head = head_sha1
-            log.info("PR", s.url, "has new head:", s.head)
+            log.info("PR %s has new head: %s", s.url, s.head)
             if "Ready for CI build" in s.labels:
                 s.start_job()
         return s
 
     def cancel_job(s):
         if s.current_job:
-            log.info("PR", s.url, "canceling build of commit", s.current_job.arg)
+            log.info("PR %s: canceling build of commit %s", s.url, s.current_job.arg)
             s.current_job.cancel()
             s.current_job = None
         return s
@@ -162,7 +162,7 @@ class PullRequest(object):
         queue.put(s.current_job)
 
         s.current_job.set_state(JobState.queued)
-        log.info("PR", s.url, "queueing build of commit", s.head)
+        log.info("PR %s: queueing build of commit %s", s.url, s.head)
         return s
 
     def get_job_path(s, commit):
@@ -260,12 +260,11 @@ def handle_pull_request(request):
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
-    log.info("received PR action:", action)
+    log.info("received PR action: %s", action)
 
     pr = PullRequest.get(data).update()
     if action == "unlabeled":
         pr.remove_label(data["label"]["name"])
-
     elif action == "labeled":
         pr.add_label(data["label"]["name"])
 
