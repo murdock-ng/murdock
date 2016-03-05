@@ -157,7 +157,7 @@ class PullRequest(object):
         return s
 
     def cancel_job(s):
-        if s.current_job:
+        if s.current_job and s.current_job.state!=JobState.finished:
             log.info("PR %s: canceling build of commit %s", s.url, s.current_job.arg)
             s.current_job.cancel()
             s.current_job = None
