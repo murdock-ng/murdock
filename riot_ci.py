@@ -26,6 +26,24 @@ from github_webhook import *
 
 import config
 
+def nicetime(time):
+    secs = round(time)
+    minutes = secs/60
+    hrs = minutes/60
+    days = int(hrs/24)
+    secs = int(secs % 60)
+    minutes = int(minutes % 60)
+    hrs = int(hrs % 24)
+    res = ""
+    if days:
+        res += "%sd:" % days
+    if hrs:
+        res += "%sh:" % hrs
+    if minutes:
+        res += "%sm:" % minutes
+    res += "%ss" % secs
+    return res
+
 class ShellWorker(threading.Thread):
     def __init__(self, queue):
         threading.Thread.__init__(self, daemon=True)
@@ -222,7 +240,7 @@ class PullRequest(object):
     def job_hook(s, arg, job):
         context = "RIOT CI"
         target_url = None
-
+        runtime = None
         if job.state == JobState.created:
             state = "pending"
             description = "The build has been queued."
@@ -230,6 +248,7 @@ class PullRequest(object):
             state = "pending"
             description = "The build has been started."
         elif job.state == JobState.finished:
+            runtime = job.time_finished - job.time_started
             target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.txt")
             if job.result == JobResult.passed:
                 state = "success"
@@ -256,6 +275,9 @@ class PullRequest(object):
 
         log.info("PR %s setting github status: %s", s.url, state)
         github.repos[s.base_full_name].statuses[arg].post(body=json.dumps(status))
+
+        if runtime:
+            log.info("PR %s runtime: %s", nicetime(runtime))
 
     def cancel_all():
         log.info("canceling jobs...")
