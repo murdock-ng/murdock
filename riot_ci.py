@@ -273,11 +273,11 @@ class PullRequest(object):
         if target_url:
             status["target_url"] = target_url
 
-        log.info("PR %s setting github status: %s", s.url, state)
+        log.info("PR %s setting github status: %s \"%s\"", s.url, state, status["description"])
         github.repos[s.base_full_name].statuses[arg].post(body=json.dumps(status))
 
         if runtime:
-            log.info("PR %s runtime: %s", nicetime(runtime))
+            log.info("PR %s runtime: %s", s.url, nicetime(runtime))
 
     def cancel_all():
         log.info("canceling jobs...")
