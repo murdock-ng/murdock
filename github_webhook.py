@@ -33,18 +33,17 @@ class GithubWebhook(object):
         def initialize(s, prs):
             s.prs = prs
 
-        def gen_pull_entry(pr, job, time, extra = None):
-            res = extra or {}
-            res.update({
-                    "title" : pr.title,
-                    "user" : pr.user,
-                    "url" : pr.url,
-                    "commit" : job.arg,
-                    "since" : time,
-                    })
-            return res
-
         def get(self):
+            def gen_pull_entry(pr, job, time, extra = None):
+                res = extra or {}
+                res.update({
+                        "title" : pr.title,
+                        "user" : pr.user,
+                        "url" : pr.url,
+                        "commit" : job.arg,
+                        "since" : time,
+                        })
+                return res
             self.set_header("Content-Type", 'application/json; charset="utf-8"')
             building, queued, finished = self.prs.list()
             response = {}
@@ -53,14 +52,14 @@ class GithubWebhook(object):
                 _building = []
                 for pr, job in building:
                     _building.append(
-                            PullRequestHandler.gen_pull_entry(pr, job, job.time_started))
+                            gen_pull_entry(pr, job, job.time_started))
                 response['building'] = _building
 
             if queued:
                 _queued = []
                 for pr, job in queued:
                     _queued.append(
-                            PullRequestHandler.gen_pull_entry(pr, job, job.time_queued))
+                            gen_pull_entry(pr, job, job.time_queued))
 
                 response['queued'] = _queued
 
@@ -68,7 +67,7 @@ class GithubWebhook(object):
                 _finished = []
                 for pr, job in finished:
                     _finished.append(
-                            PullRequestHandler.gen_pull_entry(pr, job, job.time_finished,
+                            gen_pull_entry(pr, job, job.time_finished,
                             { "output_url" :
                                 os.path.join(config.http_root,
                                     pr.base_full_name, str(pr.nr), job.arg, "output.txt"),
