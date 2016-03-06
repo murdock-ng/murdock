@@ -32,6 +32,18 @@ class GithubWebhook(object):
     class PullRequestHandler(tornado.web.RequestHandler):
         def initialize(s, prs):
             s.prs = prs
+
+        def gen_pull_entry(pr, job, time, extra = None):
+            res = extra or {}
+            res.update({
+                    "title" : pr.title,
+                    "user" : pr.user,
+                    "url" : pr.url,
+                    "commit" : job.arg,
+                    "since" : time,
+                    })
+            return res
+
         def get(self):
             self.set_header("Content-Type", 'application/json; charset="utf-8"')
             building, queued, finished = self.prs.list()
@@ -40,35 +52,28 @@ class GithubWebhook(object):
             if building:
                 _building = []
                 for pr, job in building:
-                    _building.append({
-                        "url" : pr.url,
-                        "commit" : job.arg,
-                        "since" : job.time_started
-                        })
-
+                    _building.append(
+                            PullRequestHandler.gen_pull_entry(pr, job, job.time_started))
                 response['building'] = _building
 
             if queued:
                 _queued = []
                 for pr, job in queued:
-                    _queued.append({
-                        "url" : pr.url,
-                        "commit" : job.arg,
-                        "since" : job.time_queued
-                        })
+                    _queued.append(
+                            PullRequestHandler.gen_pull_entry(pr, job, job.time_queued))
 
                 response['queued'] = _queued
 
             if finished:
                 _finished = []
                 for pr, job in finished:
-                    _finished.append({
-                        "url" : pr.url,
-                        "commit" : job.arg,
-                        "since" : job.time_finished,
-                        "result" : job.result.name,
-                        "output_url" : os.path.join(config.http_root, pr.base_full_name, str(pr.nr), job.arg, "output.txt")
-                        })
+                    _finished.append(
+                            PullRequestHandler.gen_pull_entry(pr, job, job.time_finished,
+                            { "output_url" :
+                                os.path.join(config.http_root,
+                                    pr.base_full_name, str(pr.nr), job.arg, "output.txt"),
+                                "result" : job.result.name
+                                }))
 
                 response['finished'] = _finished
 
