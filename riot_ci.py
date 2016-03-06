@@ -171,6 +171,8 @@ class PullRequest(object):
                 "CI_PULL_BRANCH" : s.branch,
                 "CI_PULL_NR" : str(s.nr),
                 "CI_PULL_URL" : s.url,
+                "CI_PULL_TITLE" : s.title,
+                "CI_PULL_USER" : s.user,
                 "CI_BASE_REPO" : s.base_repo,
                 "CI_BASE_BRANCH" : s.base_branch,
                 "CI_BASE_COMMIT" : s.base_commit,
