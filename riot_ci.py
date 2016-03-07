@@ -215,6 +215,9 @@ class PullRequest(object):
 
     def add_label(s, label):
         log.info("PR %s added label: %s", s.url, label)
+        if label in s.labels:
+            log.warning("PR %s label already present.", s.url)
+            return
         s.labels.add(label)
         if label == "Ready for CI build":
             s.start_job()
@@ -357,6 +360,9 @@ def handle_pull_request(request):
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
+
+    if not action on { "labeled", "unlabeled", "synchronize" }:
+        log.info(json.dumps(data, sort_keys=False, indent=4))
 
     if action=="delete":
         PullRequest.delete(data)
