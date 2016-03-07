@@ -153,6 +153,15 @@ class PullRequest(object):
             log.info("PR %s added", pr.url)
         return pr
 
+    def delete(data):
+        url = s.data["_links"]["html"]["href"]
+        pr = PullRequest._map.get(url)
+        if pr:
+            pr.cancel_job()
+            log.info("PR %s: deleted.", url)
+        else:
+            log.warning("delete hook for unknown Pr %s.", url)
+
     def update(s):
         if s.head != s.old_head:
             s.old_head = s.head
@@ -348,6 +357,10 @@ def handle_pull_request(request):
 
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
+
+    if action=="delete":
+        PullRequest.delete(data)
+        return
 
     pr = PullRequest.get(pr_data).update()
     if action == "unlabeled":
