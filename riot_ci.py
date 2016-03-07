@@ -256,7 +256,7 @@ class PullRequest(object):
             description = "The build has been started."
         elif job.state == JobState.finished:
             runtime = job.time_finished - job.time_started
-            target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.txt")
+            target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.html")
             if job.result == JobResult.passed:
                 state = "success"
                 description = "The build succeeded."
