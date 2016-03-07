@@ -83,7 +83,7 @@ class ShellWorker(threading.Thread):
                 os.makedirs(build_dir)
 
             output_file = open(os.path.join(s.job.data_dir(), "output.txt"), mode='wb')
-            s.process = p = subprocess.Popen(s.job.cmd,
+            s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
                          stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT,
                          cwd=s.job.data_dir(), env=s.job.env)
@@ -104,6 +104,11 @@ class ShellWorker(threading.Thread):
             else:
                 ret = s.process.returncode
                 s.process = None
+                try:
+                    subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
+                except subprocess.CalledProcessError:
+                    log.warning("Job %s: post build script failed.")
+                    pass
                 if ret == 0:
                     s.job.set_state(JobState.finished, JobResult.passed)
                 else:
