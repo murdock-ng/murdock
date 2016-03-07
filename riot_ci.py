@@ -361,8 +361,9 @@ def handle_pull_request(request):
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
 
-    if not action on { "labeled", "unlabeled", "synchronize" }:
-        log.info(json.dumps(data, sort_keys=False, indent=4))
+    if not action in { "labeled", "unlabeled", "synchronize" }:
+        log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
+        log.debug(json.dumps(data, sort_keys=False, indent=4))
 
     if action=="delete":
         PullRequest.delete(data)
