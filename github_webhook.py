@@ -70,7 +70,7 @@ class GithubWebhook(object):
                             gen_pull_entry(pr, job, job.time_finished,
                             { "output_url" :
                                 os.path.join(config.http_root,
-                                    pr.base_full_name, str(pr.nr), job.arg, "output.txt"),
+                                    pr.base_full_name, str(pr.nr), job.arg, "output.html"),
                                 "result" : job.result.name
                                 }))
 
