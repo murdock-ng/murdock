@@ -44,7 +44,11 @@ class GithubWebhook(object):
                         "since" : time,
                         })
                 return res
+
             self.set_header("Content-Type", 'application/json; charset="utf-8"')
+            self.set_header("Access-Control-Allow-Credentials", "false")
+            self.set_header("Access-Control-Allow-Origin", "*")
+
             building, queued, finished = self.prs.list()
             response = {}
 
