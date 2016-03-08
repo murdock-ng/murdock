@@ -154,7 +154,7 @@ class PullRequest(object):
         return pr
 
     def close(data):
-        url = s.data["_links"]["html"]["href"]
+        url = data["_links"]["html"]["href"]
         pr = PullRequest._map.get(url)
         if pr:
             pr.cancel_job()
