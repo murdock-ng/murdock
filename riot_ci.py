@@ -153,14 +153,14 @@ class PullRequest(object):
             log.info("PR %s added", pr.url)
         return pr
 
-    def delete(data):
+    def close(data):
         url = s.data["_links"]["html"]["href"]
         pr = PullRequest._map.get(url)
         if pr:
             pr.cancel_job()
-            log.info("PR %s: deleted.", url)
+            log.info("PR %s: closed.", url)
         else:
-            log.warning("delete hook for unknown Pr %s.", url)
+            log.warning("tried to close unknown Pr %s.", url)
 
     def update(s):
         if s.head != s.old_head:
@@ -361,12 +361,12 @@ def handle_pull_request(request):
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
 
-    if not action in { "labeled", "unlabeled", "synchronize" }:
+    if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed" }:
         log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
         log.debug(json.dumps(data, sort_keys=False, indent=4))
 
-    if action=="delete":
-        PullRequest.delete(data)
+    if action=="closed":
+        PullRequest.close(data)
         return
 
     pr = PullRequest.get(pr_data).update()
