@@ -154,7 +154,6 @@ class PullRequest(object):
         return pr
 
     def close(data):
-        log.info(json.dumps(data, sort_keys=False, indent=4))
         url = data["_links"]["html"]["href"]
         pr = PullRequest._map.get(url)
         if pr:
@@ -366,8 +365,8 @@ def handle_pull_request(request):
         log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
         log.debug(json.dumps(data, sort_keys=False, indent=4))
 
-    if action=="closed":
-        PullRequest.close(data)
+    if action in { "closed" }:
+        PullRequest.close(pr_data)
         return
 
     pr = PullRequest.get(pr_data).update()
