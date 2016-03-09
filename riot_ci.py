@@ -154,6 +154,7 @@ class PullRequest(object):
         return pr
 
     def close(data):
+        log.info(json.dumps(data, sort_keys=False, indent=4))
         url = data["_links"]["html"]["href"]
         pr = PullRequest._map.get(url)
         if pr:
