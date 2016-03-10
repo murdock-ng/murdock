@@ -138,7 +138,7 @@ class PullRequest(object):
         s.labels = None
         s.old_head = None
 
-    def get(data):
+    def get(data, create=True):
         if "pull_request" in data:
             data = data["pull_request"]
 
@@ -148,14 +148,16 @@ class PullRequest(object):
             pr.data = data
             log.info("PR %s updated", pr.url)
         else:
+            if not create:
+                return None
+
             pr = PullRequest(data)
             pr.update_labels()
             log.info("PR %s added", pr.url)
         return pr
 
     def close(data):
-        url = data["_links"]["html"]["href"]
-        pr = PullRequest._map.get(url)
+        pr = PullRequest.get(data, False)
         if pr:
             pr.cancel_job()
             log.info("PR %s: closed.", url)
