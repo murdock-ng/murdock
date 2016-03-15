@@ -160,9 +160,9 @@ class PullRequest(object):
         pr = PullRequest.get(data, False)
         if pr:
             pr.cancel_job()
-            log.info("PR %s: closed.", url)
+            log.info("PR %s: closed.", pr.url)
         else:
-            log.warning("tried to close unknown Pr %s.", url)
+            log.warning("tried to close unknown Pr %s.", data["_links"]["html"]["href"])
 
     def update(s):
         if s.head != s.old_head:
