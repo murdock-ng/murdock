@@ -193,7 +193,7 @@ class PullRequest(object):
                 "CI_BASE_BRANCH" : s.base_branch,
                 "CI_BASE_COMMIT" : s.base_commit,
                 "CI_SCRIPTS_DIR" : scripts_dir,
-                "CI_PULL_LABELS" : " ".join(sorted(list(s.labels))),
+                "CI_PULL_LABELS" : ";".join(sorted(list(s.labels))),
                 }
 
         s.current_job = Job(s.get_job_path(s.head), os.path.abspath("./build.sh"), env, s.job_hook, s.head)
