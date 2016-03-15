@@ -273,10 +273,10 @@ class PullRequest(object):
             target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.html")
             if job.result == JobResult.passed:
                 state = "success"
-                description = "The build succeeded."
+                description = "The build succeeded. runtime: %s" % nicetime(runtime)
             elif job.result == JobResult.errored:
                 state = "error"
-                description = "The build failed."
+                description = "The build failed. runtime: %s" % nicetime(runtime)
             else:
                 state = "failure"
                 if job.result == JobResult.canceled:
