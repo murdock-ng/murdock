@@ -74,6 +74,7 @@ class ShellWorker(threading.Thread):
             s.job = job
             job.worker = s
             s.job.set_state(JobState.running)
+            s.job.env["CI_BUILD_ID"] = str(s.job.time_started)
 
             build_dir = os.path.join(s.job.data_dir(), "build")
             try:
@@ -259,7 +260,7 @@ class PullRequest(object):
             raise AttributeError
 
     def job_hook(s, arg, job):
-        context = "RIOT CI"
+        context = config.context
         target_url = None
         runtime = None
         if job.state == JobState.created:
@@ -324,7 +325,7 @@ class PullRequest(object):
         code, result = github.repos[s.base_full_name].statuses[s.head].get()
         if code==200:
             for data in result:
-                if data["context"] == "RIOT CI":
+                if data["context"] == config.context:
                     if data["description"] == "The build has been canceled.":
                         return "canceled"
                     else:
@@ -393,7 +394,7 @@ ShellWorker(queue)
 scripts_dir = os.getcwd() + "/scripts"
 
 def shutdown():
-    log.info("riot-ci: shutting down.")
+    log.info("murdock: shutting down.")
     tornado.ioloop.IOLoop.instance().stop()
 
 def sig_handler(sig, frame):
@@ -409,7 +410,7 @@ def startup_load_pull_requests():
 def main():
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
-    log.info("riot CI initialized.")
+    log.info("murdock initialized.")
 
 #    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
@@ -419,7 +420,7 @@ def main():
     # tornado loop ended
 
     PullRequest.cancel_all()
-    log.info("riot CI shut down.")
+    log.info("murdock shut down.")
 
 if __name__ == "__main__":
     main()
