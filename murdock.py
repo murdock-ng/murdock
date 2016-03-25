@@ -26,6 +26,11 @@ from github_webhook import *
 
 import config
 
+try:
+    fail_labels = config.fail_labels
+except AttributeError:
+    fail_labels = set()
+
 def nicetime(time):
     secs = round(time)
     minutes = secs/60
@@ -274,8 +279,13 @@ class PullRequest(object):
             runtime = job.time_finished - job.time_started
             target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.html")
             if job.result == JobResult.passed:
-                state = "success"
-                description = "The build succeeded. runtime: %s" % nicetime(runtime)
+                if not s.labels & fail_labels:
+                    state = "success"
+                    description = "The build succeeded. runtime: %s" % nicetime(runtime)
+                else:
+                    state = "error"
+                    description = "The build only failed the label check. runtime: %s" % nicetime(runtime)
+                    job.result = JobResult.errored
             elif job.result == JobResult.errored:
                 state = "error"
                 description = "The build failed. runtime: %s" % nicetime(runtime)
