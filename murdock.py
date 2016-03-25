@@ -100,16 +100,17 @@ class ShellWorker(threading.Thread):
             log.info("ShellWorker: Job %s finished. result: %s", s.job.name, s.job.result)
             s.process.wait()
 
+            try:
+                subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
+            except subprocess.CalledProcessError:
+                log.warning("Job %s: post build script failed.")
+                pass
+
             if s.canceled:
                 s.job.set_state(JobState.finished, JobResult.canceled)
             else:
                 ret = s.process.returncode
                 s.process = None
-                try:
-                    subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
-                except subprocess.CalledProcessError:
-                    log.warning("Job %s: post build script failed.")
-                    pass
                 if ret == 0:
                     s.job.set_state(JobState.finished, JobResult.passed)
                 else:
