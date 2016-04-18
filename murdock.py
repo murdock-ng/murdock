@@ -369,7 +369,7 @@ class PullRequest(object):
 def handle_pull_request(request):
     data = json.loads(request.body.decode("utf-8"))
     pr_data = data["pull_request"]
-    if pr_data["base"]["ref"] != "master":
+    if not pr_data["base"]["repo"]["full_name"] in config.repos:
         return
 
     #print(json.dumps(data, sort_keys=False, indent=4))
