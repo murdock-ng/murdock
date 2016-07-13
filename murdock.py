@@ -142,7 +142,7 @@ class PullRequest(object):
         s._map[data["_links"]["html"]["href"]] = s
         s.current_job = None
         s.jobs = []
-        s.labels = None
+        s.labels = set()
         s.old_head = None
 
     def get(data, create=True):
