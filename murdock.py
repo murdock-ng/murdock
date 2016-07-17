@@ -375,7 +375,7 @@ def handle_pull_request(request):
     #print(json.dumps(data, sort_keys=False, indent=4))
     action = data["action"]
 
-    if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed", "edited" }:
+    if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed", "edited", "unassigned" }:
         log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
         log.debug(json.dumps(data, sort_keys=False, indent=4))
 
