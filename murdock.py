@@ -391,6 +391,13 @@ def handle_pull_request(request):
         pr.remove_label(data["label"]["name"])
     elif action == "labeled":
         pr.add_label(data["label"]["name"])
+    elif action == "opened":
+        status = {
+                "description": "\"Ready for CI build\" label not set",
+                "context": config.context
+                }
+
+        pr.set_status(pr_data["head"]["sha1"], "failure", status)
 
 def handle_push(request):
     data = json.loads(request.body.decode("utf-8"))
