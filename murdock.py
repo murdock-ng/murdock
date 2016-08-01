@@ -397,7 +397,7 @@ def handle_pull_request(request):
                 "context": config.context
                 }
 
-        pr.set_status(pr_data["head"]["sha1"], "failure", status)
+        pr.set_status(pr_data["head"]["sha"], "failure", status)
 
 def handle_push(request):
     data = json.loads(request.body.decode("utf-8"))
