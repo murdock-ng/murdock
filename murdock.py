@@ -306,7 +306,7 @@ class PullRequest(object):
         if target_url:
             status["target_url"] = target_url
 
-        s.set_status(commit, state, status)
+        s.set_status(arg, state, status)
 
         if runtime:
             log.info("PR %s runtime: %s", s.url, nicetime(runtime))
