@@ -308,6 +308,8 @@ class PullRequest(object):
                 }
         if target_url:
             status["target_url"] = target_url
+        else:
+            status["target_url"] = config.http_root
 
         s.set_status(arg, state, status)
 
