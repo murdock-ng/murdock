@@ -374,35 +374,38 @@ class PullRequest(object):
 
         return (building, queued, finished)
 
+handle_pull_request_lock = Lock()
+
 def handle_pull_request(request):
-    data = json.loads(request.body.decode("utf-8"))
-    pr_data = data["pull_request"]
-    if not pr_data["base"]["repo"]["full_name"] in config.repos:
-        return
+    with handle_pull_request_lock:
+        data = json.loads(request.body.decode("utf-8"))
+        pr_data = data["pull_request"]
+        if not pr_data["base"]["repo"]["full_name"] in config.repos:
+            return
 
-    #print(json.dumps(data, sort_keys=False, indent=4))
-    action = data["action"]
+        #print(json.dumps(data, sort_keys=False, indent=4))
+        action = data["action"]
 
-    if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed", "edited", "unassigned" }:
-        log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
-        log.debug(json.dumps(data, sort_keys=False, indent=4))
+        if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed", "edited", "unassigned" }:
+            log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
+            log.debug(json.dumps(data, sort_keys=False, indent=4))
 
-    if action in { "closed" }:
-        PullRequest.close(pr_data)
-        return
+        if action in { "closed" }:
+            PullRequest.close(pr_data)
+            return
 
-    pr = PullRequest.get(pr_data).update()
-    if action == "unlabeled":
-        pr.remove_label(data["label"]["name"])
-    elif action == "labeled":
-        pr.add_label(data["label"]["name"])
-    elif action == "opened":
-        status = {
-                "description": "\"Ready for CI build\" label not set",
-                "context": config.context
-                }
+        pr = PullRequest.get(pr_data).update()
+        if action == "unlabeled":
+            pr.remove_label(data["label"]["name"])
+        elif action == "labeled":
+            pr.add_label(data["label"]["name"])
+        elif action == "opened":
+            status = {
+                    "description": "\"Ready for CI build\" label not set",
+                    "context": config.context
+                    }
 
-        pr.set_status(pr_data["head"]["sha"], "failure", status)
+            pr.set_status(pr_data["head"]["sha"], "failure", status)
 
 def handle_push(request):
     data = json.loads(request.body.decode("utf-8"))
