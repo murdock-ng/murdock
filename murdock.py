@@ -386,7 +386,7 @@ def handle_pull_request(request):
         #print(json.dumps(data, sort_keys=False, indent=4))
         action = data["action"]
 
-        if not action in { "labeled", "unlabeled", "synchronize", "opened", "assigned", "closed", "edited", "unassigned" }:
+        if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned" }:
             log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
             log.debug(json.dumps(data, sort_keys=False, indent=4))
 
@@ -399,10 +399,11 @@ def handle_pull_request(request):
             pr.remove_label(data["label"]["name"])
         elif action == "labeled":
             pr.add_label(data["label"]["name"])
-        elif action == "opened":
+        elif action == "created":
             status = {
                     "description": "\"Ready for CI build\" label not set",
-                    "context": config.context
+                    "context": config.context,
+                    "target_url" : config.http_root,
                     }
 
             pr.set_status(pr_data["head"]["sha"], "failure", status)
