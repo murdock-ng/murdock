@@ -311,20 +311,28 @@ class PullRequest(object):
         status = {
                 "state": state,
                 "description": description,
-                "context": context
                 }
+
         if target_url:
             status["target_url"] = target_url
         else:
             status["target_url"] = config.http_root
 
-        s.set_status(arg, state, status)
+        s.set_status(arg, **status)
 
         if runtime:
             log.info("PR %s runtime: %s", s.url, nicetime(runtime))
 
-    def set_status(s, commit, state, status):
-        log.info("PR %s setting github status: %s \"%s\"", s.url, state, status["description"])
+    def set_status(s, commit, **kwargs):
+        status = {
+                "state" : "failure",
+                "description" : "unknown reason",
+                "context" : config.context
+                }
+
+        status.update(kwargs)
+
+        log.info("PR %s setting github status: %s \"%s\"", s.url, status["state"], status["description"])
         github.repos[s.base_full_name].statuses[commit].post(body=json.dumps(status))
 
     def cancel_all():
@@ -410,12 +418,12 @@ def handle_pull_request(request):
             pr.add_label(data["label"]["name"])
         elif action in { "created", "opened" } and not config.ci_ready_label in pr.labels:
             status = {
+                    "state" : "pending",
                     "description": ""\"%s\" label not set" % config.ci_ready_label,
-                    "context": config.context,
                     "target_url" : config.http_root,
                     }
 
-            pr.set_status(pr_data["head"]["sha"], "pending", status)
+            pr.set_status(pr_data["head"]["sha"], **status)
 
 def handle_push(request):
     data = json.loads(request.body.decode("utf-8"))
