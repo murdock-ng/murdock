@@ -28,6 +28,7 @@ from util import config
 
 config.set_default("fail_labels", set())
 config.set_default("context", "Murdock")
+config.set_default("ci_ready_label", "Ready for CI build")
 
 def nicetime(time):
     secs = round(time)
@@ -173,7 +174,7 @@ class PullRequest(object):
         if s.head != s.old_head:
             s.old_head = s.head
             log.info("PR %s has new head: %s", s.url, s.head)
-            if "Ready for CI build" in s.labels:
+            if config.ci_ready_label in s.labels:
                 s.start_job()
         return s
 
@@ -235,14 +236,14 @@ class PullRequest(object):
             log.warning("PR %s label already present.", s.url)
             return
         s.labels.add(label)
-        if label == "Ready for CI build":
+        if label == config.ci_ready_label:
             s.start_job()
         return s
 
     def remove_label(s, label):
         log.info("PR %s removed label: %s", s.url, label)
         s.labels.discard(label)
-        if label == "Ready for CI build":
+        if label == config.ci_ready_label:
             s.cancel_job()
         return s
 
@@ -407,9 +408,9 @@ def handle_pull_request(request):
             pr.remove_label(data["label"]["name"])
         elif action == "labeled":
             pr.add_label(data["label"]["name"])
-        elif action in { "created", "opened" } and not "Ready for CI build" in pr.labels:
+        elif action in { "created", "opened" } and not config.ci_ready_label in pr.labels:
             status = {
-                    "description": "\"Ready for CI build\" label not set",
+                    "description": ""\"%s\" label not set" % config.ci_ready_label,
                     "context": config.context,
                     "target_url" : config.http_root,
                     }
