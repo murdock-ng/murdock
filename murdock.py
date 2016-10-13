@@ -401,7 +401,7 @@ def handle_pull_request(request):
         pr_url = pr_data["_links"]["html"]["href"]
         log.info("PR %s hook action %s", pr_url, action)
 
-        if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned", "opened" }:
+        if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned", "opened", "status" }:
             log.warning("PR %s unknown action %s", pr_url, action)
             log.debug(json.dumps(data, sort_keys=False, indent=4))
 
