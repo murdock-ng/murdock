@@ -401,10 +401,11 @@ def handle_pull_request(request):
         #print(json.dumps(data, sort_keys=False, indent=4))
         action = data["action"]
 
-        log.info("PR %s hook action %s", pr_data["base"]["ref"], action)
+        pr_url = pr_data["_links"]["html"]["href"]
+        log.info("PR %s hook action %s", pr_url, action)
 
         if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned", "opened" }:
-            log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
+            log.warning("PR %s unknown action %s", pr_url, action)
             log.debug(json.dumps(data, sort_keys=False, indent=4))
 
         if action in { "closed" }:
