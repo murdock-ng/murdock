@@ -26,6 +26,9 @@ from github_webhook import *
 
 from util import config
 
+known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
+        "closed", "edited", "unassigned", "opened", "status", "reopened" }
+
 config.set_default("fail_labels", set())
 config.set_default("context", "Murdock")
 config.set_default("ci_ready_label", "Ready for CI build")
@@ -401,7 +404,7 @@ def handle_pull_request(request):
         pr_url = pr_data["_links"]["html"]["href"]
         log.info("PR %s hook action %s", pr_url, action)
 
-        if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned", "opened", "status" }:
+        if not action in known_actions:
             log.warning("PR %s unknown action %s", pr_url, action)
             log.debug(json.dumps(data, sort_keys=False, indent=4))
 
@@ -414,7 +417,7 @@ def handle_pull_request(request):
             pr.remove_label(data["label"]["name"])
         elif action == "labeled":
             pr.add_label(data["label"]["name"])
-        elif action in { "created", "opened" } and not config.ci_ready_label in pr.labels:
+        elif action in { "created", "opened", "reopened" } and not config.ci_ready_label in pr.labels:
             status = {
                     "state" : "pending",
                     "description": "\"%s\" label not set" % config.ci_ready_label,
