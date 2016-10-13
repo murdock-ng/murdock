@@ -158,8 +158,8 @@ class PullRequest(object):
                 return None
 
             pr = PullRequest(data)
+            log.info("PR %s new to Murdock", pr.url)
             pr.update_labels()
-            log.info("PR %s added", pr.url)
         return pr
 
     def close(data):
@@ -168,7 +168,7 @@ class PullRequest(object):
             pr.cancel_job()
             log.info("PR %s: closed.", pr.url)
         else:
-            log.warning("tried to close unknown Pr %s.", data["_links"]["html"]["href"])
+            log.warning("PR %s unknown, but tried to close!", data["_links"]["html"]["href"])
 
     def update(s):
         if s.head != s.old_head:
