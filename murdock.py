@@ -419,7 +419,6 @@ def handle_pull_request(request):
             pr.add_label(data["label"]["name"])
         elif action in { "created", "opened", "reopened" } and not config.ci_ready_label in pr.labels:
             status = {
-                    "state" : "pending",
                     "description": "\"%s\" label not set" % config.ci_ready_label,
                     "target_url" : config.http_root,
                     }
