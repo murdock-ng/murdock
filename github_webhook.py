@@ -3,10 +3,13 @@ import tornado.ioloop
 import tornado.web
 import json
 import time
-import config
 import os
 
 from log import log
+
+from util import config
+
+config.set_default("url_prefix", r"")
 
 class GithubWebhook(object):
     def __init__(s, port, prs, github_handlers):
@@ -15,8 +18,8 @@ class GithubWebhook(object):
         s.port = port
         s.application = tornado.web.Application([
 #            (r"/", GithubWebhook.MainHandler),
-            (r"/api/pull_requests", GithubWebhook.PullRequestHandler, dict(prs=prs)),
-            (r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=github_handlers)),
+            (config.url_prefix + r"/api/pull_requests", GithubWebhook.PullRequestHandler, dict(prs=prs)),
+            (config.url_prefix + r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=github_handlers)),
                 ])
         s.server = tornado.httpserver.HTTPServer(s.application)
         s.server.listen(s.port)

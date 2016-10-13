@@ -24,12 +24,10 @@ from enum import Enum
 from jobs import *
 from github_webhook import *
 
-import config
+from util import config
 
-try:
-    fail_labels = config.fail_labels
-except AttributeError:
-    fail_labels = set()
+config.set_default("fail_labels", set())
+config.set_default("context", "Murdock")
 
 def nicetime(time):
     secs = round(time)
