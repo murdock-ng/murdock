@@ -189,6 +189,8 @@ class PullRequest(object):
     def start_job(s):
         s.cancel_job()
 
+        log.info("PR %s: starting build of commit %s", s.url, s.head)
+
         env = { "CI_PULL_COMMIT" : s.head,
                 "CI_PULL_REPO" : s.repo,
                 "CI_PULL_BRANCH" : s.branch,
@@ -203,6 +205,11 @@ class PullRequest(object):
                 "CI_SCRIPTS_DIR" : scripts_dir,
                 "CI_PULL_LABELS" : ";".join(sorted(list(s.labels))),
                 }
+
+        for key, value in env.items():
+            if not value:
+                log.warning("PR %s: env %s has NoneType!", s.url, key)
+                return s
 
         s.current_job = Job(s.get_job_path(s.head), os.path.abspath("./build.sh"), env, s.job_hook, s.head)
         s.jobs.append(s.current_job)
@@ -220,6 +227,7 @@ class PullRequest(object):
         if code == 200:
             s.labels = set()
             for label in result:
+                log.info("PR %s set label: %s", s.url, label["name"])
                 s.labels.add(label["name"])
         return s
 
@@ -386,6 +394,8 @@ def handle_pull_request(request):
         #print(json.dumps(data, sort_keys=False, indent=4))
         action = data["action"]
 
+        log.info("PR %s hook action %s", pr_data["base"]["ref"], action)
+
         if not action in { "labeled", "unlabeled", "synchronize", "created", "assigned", "closed", "edited", "unassigned", "opened" }:
             log.warning("PR %s unknown action %s", pr_data["base"]["ref"], action)
             log.debug(json.dumps(data, sort_keys=False, indent=4))
@@ -399,7 +409,7 @@ def handle_pull_request(request):
             pr.remove_label(data["label"]["name"])
         elif action == "labeled":
             pr.add_label(data["label"]["name"])
-        elif action in { "created", "opened" }:
+        elif action in { "created", "opened" } and not "Ready for CI build" in pr.labels:
             status = {
                     "description": "\"Ready for CI build\" label not set",
                     "context": config.context,
