@@ -200,7 +200,6 @@ class PullRequest(object):
                 "CI_BASE_REPO" : s.base_repo,
                 "CI_BASE_BRANCH" : s.base_branch,
                 "CI_BASE_COMMIT" : s.base_commit,
-                "CI_MERGE_COMMIT" : s.merge_commit,
                 "CI_SCRIPTS_DIR" : scripts_dir,
                 "CI_PULL_LABELS" : ";".join(sorted(list(s.labels))),
                 }
@@ -258,8 +257,6 @@ class PullRequest(object):
             return s.data["base"]["sha"]
         elif field == "base_full_name":
             return s.data["base"]["repo"]["full_name"]
-        elif field == "merge_commit":
-            return s.data["merge_commit_sha"]
         elif field == "nr":
             return s.data["number"]
         elif field == "branch":
