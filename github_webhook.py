@@ -2,7 +2,6 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 import json
-import time
 import os
 
 from log import log

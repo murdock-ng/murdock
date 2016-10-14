@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
 import os
-import pickle
 import subprocess
-import sys
 import json
-import time
 import signal
 import shutil
 import tornado.ioloop
@@ -14,17 +11,14 @@ from log import log
 
 from agithub.GitHub import GitHub
 
-from os.path import abspath
 import threading
-from threading import Thread
 from queue import Queue, Empty
 
-from enum import Enum
-
-from jobs import *
-from github_webhook import *
+from jobs import Job, JobResult, JobState
+from github_webhook import GithubWebhook
 
 from util import config
+from threading import Lock
 
 known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
         "closed", "edited", "unassigned", "opened", "status", "reopened" }
@@ -276,7 +270,6 @@ class PullRequest(object):
             raise AttributeError
 
     def job_hook(s, arg, job):
-        context = config.context
         target_url = None
         runtime = None
         if job.state == JobState.created:
@@ -289,7 +282,7 @@ class PullRequest(object):
             runtime = job.time_finished - job.time_started
             target_url = os.path.join(config.http_root, s.base_full_name, str(s.nr), arg, "output.html")
             if job.result == JobResult.passed:
-                if not s.labels & fail_labels:
+                if not s.labels & config.fail_labels:
                     state = "success"
                     description = "The build succeeded. runtime: %s" % nicetime(runtime)
                 else:

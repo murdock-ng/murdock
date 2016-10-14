@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-import os
 from enum import Enum
 from threading import Lock
 import time
 
 from log import log
-import config
 
 class JobState(Enum):
     created = 0
