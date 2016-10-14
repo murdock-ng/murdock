@@ -301,6 +301,7 @@ class PullRequest(object):
                 description = "The build failed. runtime: %s" % nicetime(runtime)
             else:
                 state = "failure"
+                target_url = None
                 if job.result == JobResult.canceled:
                     description = "The build has been canceled."
                 else:
