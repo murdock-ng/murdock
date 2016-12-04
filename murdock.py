@@ -6,6 +6,7 @@ import json
 import signal
 import shutil
 import tornado.ioloop
+import traceback
 
 from log import log
 
@@ -46,83 +47,94 @@ def nicetime(time):
     return res
 
 class ShellWorker(threading.Thread):
+    _lock = Lock()
+    num_workers = 0
+
     def __init__(self, queue):
         threading.Thread.__init__(self, daemon=True)
         self.process = None
         self.queue = queue
         self.canceled = False
         self.job = None
+        with ShellWorker._lock:
+            ShellWorker.num_workers += 1
+            self.num = ShellWorker.num_workers
         self.start()
 
     def run(s):
-        log.info("ShellWorker: started.")
+        log.info("ShellWorker %s: started.", s.num)
         while True:
             try:
-                s.job = None
-                s.process = None
-                s.canceled = False
-                job = s.queue.get()
-                s.job = job
-            except Empty:
-                return
-            if job.state == JobState.finished:
-                log.info("ShellWorker: skipping finished job %s", job.name)
-                s.queue.task_done()
-                continue
-            else:
-                log.info("ShellWorker: building job %s", job.name)
-
-            s.job = job
-            job.worker = s
-            s.job.set_state(JobState.running)
-            s.job.env["CI_BUILD_ID"] = str(s.job.time_started)
-
-            build_dir = os.path.join(s.job.data_dir(), "build")
-            try:
-                os.makedirs(build_dir)
-            except FileExistsError:
-                shutil.rmtree(build_dir)
-                os.makedirs(build_dir)
-
-            output_file = open(os.path.join(s.job.data_dir(), "output.txt"), mode='wb')
-            s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT,
-                         cwd=s.job.data_dir(), env=s.job.env)
-            s.job.worker = s
-            try:
-                for line in p.stdout:
-                    output_file.write(line)
-            except Exception as e:
-                log.info(e)
-            finally:
-                output_file.close()
-
-            log.info("ShellWorker: Job %s finished. result: %s", s.job.name, s.job.result)
-            s.process.wait()
-
-            try:
-                subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
-            except subprocess.CalledProcessError:
-                log.warning("Job %s: post build script failed.")
-                pass
-
-            if s.canceled:
-                s.job.set_state(JobState.finished, JobResult.canceled)
-            else:
-                ret = s.process.returncode
-                s.process = None
-                if ret == 0:
-                    s.job.set_state(JobState.finished, JobResult.passed)
+                try:
+                    s.job = None
+                    s.process = None
+                    s.canceled = False
+                    job = s.queue.get()
+                    s.job = job
+                except Empty:
+                    return
+                if job.state == JobState.finished:
+                    log.info("ShellWorker %s: skipping finished job %s", s.num, job.name)
+                    s.queue.task_done()
+                    continue
                 else:
-                    s.job.set_state(JobState.finished, JobResult.errored)
+                    log.info("ShellWorker %s: building job %s", s.num, job.name)
 
-            try:
-                shutil.rmtree(build_dir)
-            except FileNotFoundError:
-                pass
+                s.job = job
+                job.worker = s
+                s.job.set_state(JobState.running)
+                s.job.env["CI_BUILD_ID"] = str(s.job.time_started)
 
-            s.queue.task_done()
+                build_dir = os.path.join(s.job.data_dir(), "build")
+                try:
+                    os.makedirs(build_dir)
+                except FileExistsError:
+                    shutil.rmtree(build_dir)
+                    os.makedirs(build_dir)
+
+                output_file = open(os.path.join(s.job.data_dir(), "output.txt"), mode='wb')
+                s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             cwd=s.job.data_dir(), env=s.job.env)
+                s.job.worker = s
+                try:
+                    for line in p.stdout:
+                        output_file.write(line)
+                except Exception as e:
+                    log.info(e)
+                finally:
+                    output_file.close()
+
+                log.info("ShellWorker %s: Job %s finished. result: %s", s.num, s.job.name, s.job.result)
+                s.process.wait()
+
+                try:
+                    subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
+                except subprocess.CalledProcessError:
+                    log.warning("Job %s: post build script failed.", s.jon)
+                    pass
+
+                if s.canceled:
+                    s.job.set_state(JobState.finished, JobResult.canceled)
+                else:
+                    ret = s.process.returncode
+                    s.process = None
+                    if ret == 0:
+                        s.job.set_state(JobState.finished, JobResult.passed)
+                    else:
+                        s.job.set_state(JobState.finished, JobResult.errored)
+
+                try:
+                    shutil.rmtree(build_dir)
+                except FileNotFoundError:
+                    pass
+
+                s.queue.task_done()
+
+            except Exception as e:
+               log.warning("ShellWorker %s: uncaught exception: %s", s.num, e)
+               traceback.print_exc()
 
     def cancel(s, job):
         if s.process is not None and s.job==job:
