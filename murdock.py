@@ -27,6 +27,7 @@ known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
 config.set_default("fail_labels", set())
 config.set_default("context", "Murdock")
 config.set_default("ci_ready_label", "Ready for CI build")
+config.set_default("set_status", True)
 
 def nicetime(time):
     secs = round(time)
@@ -330,6 +331,10 @@ class PullRequest(object):
             log.info("PR %s runtime: %s", s.url, nicetime(runtime))
 
     def set_status(s, commit, **kwargs):
+        if not config.set_status:
+            log.info("PR %s not setting github status: %s \"%s\"", s.url, status["state"], status["description"])
+            return
+
         status = {
                 "state" : "failure",
                 "description" : "unknown reason",
