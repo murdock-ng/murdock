@@ -93,6 +93,9 @@ class ShellWorker(threading.Thread):
                     shutil.rmtree(build_dir)
                     os.makedirs(build_dir)
 
+                _env = os.environ.copy()
+                _env.update(s.job.env)
+
                 output_file = open(os.path.join(s.job.data_dir(), "output.txt"), mode='wb')
                 s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
                              stdout=subprocess.PIPE,
@@ -111,7 +114,7 @@ class ShellWorker(threading.Thread):
                 s.process.wait()
 
                 try:
-                    subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
+                    subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=_env)
                 except subprocess.CalledProcessError:
                     log.warning("Job %s: post build script failed.", s.job.name)
                     pass
