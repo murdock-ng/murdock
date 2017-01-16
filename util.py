@@ -1,7 +1,7 @@
 import config
 
 def _get_config(name, default=None):
-    return config.__dict__.get(name) or default
+    return config.__dict__.get(name, default)
 
 def _set_default(name, value):
     config.__dict__[name] = _get_config(name, value)
