@@ -334,10 +334,6 @@ class PullRequest(object):
             log.info("PR %s runtime: %s", s.url, nicetime(runtime))
 
     def set_status(s, commit, **kwargs):
-        if not config.set_status:
-            log.info("PR %s not setting github status: %s \"%s\"", s.url, status["state"], status["description"])
-            return
-
         status = {
                 "state" : "failure",
                 "description" : "unknown reason",
@@ -345,6 +341,10 @@ class PullRequest(object):
                 }
 
         status.update(kwargs)
+
+        if not config.set_status:
+            log.info("PR %s not setting github status: %s \"%s\"", s.url, status["state"], status["description"])
+            return
 
         log.info("PR %s setting github status: %s \"%s\"", s.url, status["state"], status["description"])
         github.repos[s.base_full_name].statuses[commit].post(body=json.dumps(status))
