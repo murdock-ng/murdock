@@ -113,7 +113,7 @@ class ShellWorker(threading.Thread):
                 try:
                     subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=s.job.env)
                 except subprocess.CalledProcessError:
-                    log.warning("Job %s: post build script failed.", s.job)
+                    log.warning("Job %s: post build script failed.", s.job.name)
                     pass
 
                 if s.canceled:
