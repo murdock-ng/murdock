@@ -78,7 +78,7 @@ class GithubWebhook(object):
                                 os.path.join(config.http_root,
                                     pr.base_full_name, str(pr.nr), job.arg, "output.html"),
                                 "result" : job.result.name,
-                                "runtime" : (job.time_started - job.time_finished)
+                                "runtime" : (job.time_finished - job.time_started)
                                 }))
 
                 response['finished'] = _finished
