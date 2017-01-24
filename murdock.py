@@ -28,6 +28,7 @@ config.set_default("fail_labels", set())
 config.set_default("context", "Murdock")
 config.set_default("ci_ready_label", "Ready for CI build")
 config.set_default("set_status", True)
+config.set_default("sigterm_timeout", 100)
 
 def nicetime(time):
     secs = round(time)
@@ -111,7 +112,9 @@ class ShellWorker(threading.Thread):
                     output_file.close()
 
                 log.info("ShellWorker %s: Job %s finished. result: %s", s.num, s.job.name, s.job.result)
-                s.process.wait()
+
+                if s.process:
+                    s.process.wait()
 
                 try:
                     subprocess.check_call([s.job.cmd, "post_build"], cwd=s.job.data_dir(), env=_env)
@@ -142,9 +145,18 @@ class ShellWorker(threading.Thread):
 
     def cancel(s, job):
         if s.process is not None and s.job==job:
-            s.process.terminate()
-            s.process.wait()
+            threading.Thread(target=ShellWorker.graceful_kill, args=(s.process,)).start()
+            s.process=None
             s.canceled=True
+
+    def graceful_kill(process):
+        try:
+            process.terminate()
+            process.wait(config.sigterm_timeout)
+        except subprocess.TimeoutExpired:
+            log.warning("ShellWorker: killing process")
+            process.kill()
+            process.wait()
 
 class PullRequest(object):
     _map = {}
