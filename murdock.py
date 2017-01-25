@@ -213,7 +213,7 @@ class PullRequest(object):
     def start_job(s):
         s.cancel_job()
 
-        log.info("PR %s: starting build of commit %s", s.url, s.head)
+        log.info("PR %s: queueing build of commit %s", s.url, s.head)
 
         env = { "CI_PULL_COMMIT" : s.head,
                 "CI_PULL_REPO" : s.repo,
@@ -239,7 +239,6 @@ class PullRequest(object):
         queue.put(s.current_job)
 
         s.current_job.set_state(JobState.queued)
-        log.info("PR %s: queueing build of commit %s", s.url, s.head)
         return s
 
     def get_job_path(s, commit):
