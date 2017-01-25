@@ -101,7 +101,7 @@ class ShellWorker(threading.Thread):
                 s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
-                             cwd=s.job.data_dir(), env=s.job.env)
+                             cwd=s.job.data_dir(), env=s.job.env, start_new_session=True)
                 s.job.worker = s
                 try:
                     for line in p.stdout:
@@ -151,7 +151,7 @@ class ShellWorker(threading.Thread):
 
     def graceful_kill(process):
         try:
-            process.terminate()
+            os.killpg(process.pid, signal.SIGTERM)
             process.wait(config.sigterm_timeout)
         except subprocess.TimeoutExpired:
             log.warning("ShellWorker: killing process")
