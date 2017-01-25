@@ -420,7 +420,9 @@ def handle_pull_request(request):
     with handle_pull_request_lock:
         data = json.loads(request.body.decode("utf-8"))
         pr_data = data["pull_request"]
-        if not pr_data["base"]["repo"]["full_name"] in config.repos:
+        repo = pr_data["base"]["repo"]["full_name"]
+        if not repo in config.repos:
+            log.warning("ignoring PR for repo %s", repo)
             return
 
         #print(json.dumps(data, sort_keys=False, indent=4))
