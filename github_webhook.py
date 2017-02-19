@@ -1,12 +1,14 @@
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+import tornado.websocket
 import json
 import os
 
 from log import log
 
 from util import config
+from threading import Lock
 
 config.set_default("url_prefix", r"")
 
@@ -19,9 +21,13 @@ class GithubWebhook(object):
 #            (r"/", GithubWebhook.MainHandler),
             (config.url_prefix + r"/api/pull_requests", GithubWebhook.PullRequestHandler, dict(prs=prs)),
             (config.url_prefix + r"/github", GithubWebhook.GithubWebhookHandler, dict(handler=github_handlers)),
+            (config.url_prefix + r"/status", GithubWebhook.StatusWebSocket),
+            (config.url_prefix + r"/control", GithubWebhook.ControlHandler),
                 ])
         s.server = tornado.httpserver.HTTPServer(s.application)
         s.server.listen(s.port)
+        s.websocket_lock = Lock()
+        s.status_websockets = set()
 
     def run(s):
         log.info("tornado IOLoop started.")
@@ -98,3 +104,48 @@ class GithubWebhook(object):
                 handler(s.request)
             else:
                 log.warning("unhandled github event: %s", hook_type)
+
+    class StatusWebSocket(tornado.websocket.WebSocketHandler):
+        lock = Lock()
+        websockets = set()
+        keeper = None
+
+        # passive read only websocket, so anyone can read
+        def check_origin(self, origin):
+            return True
+
+        def write_message_all(message, binary=False):
+            s = GithubWebhook.StatusWebSocket
+            with s.lock:
+                for websocket in s.websockets:
+                    websocket.write_message(message, binary)
+
+        def keep_alive():
+            s = GithubWebhook.StatusWebSocket
+            with s.lock:
+                for websocket in s.websockets:
+                    websocket.ping("ping".encode("ascii"))
+
+        def open(self):
+            print("websocket opened")
+            with self.lock:
+                if not self.websockets:
+                    s = GithubWebhook.StatusWebSocket
+                    s.keeper = tornado.ioloop.PeriodicCallback(s.keep_alive, 30*1000)
+                    s.keeper.start()
+                self.websockets.add(self)
+
+        def on_message(self, message):
+            pass
+
+        def on_close(self):
+            with self.lock:
+                self.websockets.discard(self)
+                if not self.websockets:
+                    self.keeper.stop()
+
+    class ControlHandler(tornado.web.RequestHandler):
+        def post(self):
+#            data = json.loads(self.request.body)
+            s = GithubWebhook.StatusWebSocket
+            s.write_message_all(self.request.body)
