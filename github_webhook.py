@@ -78,13 +78,22 @@ class GithubWebhook(object):
             if finished:
                 _finished = []
                 for pr, job in finished:
+                    status_html_snipfile = os.path.join(config.data_dir,
+                                            pr.base_full_name, str(pr.nr), job.arg, "prstatus.html.snip")
+
+                    status_html = ""
+                    if os.path.isfile(status_html_snipfile):
+                        with open(status_html_snipfile, "r") as f:
+                            status_html = f.read()
+
                     _finished.append(
                             gen_pull_entry(pr, job, job.time_finished,
                             { "output_url" :
                                 os.path.join(config.http_root,
                                     pr.base_full_name, str(pr.nr), job.arg, "output.html"),
                                 "result" : job.result.name,
-                                "runtime" : (job.time_finished - job.time_started)
+                                "runtime" : (job.time_finished - job.time_started),
+                                "status_html" : status_html,
                                 }))
 
                 response['finished'] = _finished

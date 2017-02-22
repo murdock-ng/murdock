@@ -101,7 +101,7 @@ class ShellWorker(threading.Thread):
                 s.process = p = subprocess.Popen([ s.job.cmd, "build" ],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
-                             cwd=s.job.data_dir(), env=s.job.env, start_new_session=True)
+                             cwd=s.job.data_dir(), env=_env, start_new_session=True)
                 s.job.worker = s
                 try:
                     for line in p.stdout:
@@ -183,7 +183,7 @@ class PullRequest(object):
                 return None
 
             pr = PullRequest(data)
-            log.info("PR %s new to Murdock", pr.url)
+            log.info("PR %s new to Murdock (state=%s, mergeable=%s, merge_commit_sha=%s)", pr.url, pr.state, pr.mergeable, pr.merge_commit)
             pr.update_labels()
         return pr
 
@@ -199,7 +199,9 @@ class PullRequest(object):
         if s.head != s.old_head:
             s.old_head = s.head
             log.info("PR %s has new head: %s", s.url, s.head)
-            if config.ci_ready_label in s.labels:
+            if (s.state=="open") \
+                and config.ci_ready_label in s.labels \
+                and s.mergeable in { True, None }:
                 s.start_job()
         return s
 
@@ -227,7 +229,12 @@ class PullRequest(object):
                 "CI_BASE_COMMIT" : s.base_commit,
                 "CI_SCRIPTS_DIR" : scripts_dir,
                 "CI_PULL_LABELS" : ";".join(sorted(list(s.labels))),
+                "CI_BUILD_HTTP_ROOT" : os.path.join(config.http_root,
+                                       s.base_full_name, str(s.nr), s.head),
                 }
+
+        if s.mergeable:
+            env["CI_MERGE_COMMIT"] = s.merge_commit
 
         for key, value in env.items():
             if not value:
@@ -293,6 +300,12 @@ class PullRequest(object):
             return s.data["head"]["user"]["login"]
         elif field == "title":
             return s.data["title"]
+        elif field == "state":
+            return s.data["state"]
+        elif field == "merge_commit":
+            return s.data["merge_commit_sha"]
+        elif field == "mergeable":
+            return s.data["mergeable"]
         else:
             raise AttributeError
 
@@ -343,6 +356,9 @@ class PullRequest(object):
 
         if runtime:
             log.info("PR %s runtime: %s", s.url, nicetime(runtime))
+
+        log.info("PR %s notifying webhooks", s.url)
+        GithubWebhook.StatusWebSocket.write_message_all('{ "cmd" :"reload_prs" }')
 
     def set_status(s, commit, **kwargs):
         status = {
