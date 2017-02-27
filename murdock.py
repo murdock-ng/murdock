@@ -29,6 +29,7 @@ config.set_default("context", "Murdock")
 config.set_default("ci_ready_label", "Ready for CI build")
 config.set_default("set_status", True)
 config.set_default("sigterm_timeout", 100)
+config.set_default("port", 3000)
 
 def nicetime(time):
     secs = round(time)
@@ -504,7 +505,7 @@ def main():
 
 #    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
-    g = GithubWebhook(3000, PullRequest, github_handlers)
+    g = GithubWebhook(config.get("port"), PullRequest, github_handlers)
     g.run()
 
     # tornado loop ended
