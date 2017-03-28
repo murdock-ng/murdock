@@ -30,6 +30,9 @@ config.set_default("ci_ready_label", "Ready for CI build")
 config.set_default("set_status", True)
 config.set_default("sigterm_timeout", 100)
 config.set_default("port", 3000)
+config.set_default("scripts_dir", os.getcwd() + "/scripts")
+
+scripts_dir = os.path.abspath(config.get("scripts_dir"))
 
 def nicetime(time):
     secs = round(time)
@@ -242,7 +245,7 @@ class PullRequest(object):
                 log.warning("PR %s: env %s has NoneType!", s.url, key)
                 return s
 
-        s.current_job = Job(s.get_job_path(s.head), os.path.abspath("./build.sh"), env, s.job_hook, s.head)
+        s.current_job = Job(s.get_job_path(s.head), os.path.join(scripts_dir, "build.sh"), env, s.job_hook, s.head)
         s.jobs.append(s.current_job)
         queue.put(s.current_job)
 
@@ -482,7 +485,6 @@ github_handlers = {
 github = GitHub(config.github_username, config.github_password)
 queue = Queue()
 ShellWorker(queue)
-scripts_dir = os.getcwd() + "/scripts"
 
 def shutdown():
     log.info("murdock: shutting down.")
