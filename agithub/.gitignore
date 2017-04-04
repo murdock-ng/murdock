@@ -1,6 +1,0 @@
-tags
-*.py[co]
-agithub.egg-info/
-agithub.egg-info/
-build/
-dist/

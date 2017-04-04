@@ -368,7 +368,7 @@ class PullRequest(object):
             return
 
         log.info("PR %s setting github status: %s \"%s\"", s.url, status["state"], status["description"])
-        github.repos[s.base_full_name].statuses[commit].post(body=json.dumps(status))
+        github.repos[s.base_full_name].statuses[commit].post(body=status)
 
     def cancel_all():
         log.info("canceling jobs...")
