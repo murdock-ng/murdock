@@ -1,10 +1,22 @@
-import config
+import os
+import sys
 
-def _get_config(name, default=None):
-    return config.__dict__.get(name, default)
+from config import Config
 
-def _set_default(name, value):
-    config.__dict__[name] = _get_config(name, value)
+class MurdockConfig(Config):
+    def set_defaults(s):
+        super().set_defaults()
+        s.config["fail_labels"] = set(s.config.get("fail_labels", []))
+        s.set_default("ci_ready_label", "Ready for CI build")
+        s.set_default("context", "Murdock")
+        s.set_default("port", 3000)
+        s.set_default("scripts_dir", os.getcwd() + "/scripts")
+        s.set_default("set_status", False)
+        s.set_default("sigterm_timeout", 100)
 
-config.get = _get_config
-config.set_default = _set_default
+if len(sys.argv) > 1:
+    config_file = sys.argv[1]
+else:
+    config_file = "/etc/murdock.toml"
+
+config = MurdockConfig(config_file)

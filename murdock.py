@@ -24,16 +24,6 @@ from threading import Lock
 known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
         "closed", "edited", "unassigned", "opened", "status", "reopened" }
 
-config.set_default("fail_labels", set())
-config.set_default("context", "Murdock")
-config.set_default("ci_ready_label", "Ready for CI build")
-config.set_default("set_status", True)
-config.set_default("sigterm_timeout", 100)
-config.set_default("port", 3000)
-config.set_default("scripts_dir", os.getcwd() + "/scripts")
-
-scripts_dir = os.path.abspath(config.get("scripts_dir"))
-
 def nicetime(time):
     secs = round(time)
     minutes = secs/60
@@ -231,7 +221,7 @@ class PullRequest(object):
                 "CI_BASE_REPO" : s.base_repo,
                 "CI_BASE_BRANCH" : s.base_branch,
                 "CI_BASE_COMMIT" : s.base_commit,
-                "CI_SCRIPTS_DIR" : scripts_dir,
+                "CI_SCRIPTS_DIR" : config.scripts_dir,
                 "CI_PULL_LABELS" : ";".join(sorted(list(s.labels))),
                 "CI_BUILD_HTTP_ROOT" : os.path.join(config.http_root,
                                        s.base_full_name, str(s.nr), s.head),
@@ -245,7 +235,7 @@ class PullRequest(object):
                 log.warning("PR %s: env %s has NoneType!", s.url, key)
                 return s
 
-        s.current_job = Job(s.get_job_path(s.head), os.path.join(scripts_dir, "build.sh"), env, s.job_hook, s.head)
+        s.current_job = Job(s.get_job_path(s.head), os.path.join(config.scripts_dir, "build.sh"), env, s.job_hook, s.head)
         s.jobs.append(s.current_job)
         queue.put(s.current_job)
 
@@ -507,7 +497,7 @@ def main():
 
 #    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
-    g = GithubWebhook(config.get("port"), PullRequest, github_handlers)
+    g = GithubWebhook(config.port, PullRequest, github_handlers)
     g.run()
 
     # tornado loop ended
