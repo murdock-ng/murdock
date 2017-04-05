@@ -6,6 +6,7 @@ Developed for RIOT (riot-os.org).
 
 - python3
 - agithub python module (tested with v2.1 from pip)
+- pytoml python module
 
 # Installation
 
