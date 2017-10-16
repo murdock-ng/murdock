@@ -1,7 +1,10 @@
 data_dir = "/srv/http/data-dir"
 http_root = "https://path/to/your/ci"
+# Either username and password
 github_username = "xxxx"
 github_password = "xxxx"
+# Or a github personal access token
+github_apikey = "xxxx"
 repos = ["example/repo" ]
 fail_labels = [ "NEEDS SQUASHING", "Waiting For Other PR" ]
 scripts_dir = "/path/to/directory/containing/build.sh"
