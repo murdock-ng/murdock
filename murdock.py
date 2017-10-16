@@ -472,9 +472,9 @@ github_handlers = {
 #        "push" : handle_push,
         }
 if not (bool(config.github_username and config.github_password) ^ bool(config.github_apikey)):
-    raise SystemExit("No valid github authentication provided, provide"
-                     "username/password or an API key in the configuration"
-                     "file")
+    raise SystemExit("No valid github authentication provided, provide "
+                     "username/password or an API key in the configuration "
+                     "file.")
 github = GitHub(config.github_username, config.github_password, token=config.github_apikey)
 queue = Queue()
 ShellWorker(queue)
