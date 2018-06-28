@@ -22,7 +22,7 @@ from util import config
 from threading import Lock
 
 known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
-        "closed", "edited", "unassigned", "opened", "status", "reopened" }
+        "closed", "edited", "unassigned", "opened", "status", "reopened", "review_requested" }
 
 def nicetime(time):
     secs = round(time)
