@@ -384,7 +384,7 @@ class PullRequest(object):
                     pr = PullRequest.get(data)
                     if pr.current_job:
                         continue
-                    if not "Ready for CI build" in pr.labels:
+                    if not config.ci_ready_label in pr.labels:
                         continue
                     state = pr.get_state()
                     if state == "canceled" or state == "pending":
