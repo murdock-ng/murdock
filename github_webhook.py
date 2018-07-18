@@ -90,6 +90,8 @@ class GithubWebhook(object):
                                                    "prstatus.json")
                     if os.path.isfile(status_jsonfile):
                         with open(status_jsonfile) as f:
+                            # Content is up for interpretation between backend
+                            # and frontend scripting
                             extras["status"] = json.load(f)
                     if "status" not in extras:
                         status_html_snipfile = os.path.join(
