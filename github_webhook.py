@@ -78,15 +78,16 @@ class GithubWebhook(object):
             if finished:
                 _finished = []
                 for pr, job in finished:
-                    job_path = os.path.join(config.data_dir,
-                                            pr.base_full_name,
-                                            str(pr.nr), job.arg)
+                    job_path_rel = os.path.join(pr.base_full_name, str(pr.nr), job.arg)
+                    job_path_local = os.path.join(config.data_dir, job_path_rel)
+                    job_path_url = os.path.join(config.http_root, job_path_rel)
+
                     extras = {
-                        "output_url": os.path.join(job_path, "output.html"),
+                        "output_url": os.path.join(job_path_url, "output.html"),
                         "result": job.result.name,
                         "runtime": (job.time_finished - job.time_started),
                       }
-                    status_jsonfile = os.path.join(job_path,
+                    status_jsonfile = os.path.join(job_path_local,
                                                    "prstatus.json")
                     if os.path.isfile(status_jsonfile):
                         with open(status_jsonfile) as f:
@@ -95,7 +96,7 @@ class GithubWebhook(object):
                             extras["status"] = json.load(f)
                     if "status" not in extras:
                         status_html_snipfile = os.path.join(
-                                job_path, "prstatus.html.snip"
+                                job_path_local, "prstatus.html.snip"
                             )
 
                         status_html = ""
