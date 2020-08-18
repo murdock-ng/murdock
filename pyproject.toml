@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "murdock-ci"
+version = "0.1.0"
+description = "A simple gihub CI server"
+authors = ["Kaspar Schleiser <kaspar@schleiser.de>"]
+license = "GPL-2.0-or-later"
+
+packages = [
+    { include = "murdock_ci" },
+    ]
+
+[tool.poetry.scripts]
+murdock = 'murdock_ci:main'
+
+[tool.poetry.dependencies]
+python = "^3.8"
+agithub = "^2.2.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
