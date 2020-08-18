@@ -3,7 +3,7 @@ from enum import Enum
 from threading import Lock
 import time
 
-from log import log
+from .log import log
 
 class JobState(Enum):
     created = 0

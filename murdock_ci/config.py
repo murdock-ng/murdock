@@ -1,6 +1,6 @@
 import pytoml as toml
 
-from log import log
+from .log import log
 
 class Config(object):
     def __init__(s, filename):

@@ -8,21 +8,21 @@ import shutil
 import tornado.ioloop
 import traceback
 
-from log import log
+import threading
+from queue import Queue, Empty
+from threading import Lock
 
 from agithub.GitHub import GitHub
 
-import threading
-from queue import Queue, Empty
+from .log import log
+from .jobs import Job, JobResult, JobState
+from .github_webhook import GithubWebhook
+from .util import config
 
-from jobs import Job, JobResult, JobState
-from github_webhook import GithubWebhook
-
-from util import config
-from threading import Lock
 
 known_actions = { "labeled", "unlabeled", "synchronize", "created", "assigned",
         "closed", "edited", "unassigned", "opened", "status", "reopened", "review_requested" }
+
 
 def nicetime(time):
     secs = round(time)

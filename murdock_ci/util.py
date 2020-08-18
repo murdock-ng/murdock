@@ -1,7 +1,7 @@
 import os
 import sys
 
-from config import Config
+from .config import Config
 
 class MurdockConfig(Config):
     def set_defaults(s):

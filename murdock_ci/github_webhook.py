@@ -5,10 +5,10 @@ import tornado.websocket
 import json
 import os
 
-from log import log
-
-from util import config
 from threading import Lock
+
+from .log import log
+from .util import config
 
 config.set_default("url_prefix", r"")
 
