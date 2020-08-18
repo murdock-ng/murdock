@@ -13,6 +13,9 @@ class MurdockConfig(Config):
         s.set_default("scripts_dir", os.getcwd() + "/scripts")
         s.set_default("set_status", False)
         s.set_default("sigterm_timeout", 100)
+        s.set_default("github_username", None)
+        s.set_default("github_password", None)
+        s.set_default("github_apikey", None)
 
 if len(sys.argv) > 1:
     config_file = sys.argv[1]
