@@ -15,6 +15,7 @@ murdock = 'murdock_ci:main'
 [tool.poetry.dependencies]
 python = "^3.8"
 agithub = "^2.2.2"
+tornado = "^6.0.4"
 
 [tool.poetry.dev-dependencies]
 
