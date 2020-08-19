@@ -4,6 +4,7 @@ import tornado.web
 import tornado.websocket
 import json
 import os
+import asyncio
 
 from threading import Lock
 
@@ -28,10 +29,16 @@ class GithubWebhook(object):
         s.server.listen(s.port)
         s.websocket_lock = Lock()
         s.status_websockets = set()
+        s.ioloop = tornado.ioloop.IOLoop.current(True)
+
+        # allow any thread to creat an event loop.
+        # Prevents this:
+        #    RuntimeError: There is no current event loop in thread 'Thread-1'.
+        asyncio.set_event_loop_policy(tornado.platform.asyncio.AnyThreadEventLoopPolicy())
 
     def run(s):
         log.info("tornado IOLoop started.")
-        tornado.ioloop.IOLoop.instance().start()
+        s.ioloop.start()
 
     class MainHandler(tornado.web.RequestHandler):
         def get(self):

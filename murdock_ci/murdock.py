@@ -480,8 +480,9 @@ queue = Queue()
 ShellWorker(queue)
 
 def shutdown():
+    global ioloop
     log.info("murdock: shutting down.")
-    tornado.ioloop.IOLoop.instance().stop()
+    ioloop.stop()
 
 def sig_handler(sig, frame):
     log.warning('Caught signal: %s', sig)
@@ -501,6 +502,8 @@ def main():
 #    threading.Thread(target=startup_load_pull_requests, daemon=True).start()
 
     g = GithubWebhook(config.port, PullRequest, github_handlers)
+    global ioloop
+    ioloop = g.ioloop
     g.run()
 
     # tornado loop ended
