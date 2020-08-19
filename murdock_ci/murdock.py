@@ -507,7 +507,3 @@ def main():
 
     PullRequest.cancel_all()
     log.info("murdock shut down.")
-
-if __name__ == "__main__":
-    main()
-
