@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "murdock-ci"
-version = "0.1.0"
+version = "0.1.6"
 description = "A simple gihub CI server"
 authors = ["Kaspar Schleiser <kaspar@schleiser.de>"]
 license = "GPL-2.0-or-later"
