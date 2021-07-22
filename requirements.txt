@@ -1,0 +1,5 @@
+aiohttp
+aiohttp_cors
+cchardet
+aiodns
+gidgethub
