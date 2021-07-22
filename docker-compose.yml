@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  murdock:
+    user: 0:0
+    ports:
+      - 8000:8000
+    build:
+      context: .
+    image: ${MURDOCK_DOCKER_IMAGE}
+    container_name: murdock-app
+    environment:
+        - MURDOCK_LOG_LEVEL
+        - MURDOCK_BASE_URL
+        - MURDOCK_USE_SECURE_API
+        - MURDOCK_NUM_WORKERS
+        - GITHUB_REPO
+        - GITHUB_WEBHOOK_SECRET
+        - GITHUB_API_USER
+        - GITHUB_API_TOKEN
+        - CI_CANCEL_ON_UPDATE
+        - CI_READY_LABEL
+        - CI_FASTTRACK_LABELS
+    volumes:
+      - ${MURDOCK_ROOT_DIR}:/var/lib/murdock-data
+      - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
+    restart: always

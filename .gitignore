@@ -62,3 +62,6 @@ target/
 .ipynb_checkpoints
 
 .mypy_cache/
+
+# local docker-compose envs
+.env.local
