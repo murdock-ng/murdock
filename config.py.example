@@ -1,6 +1,0 @@
-data_dir = "./data"
-http_root = "https://ci.riot-labs.de/"
-context = "Murdock"
-github_username = "username"
-github_password = "possword"
-repos = {"RIOT-OS/RIOT"}
