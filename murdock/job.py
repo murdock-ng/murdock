@@ -69,6 +69,34 @@ class MurdockJob:
             runtime_format = "%Ss"
         return time.strftime(runtime_format, time.gmtime(self.runtime))
 
+    @staticmethod
+    def to_db_entry(job):
+        return {
+            "title" : job.pr.title,
+            "user" : job.pr.user,
+            "url" : job.pr.url,
+            "commit" : job.pr.commit,
+            "since" : job.start_time,
+            "runtime": job.runtime,
+            "result": job.result,
+            "output_url": job.output_url,
+            "status": job.status,
+        }
+
+    @staticmethod
+    def from_db_entry(entry):
+        return {
+            "title" : entry["title"],
+            "user" : entry["user"],
+            "url" : entry["url"],
+            "commit" : entry["commit"],
+            "since" : entry["since"],
+            "result" : entry["result"],
+            "output_url": entry["output_url"],
+            "runtime" : entry["runtime"],
+            "status": entry["status"],
+        }
+
     @property
     def env(self):
         _env = { 

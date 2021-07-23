@@ -4,7 +4,7 @@ from gidgethub import sansio
 
 from murdock.config import (
     MURDOCK_HTTP_PORT, MURDOCK_USE_SECURE_API, MURDOCK_API_SECRET,
-    GITHUB_WEBHOOK_SECRET
+    MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET
 )
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
@@ -55,8 +55,13 @@ async def control_handler(request):
 
 async def pull_requests_handler(request):
     LOGGER.info(f"{request.method} {request.url}")
+    if "max_length" in request.rel_url.query:
+        max_length = int(request.rel_url.query["max_length"])
+    else:
+        max_length = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
+    response = await request.app["murdock"].pulls(max_length)
     return web.json_response(
-        request.app["murdock"].pulls(),
+        response,
         headers={
             "Access-Control-Allow-Credentials": "false",
             "Access-Control-Allow-Origin": "*",
@@ -89,7 +94,7 @@ async def ws_client_handler(request):
 async def create_app():
     app = web.Application()
     murdock = Murdock()
-    murdock.init()
+    await murdock.init()
     app["murdock"] = murdock
     app.router.add_get('/api/pull_requests', pull_requests_handler, name='prs')
     app.router.add_get('/status', ws_client_handler, name='status')

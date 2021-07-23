@@ -10,6 +10,8 @@ Murdock is fully written in Python (requires >= 3.8) and is based on the
 HTTP server to handle HTTP requests and
 [gidgethub](https://gidgethub.readthedocs.io/en/latest/) to interact with the
 GitHub REST API.
+In order to keep the history of completed jobs, they are stored in a
+[MongoDb](https://www.mongodb.com/) database.
 
 We recommend that you use
 [docker-compose](https://docs.docker.com/compose/#compose-documentation) to
@@ -42,7 +44,7 @@ You can specify a custom Docker image using the `MURDOCK_DOCKER_IMAGE`, if
 eventually your `build.sh` requires extra tools. This
 image should derive from `riot/murdock` to be sure Murdock is installed.
 
-Launch Murdock:
+Launch Murdock and MongoDb services:
 
 ```
 $ docker-compose up
@@ -63,6 +65,12 @@ Install the aiohttp devtools:
 
 ```
 $ python3 -m pip install aiohttp-devtools
+```
+
+Launch the MongoDb service:
+
+```
+$ docker-compose up mongo
 ```
 
 Launch the aiohttp development server:

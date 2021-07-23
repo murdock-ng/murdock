@@ -5,6 +5,8 @@ import time
 
 from collections import namedtuple
 
+import motor.motor_asyncio as aiomotor
+
 import aiohttp
 from aiohttp import web
 
@@ -17,6 +19,7 @@ from murdock.config import (
     CI_FASTTRACK_LABELS, CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
     GITHUB_API_TOKEN, GITHUB_API_USER, GITHUB_REPO,
     MURDOCK_BASE_URL, MURDOCK_NUM_WORKERS,
+    MURDOCK_DB_HOST, MURDOCK_DB_PORT, MURDOCK_DB_NAME
 )
 
 ALLOWED_ACTIONS = [
@@ -48,22 +51,33 @@ class Murdock:
 
     def __init__(self):
         self.clients = []
-        self.finished = []
         self.queued = []
         self.running_jobs = [None] * MURDOCK_NUM_WORKERS
         self.queue = asyncio.Queue()
         self.fasttrack_queue = asyncio.Queue()
+        self.db = None
 
-    def init(self):
+    async def init(self):
         LOGGER.debug(CONFIG_MSG)
         check_msg = check_config()
         if check_msg:
             LOGGER.error(f"Error: {check_msg}")
             sys.exit(1)
+        await self.init_db()
         for index in range(MURDOCK_NUM_WORKERS):
             asyncio.create_task(
                 self.job_processing_task(), name=f"MurdockWorker_{index}"
-            )
+        )
+
+    async def init_db(self):
+        LOGGER.info("Initializing database connection")
+        loop = asyncio.get_event_loop()
+        conn = aiomotor.AsyncIOMotorClient(
+            f"mongodb://{MURDOCK_DB_HOST}:{MURDOCK_DB_PORT}",
+            maxPoolSize=5,
+            io_loop=loop
+        )
+        self.db = conn[MURDOCK_DB_NAME]
 
     async def _process_job(self, job):
         if job.canceled is True:
@@ -113,7 +127,6 @@ class Murdock:
         job.stop_time = time.time()
         self.remove_from_running_jobs(job)
         if job.result != "killed":
-            self.finished.append(job)
             job_state = "success" if job.result == "passed" else "failure"
             job_status_desc = (
                 "succeeded" if job.result == "passed" else "failed"
@@ -129,6 +142,7 @@ class Murdock:
                     )
                 }
             )
+            await self.db.job.insert_one(MurdockJob.to_db_entry(job))
         await self.reload_prs()
 
     def cancel_queued_job(self, job):
@@ -316,7 +330,7 @@ class Murdock:
     async def reload_prs(self):
         await self._broadcast_message(json.dumps({"cmd": "reload_prs"}))
 
-    def pulls(self):
+    async def pulls(self, max_length):
         _queued = sorted(
             [
                 {
@@ -345,27 +359,19 @@ class Murdock:
                 for job in self.running_jobs if job is not None
             ], reverse=True, key=lambda job: job["since"]
         )
-        finished = sorted(
-            [
-                {
-                    "title" : job.pr.title,
-                    "user" : job.pr.user,
-                    "url" : job.pr.url,
-                    "commit" : job.pr.commit,
-                    "since" : job.start_time,
-                    "runtime": job.runtime,
-                    "result": job.result,
-                    "output_url": job.output_url,
-                    "status": job.status,
-                }
-                for job in self.finished
-            ], reverse=True, key=lambda job: job["since"]
+        finished = await (
+            self.db.job
+            .find()
+            .sort("since", -1)
+            .to_list(max_length)
         )
 
         return {
             "queued": queued,
             "building": building,
-            "finished": finished
+            "finished": [
+                MurdockJob.from_db_entry(job) for job in finished
+            ],
         }
 
     async def handle_ctrl_data(self, data):

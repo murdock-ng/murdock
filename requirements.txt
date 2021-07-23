@@ -3,3 +3,4 @@ aiohttp_cors
 cchardet
 aiodns
 gidgethub
+motor
