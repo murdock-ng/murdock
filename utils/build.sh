@@ -15,7 +15,6 @@ JOB_DELAY=1
 
 case "$ACTION" in
     build)
-        echo "-- Job ID: ${CI_JOB_ID}"
         echo "-- Working directory: $(pwd)"
         echo "-- Environment vars:"
         env
@@ -24,7 +23,7 @@ case "$ACTION" in
         echo "--- Start build"
 
         echo "--- Collecting jobs"
-        STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "prnum" : "'${CI_PULL_NR}'", "status" : {"status": "collecting jobs"}}'
+        STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "collecting jobs"}}'
         /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
         sleep ${COLLECTING_JOBS_DELAY}
 
@@ -42,9 +41,9 @@ case "$ACTION" in
                     FAILED_JOBS+=", "
                 fi
                 FAILED_JOBS+='{"name": "job_'${job}'", "href": "job_'${job}'"}'
-                STATUS='{"cmd" : "prstatus","secret": "'${CI_API_SECRET}'",  "prnum" : "'${CI_PULL_NR}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_jobs": ['${FAILED_JOBS}']}}'
+                STATUS='{"cmd" : "prstatus","secret": "'${CI_API_SECRET}'",  "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_jobs": ['${FAILED_JOBS}']}}'
             else
-                STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "prnum" : "'${CI_PULL_NR}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
+                STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
             fi
             /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
             sleep ${JOB_DELAY}
@@ -52,7 +51,7 @@ case "$ACTION" in
 
         if [ "${RETVAL}" -eq 1 ] && [ "${CANCELED}" -eq 1 ]
         then
-            STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "prnum" : "'${CI_PULL_NR}'", "status" : {"status": "canceled", "failed_jobs": ['${FAILED_JOBS}']}}'
+            STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "canceled", "failed_jobs": ['${FAILED_JOBS}']}}'
             /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
         fi
 

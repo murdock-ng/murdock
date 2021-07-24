@@ -14,7 +14,6 @@ from murdock.log import LOGGER
 class MurdockJob:
 
     def __init__(self, pr, fasttracked=False):
-        self.id = str(uuid.uuid4())
         self.result = -1
         self.proc = None
         self.output = ""
@@ -76,6 +75,7 @@ class MurdockJob:
             "user" : job.pr.user,
             "url" : job.pr.url,
             "commit" : job.pr.commit,
+            "prnum": job.pr.number,
             "since" : job.start_time,
             "runtime": job.runtime,
             "result": job.result,
@@ -90,6 +90,7 @@ class MurdockJob:
             "user" : entry["user"],
             "url" : entry["url"],
             "commit" : entry["commit"],
+            "prnum": entry["prnum"],
             "since" : entry["since"],
             "result" : entry["result"],
             "output_url": entry["output_url"],
@@ -100,7 +101,6 @@ class MurdockJob:
     @property
     def env(self):
         _env = { 
-            "CI_JOB_ID": self.id,
             "CI_PULL_COMMIT" : self.pr.commit,
             "CI_PULL_REPO" : GITHUB_REPO,
             "CI_PULL_BRANCH" : self.pr.branch,
@@ -129,14 +129,14 @@ class MurdockJob:
 
     def __repr__(self):
         return (
-            f"{self.id} (PR: #{self.pr.number} - SHA:{self.pr.commit[0:7]})"
+            f"sha:{self.pr.commit[0:7]} (PR #{self.pr.number}))"
         )
 
     def __eq__(self, other):
-        return self.id == other.id
+        return other is not None and self.pr.commit == other.pr.commit
 
     async def execute(self):
-        LOGGER.debug(f"Launching '{self}' build action")
+        LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
             os.path.join(MURDOCK_SCRIPTS_DIR, "build.sh"), "build",
             cwd=self.work_dir,
@@ -153,12 +153,12 @@ class MurdockJob:
         else:
             self.result = "errored"
         LOGGER.debug(
-            f"Job {self} {self.result} (ret: {self.proc.returncode})"
+            f"{self} job {self.result} (ret: {self.proc.returncode})"
         )
 
         # If the job was killed, just return now and skip the post_build action
         if self.result == "killed":
-            LOGGER.debug(f"Job '{self}' killed before post_build action")
+            LOGGER.debug(f"{self} job killed before post_build action")
             self.proc = None
             return
 
@@ -169,12 +169,14 @@ class MurdockJob:
             ) as output:
                 output.write(self.output)
         except Exception as exc:
-            LOGGER.warning(f"Job {self} error: cannot write output.txt: {exc}")
+            LOGGER.warning(
+                f"Job error for {self}: cannot write output.txt: {exc}"
+            )
 
         # Remove build subdirectory
         MurdockJob.remove_dir(os.path.join(self.work_dir, "build"))
 
-        LOGGER.debug(f"Launch '{self}' post_build action")
+        LOGGER.debug(f"Launch post_build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
             os.path.join(MURDOCK_SCRIPTS_DIR, "build.sh"), "post_build",
             cwd=self.work_dir,
@@ -185,7 +187,7 @@ class MurdockJob:
         out, err = await self.proc.communicate()
         if self.proc.returncode not in [0, -9]:
             LOGGER.warning(
-                f"Job {self} error: Post build action failed:\n"
+                f"Job error for {self}: Post build action failed:\n"
                 f"out: {out.decode()}"
                 f"err: {err.decode()}"
             )

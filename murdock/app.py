@@ -42,8 +42,8 @@ async def control_handler(request):
             msg = "API token is missing"
         if data["secret"] != MURDOCK_API_SECRET:
             msg = "Invalid API token"
-    if "prnum" not in data:
-        msg = "Missing PR number"
+    if "commit" not in data:
+        msg = "Missing commit hash"
 
     if msg:
         LOGGER.warning(f"Invalid request to control_handler: {msg}")
