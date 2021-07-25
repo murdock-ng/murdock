@@ -6,8 +6,8 @@ Developed for RIOT (riot-os.org).
 # Requirements
 
 Murdock is fully written in Python (requires >= 3.8) and is based on the
-[aiohttp](https://docs.aiohttp.org/en/stable/index.html)
-HTTP server to handle HTTP requests and
+[FastAPI](https://fastapi.tiangolo.com/)
+for the HTTP requests and
 [gidgethub](https://gidgethub.readthedocs.io/en/latest/) to interact with the
 GitHub REST API.
 In order to keep the history of completed jobs, they are stored in a
@@ -61,22 +61,16 @@ Install all Murdock dependencies:
 $ python3 -m pip install -r requirements.txt
 ```
 
-Install the aiohttp devtools:
-
-```
-$ python3 -m pip install aiohttp-devtools
-```
-
 Launch the MongoDb service:
 
 ```
 $ docker-compose up mongo
 ```
 
-Launch the aiohttp development server:
+Launch the `uvicorn` server with the `--reload` option:
 
 ```
-$ adev runserver murdock/app.py
+$ uvicorn murdock.main:app --reload
 ```
 
 You can specify environment variables to the command line (the `GITHUB_*`

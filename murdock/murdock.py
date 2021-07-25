@@ -7,10 +7,8 @@ from collections import namedtuple
 
 import motor.motor_asyncio as aiomotor
 
-import aiohttp
-from aiohttp import web
-
-from gidgethub import aiohttp as gh_aiohttp
+import httpx
+import gidgethub.httpx
 
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
@@ -121,7 +119,7 @@ class Murdock:
                 "target_url": MURDOCK_BASE_URL,
             }
         )
-        await self.reload_prs()
+        await self.reload_jobs()
 
     async def job_finalize(self, job):
         job.stop_time = time.time()
@@ -143,7 +141,7 @@ class Murdock:
                 }
             )
             await self.db.job.insert_one(MurdockJob.to_db_entry(job))
-        await self.reload_prs()
+        await self.reload_jobs()
 
     def cancel_queued_job(self, job):
         for queued_job in self.queued:
@@ -157,7 +155,7 @@ class Murdock:
         if self.job_is_queued(job):
             self.cancel_queued_job(job)
         LOGGER.debug(f"{job} matching job disabled")
-        await self.reload_prs()
+        await self.reload_jobs()
 
     def _kill_job_with_match_rule(self, job, match):
         for running in self.running_jobs:
@@ -182,7 +180,7 @@ class Murdock:
             )
         self._kill_job_with_match_rule(job, match)
 
-    async def add_job_to_queue(self, job, reload_prs=True):
+    async def add_job_to_queue(self, job, reload_jobs=True):
         all_busy = all(running is not None for running in self.running_jobs)
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
@@ -199,8 +197,8 @@ class Murdock:
                 "target_url": MURDOCK_BASE_URL,
             }
         )
-        if reload_prs is True:
-            await self.reload_prs()
+        if reload_jobs is True:
+            await self.reload_jobs()
 
     def job_is_queued(self, job):
         return any(
@@ -240,12 +238,12 @@ class Murdock:
                 break
 
     async def handle_pull_request_event(self, event):
-        if "action" not in event.data:
-            return web.HTTPBadRequest(reason=f"Unsupported event")
-        action = event.data["action"]
-        if event.data["action"] not in ALLOWED_ACTIONS:
-            return web.HTTPBadRequest(reason=f"Unsupported action '{action}'")
-        pr_data = event.data["pull_request"]
+        if "action" not in event:
+            return "Unsupported event"
+        action = event["action"]
+        if action not in ALLOWED_ACTIONS:
+            return f"Unsupported action '{action}'"
+        pr_data = event["pull_request"]
         pull_request = PullRequestInfo(
             title=pr_data["title"],
             number=str(pr_data["number"]),
@@ -268,23 +266,23 @@ class Murdock:
             label in CI_FASTTRACK_LABELS for label in pull_request.labels
         )
         job = MurdockJob(pull_request, fasttracked=fasttrack_allowed)
-        action = event.data["action"]
+        action = event["action"]
         if action == "closed":
             if self.job_is_running(job) or self.job_is_running(job):
                 await self.disable_job(job)
             await self.set_pull_request_status(
                 job.pr.commit, {"state":"pending"}
             )
-            return web.HTTPAccepted()
+            return
 
         if (
             action == "labeled" and
-            event.data["label"]["name"] == CI_READY_LABEL and
+            event["label"]["name"] == CI_READY_LABEL and
             CI_READY_LABEL in pull_request.labels and
             (self.job_is_running(job) or self.job_is_queued(job))
         ):
             LOGGER.debug("job is already handled, ignoring")
-            return web.HTTPAccepted()
+            return
 
         if CI_READY_LABEL not in pull_request.labels:
             LOGGER.debug(f"'{CI_READY_LABEL}' label not set")
@@ -299,7 +297,7 @@ class Murdock:
                     "target_url": MURDOCK_BASE_URL,
                 }
             )
-            return web.HTTPAccepted()
+            return
 
         LOGGER.info(f"Handling new job {job}")
         if  CI_CANCEL_ON_UPDATE and self.job_is_queued(job):
@@ -311,20 +309,17 @@ class Murdock:
             # Similar job is already running => stop it and queue the new one
             LOGGER.debug(f"{job} job is already running")
             self.kill_matching_job(job)
-            await self.add_job_to_queue(job, reload_prs=False)
+            await self.add_job_to_queue(job, reload_jobs=False)
         else:
             await self.add_job_to_queue(job)
-
-        return web.HTTPAccepted()
 
     async def set_pull_request_status(self, commit, status):
         LOGGER.debug(
             f"Setting commit {commit[0:7]} status to '{status['description']}'"
         )
-        async with aiohttp.ClientSession() as session:
-            gh = gh_aiohttp.GitHubAPI(
-                session, GITHUB_API_USER, oauth_token=GITHUB_API_TOKEN
-            )
+        async with httpx.AsyncClient() as client:
+            gh = gidgethub.httpx.GitHubAPI(client, GITHUB_API_USER,
+                                           oauth_token=GITHUB_API_TOKEN)
             await gh.post(
                 f"/repos/{GITHUB_REPO}/statuses/{commit}", data=status
             )
@@ -339,11 +334,11 @@ class Murdock:
 
     async def _broadcast_message(self, msg):
         await asyncio.gather(
-            *[client.send_str(msg) for client in self.clients]
+            *[client.send_text(msg) for client in self.clients]
         )
 
-    async def reload_prs(self):
-        await self._broadcast_message(json.dumps({"cmd": "reload_prs"}))
+    async def reload_jobs(self):
+        await self._broadcast_message(json.dumps({"cmd": "reload"}))
 
     async def pulls(self, max_length):
         _queued = sorted(
@@ -388,12 +383,13 @@ class Murdock:
             "building": building,
             "finished": [
                 MurdockJob.from_db_entry(job) for job in finished
-            ],
+            ]
         }
 
-    async def handle_ctrl_data(self, data):
+    async def handle_commit_status_data(self, data):
         commit = data["commit"]
         matching_job = self.get_matching_job_running(commit)
         if matching_job is not None and "status" in data and data["status"]:
             matching_job.status = data["status"]
+            data.update({"cmd": "status"})
             await self._broadcast_message(json.dumps(data))

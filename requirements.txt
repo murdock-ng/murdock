@@ -1,6 +1,4 @@
-aiohttp
-aiohttp_cors
-cchardet
-aiodns
+fastapi[all]
 gidgethub
 motor
+httpx

@@ -2,7 +2,6 @@ import asyncio
 import os
 import shutil
 import time
-import uuid
 
 from murdock.config import (
     GITHUB_REPO, MURDOCK_BASE_URL, MURDOCK_ROOT_DIR, MURDOCK_SCRIPTS_DIR,
