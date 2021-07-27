@@ -123,6 +123,8 @@ class Murdock:
 
     async def job_finalize(self, job):
         job.stop_time = time.time()
+        if job.status["status"] == "working":
+            job.status["status"] = "finished"
         self.remove_from_running_jobs(job)
         if job.result != "stopped":
             job_state = "success" if job.result == "passed" else "failure"
@@ -383,7 +385,7 @@ class Murdock:
             self.db.job
             .find()
             .sort("since", -1)
-            .to_list(max_length)
+            .to_list(length=max_length)
         )
 
         return {
@@ -393,6 +395,15 @@ class Murdock:
                 MurdockJob.from_db_entry(job) for job in finished
             ]
         }
+
+    async def pull_jobs(self, prnum):
+        jobs = await (
+            self.db.job
+            .find({"prnum": prnum})
+            .sort("since", -1)
+            .to_list(length=None)
+        )
+        return [MurdockJob.from_db_entry(job) for job in jobs]
 
     async def handle_commit_status_data(self, data):
         commit = data["commit"]

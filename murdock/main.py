@@ -87,6 +87,19 @@ async def jobs_handler(
     return response
 
 
+@app.get("/api/pull/{prnum}")
+async def pull_jobs_handler(prnum):
+    jobs = await murdock.pull_jobs(prnum)
+    response = JSONResponse(jobs)
+    response.headers.update(
+        {
+            "Access-Control-Allow-Credentials" : "false",
+            "Access-Control-Allow-Origin" : "*",
+        }
+    )
+    return response
+
+
 @app.websocket("/ws/status")
 async def ws_client_handler(websocket: WebSocket):
     LOGGER.debug('websocket opening')
