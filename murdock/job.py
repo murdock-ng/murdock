@@ -1,6 +1,7 @@
 import asyncio
 import os
 import shutil
+import signal
 import time
 
 from murdock.config import (
@@ -147,17 +148,21 @@ class MurdockJob:
         self.output = out.decode()
         if self.proc.returncode == 0:
             self.result = "passed"
-        elif self.proc.returncode == -9:
-            self.result = "killed"
+        elif self.proc.returncode in [
+            int(signal.SIGINT) * -1,
+            int(signal.SIGKILL) * -1,
+            int(signal.SIGTERM) * -1,
+        ]:
+            self.result = "stopped"
         else:
             self.result = "errored"
         LOGGER.debug(
-            f"{self} job {self.result} (ret: {self.proc.returncode})"
+            f"Job {self} {self.result} (ret: {self.proc.returncode})"
         )
 
-        # If the job was killed, just return now and skip the post_build action
-        if self.result == "killed":
-            LOGGER.debug(f"{self} job killed before post_build action")
+        # If the job was stopeed, just return now and skip the post_build action
+        if self.result == "stopped":
+            LOGGER.debug(f"Job {self} stopped before post_build action")
             self.proc = None
             return
 
@@ -184,7 +189,12 @@ class MurdockJob:
             stderr=asyncio.subprocess.PIPE
         )
         out, err = await self.proc.communicate()
-        if self.proc.returncode not in [0, -9]:
+        if self.proc.returncode not in [
+            0,
+            int(signal.SIGINT) * -1,
+            int(signal.SIGKILL) * -1,
+            int(signal.SIGTERM) * -1,
+        ]:
             LOGGER.warning(
                 f"Job error for {self}: Post build action failed:\n"
                 f"out: {out.decode()}"
@@ -192,9 +202,15 @@ class MurdockJob:
             )
         self.proc = None
 
-    def kill(self):
-        LOGGER.debug(f"'{self}' immediate kill requested")
-        if self.proc is not None:
-            self.proc.kill()
+    async def stop(self):
+        LOGGER.debug(f"Job {self} immediate stop requested")
+        for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGKILL]:
+            if self.proc.returncode is None:
+                LOGGER.debug(f"Send {sig} to job {self}")
+                self.proc.send_signal(sig)
+                try:
+                    await asyncio.wait_for(self.proc.wait(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    LOGGER.debug(f"Couldn't stop job {self} with {sig}")
         LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
         MurdockJob.remove_dir(self.work_dir)

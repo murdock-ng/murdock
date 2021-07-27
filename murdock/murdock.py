@@ -124,7 +124,7 @@ class Murdock:
     async def job_finalize(self, job):
         job.stop_time = time.time()
         self.remove_from_running_jobs(job)
-        if job.result != "killed":
+        if job.result != "stopped":
             job_state = "success" if job.result == "passed" else "failure"
             job_status_desc = (
                 "succeeded" if job.result == "passed" else "failed"
@@ -151,34 +151,34 @@ class Murdock:
 
     async def disable_job(self, job):
         if self.job_is_running(job):
-            self.kill_job(job)
+            await self.stop_job(job)
         if self.job_is_queued(job):
             self.cancel_queued_job(job)
         LOGGER.debug(f"{job} matching job disabled")
         await self.reload_jobs()
 
-    def _kill_job_with_match_rule(self, job, match):
+    async def _stop_job_with_match_rule(self, job, match):
         for running in self.running_jobs:
             if match(running, job):
-                LOGGER.debug(f"Killing job {running}")
-                running.kill()
+                LOGGER.debug(f"Stopping job {running}")
+                await running.stop()
 
-    def kill_job(self, job):
+    async def stop_job(self, job):
         def match(running, job):
             return (
                 running is not None and
                 running.pr.commit == job.pr.commit
             )
-        self._kill_job_with_match_rule(job, match)
+        await self._stop_job_with_match_rule(job, match)
 
-    def kill_matching_job(self, job):
+    async def stop_matching_job(self, job):
         def match(running, job):
             return (
                 running is not None and
                 running.pr.number == job.pr.number and
                 running.pr.commit != job.pr.commit
             )
-        self._kill_job_with_match_rule(job, match)
+        await self._stop_job_with_match_rule(job, match)
 
     async def add_job_to_queue(self, job, reload_jobs=True):
         all_busy = all(running is not None for running in self.running_jobs)
@@ -308,7 +308,7 @@ class Murdock:
         elif CI_CANCEL_ON_UPDATE and self.job_is_running(job):
             # Similar job is already running => stop it and queue the new one
             LOGGER.debug(f"{job} job is already running")
-            self.kill_matching_job(job)
+            await self.stop_matching_job(job)
             await self.add_job_to_queue(job, reload_jobs=False)
         else:
             await self.add_job_to_queue(job)
