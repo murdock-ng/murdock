@@ -348,7 +348,7 @@ class Murdock:
     async def reload_jobs(self):
         await self._broadcast_message(json.dumps({"cmd": "reload"}))
 
-    async def pulls(self, max_length):
+    async def jobs(self, max_length):
         _queued = sorted(
             [
                 {

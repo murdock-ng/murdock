@@ -20,11 +20,15 @@ from murdock.log import LOGGER
 
 murdock = Murdock()
 app = FastAPI(
-    debug=MURDOCK_LOG_LEVEL == logging.DEBUG, on_startup=[murdock.init]
+    debug=MURDOCK_LOG_LEVEL == logging.DEBUG,
+    on_startup=[murdock.init],
+    title="Murdock API",
+    description="This is the Murdock API",
+    version="1.0.0",
 )
 
 
-@app.post("/github")
+@app.post("/github", include_in_schema=False)
 async def github_webhook_handler(request: Request):
     headers = request.headers
     body = await request.body()
@@ -48,7 +52,7 @@ async def github_webhook_handler(request: Request):
             raise HTTPException(status_code=400, detail=ret)
 
 
-@app.post("/api/commit/status")
+@app.post("/api/commit/status", include_in_schema=False)
 async def commit_status_handler(request: Request):
     data = await request.json()
 
@@ -68,12 +72,12 @@ async def commit_status_handler(request: Request):
     await murdock.handle_commit_status_data(data)
 
 
-@app.get("/api/pulls")
-async def pulls_handler(
-    request: Request, max_length: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
+@app.get("/api/jobs")
+async def jobs_handler(
+    max_length: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
 ):
-    pulls = await murdock.pulls(max_length)
-    response = JSONResponse(pulls)
+    jobs = await murdock.jobs(max_length)
+    response = JSONResponse(jobs)
     response.headers.update(
         {
             "Access-Control-Allow-Credentials" : "false",
