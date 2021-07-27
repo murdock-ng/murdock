@@ -143,43 +143,6 @@ class Murdock:
             await self.db.job.insert_one(MurdockJob.to_db_entry(job))
         await self.reload_jobs()
 
-    def cancel_queued_job(self, job):
-        for queued_job in self.queued:
-            if queued_job.pr.number == job.pr.number:
-                LOGGER.debug(f"Canceling job {job}")
-                queued_job.canceled = True
-
-    async def disable_job(self, job):
-        if self.job_is_running(job):
-            await self.stop_job(job)
-        if self.job_is_queued(job):
-            self.cancel_queued_job(job)
-        LOGGER.debug(f"{job} matching job disabled")
-        await self.reload_jobs()
-
-    async def _stop_job_with_match_rule(self, job, match):
-        for running in self.running_jobs:
-            if match(running, job):
-                LOGGER.debug(f"Stopping job {running}")
-                await running.stop()
-
-    async def stop_job(self, job):
-        def match(running, job):
-            return (
-                running is not None and
-                running.pr.commit == job.pr.commit
-            )
-        await self._stop_job_with_match_rule(job, match)
-
-    async def stop_matching_job(self, job):
-        def match(running, job):
-            return (
-                running is not None and
-                running.pr.number == job.pr.number and
-                running.pr.commit != job.pr.commit
-            )
-        await self._stop_job_with_match_rule(job, match)
-
     async def add_job_to_queue(self, job, reload_jobs=True):
         all_busy = all(running is not None for running in self.running_jobs)
         if all_busy and job.fasttracked:
@@ -200,24 +163,16 @@ class Murdock:
         if reload_jobs is True:
             await self.reload_jobs()
 
-    def job_is_queued(self, job):
+    def job_matching_pr_is_queued(self, prnum):
         return any(
-            [(queued.pr.number ==  job.pr.number) for queued in self.queued]
+            [(queued.pr.number ==  prnum) for queued in self.queued]
         )
 
-    def job_is_running(self, job):
-        return any(
-            [
-                running is not None and running.pr.number == job.pr.number
-                for running in self.running_jobs
-            ]
-        )
-
-    def get_matching_job_running(self, commit):
-        for running in self.running_jobs:
-            if running is not None and running.pr.commit == commit:
-                return running
-        return None
+    def cancel_queued_job(self, job):
+        for queued_job in self.queued:
+            if queued_job.pr.number == job.pr.number:
+                LOGGER.debug(f"Canceling job {job}")
+                queued_job.canceled = True
 
     def add_to_running_jobs(self, job):
         for index, running in enumerate(self.running_jobs):
@@ -228,6 +183,20 @@ class Murdock:
                 )
                 break
 
+    def job_running(self, commit):
+        for running in self.running_jobs:
+            if running is not None and running.pr.commit == commit:
+                return running
+        return None
+
+    def job_matching_pr_is_running(self, prnum):
+        return any(
+            [
+                running is not None and running.pr.number == prnum
+                for running in self.running_jobs
+            ]
+        )
+
     def remove_from_running_jobs(self, job):
         for index, running in enumerate(self.running_jobs):
             if running is not None and running.pr.commit == job.pr.commit:
@@ -236,6 +205,42 @@ class Murdock:
                     f"{job} removed from the running jobs {self.running_jobs}"
                 )
                 break
+
+    async def disable_jobs_matching_pr(self, prnum, description=None):
+        disabled_jobs = []
+        for job in self.running_jobs:
+            if self.job_matching_pr_is_running(prnum):
+                await self.stop_job(job)
+                disabled_jobs.append(job)
+        for job in self.queued:
+            if self.job_matching_pr_is_queued(prnum):
+                self.cancel_queued_job(job)
+                disabled_jobs.append(job)
+        LOGGER.debug(f"All jobs matching {job} disabled")
+        for job in disabled_jobs:
+            status = {
+                "state":"pending",
+                "context": "Murdock",
+                "target_url": MURDOCK_BASE_URL,
+            }
+            if description is not None:
+                status.update({
+                    "description": description,
+                })
+            await self.set_pull_request_status(job.pr.commit, status)
+        await self.reload_jobs()
+
+    async def stop_running_jobs_matching_pr(self, prnum):
+        for running in self.running_jobs:
+            if running is not None and running.pr.number == prnum:
+                LOGGER.debug(f"Stopping job {running}")
+                await running.stop()
+
+    async def stop_job(self, job):
+        for running in self.running_jobs:
+            if running is not None and running.pr.commit == job.pr.commit:
+                LOGGER.debug(f"Stopping job {running}")
+                await running.stop()
 
     async def handle_pull_request_event(self, event):
         if "action" not in event:
@@ -268,47 +273,50 @@ class Murdock:
         job = MurdockJob(pull_request, fasttracked=fasttrack_allowed)
         action = event["action"]
         if action == "closed":
-            if self.job_is_running(job) or self.job_is_running(job):
-                await self.disable_job(job)
-            await self.set_pull_request_status(
-                job.pr.commit, {"state":"pending"}
-            )
+            if (
+                self.job_matching_pr_is_running(job.pr.number) or
+                self.job_matching_pr_is_running(job.pr.number)
+            ):
+                await self.disable_jobs_matching_pr(job.pr.number)
             return
 
         if (
             action == "labeled" and
             event["label"]["name"] == CI_READY_LABEL and
             CI_READY_LABEL in pull_request.labels and
-            (self.job_is_running(job) or self.job_is_queued(job))
+            (job in self.queued or job in self.running_jobs)
         ):
-            LOGGER.debug("job is already handled, ignoring")
+            LOGGER.debug(f"job {job} is already handled, ignoring")
             return
 
         if CI_READY_LABEL not in pull_request.labels:
             LOGGER.debug(f"'{CI_READY_LABEL}' label not set")
-            if self.job_is_running(job) or self.job_is_running(job):
-                await self.disable_job(job)
-            await self.set_pull_request_status(
-                job.pr.commit,
-                {
-                    "state":"pending",
-                    "context": "Murdock",
-                    "description": f"\"{CI_READY_LABEL}\" label not set",
-                    "target_url": MURDOCK_BASE_URL,
-                }
-            )
+            if (
+                self.job_matching_pr_is_queued(job.pr.number) or
+                self.job_matching_pr_is_running(job.pr.number)
+            ):
+                await self.disable_jobs_matching_pr(
+                    job.pr.number,
+                    description=f"\"{CI_READY_LABEL}\" label not set",
+                )
             return
 
         LOGGER.info(f"Handling new job {job}")
-        if  CI_CANCEL_ON_UPDATE and self.job_is_queued(job):
+        if  (
+            CI_CANCEL_ON_UPDATE and
+            self.job_matching_pr_is_queued(job.pr.number)
+        ):
             LOGGER.debug(f"Re-queue job {job}")
             # Similar job is already queued => cancel it and queue the new one
-            self.cancel_queued_job(job)
+            self.cancel_queued_jobs_matching_pr(job.pr.number)
             await self.add_job_to_queue(job)
-        elif CI_CANCEL_ON_UPDATE and self.job_is_running(job):
+        elif (
+            CI_CANCEL_ON_UPDATE and
+            self.job_matching_pr_is_running(job.pr.number)
+        ):
             # Similar job is already running => stop it and queue the new one
             LOGGER.debug(f"{job} job is already running")
-            await self.stop_matching_job(job)
+            await self.stop_running_jobs_matching_pr(job.pr.number)
             await self.add_job_to_queue(job, reload_jobs=False)
         else:
             await self.add_job_to_queue(job)
@@ -388,8 +396,8 @@ class Murdock:
 
     async def handle_commit_status_data(self, data):
         commit = data["commit"]
-        matching_job = self.get_matching_job_running(commit)
-        if matching_job is not None and "status" in data and data["status"]:
-            matching_job.status = data["status"]
+        job = self.job_running(commit)
+        if job is not None and "status" in data and data["status"]:
+            job.status = data["status"]
             data.update({"cmd": "status"})
             await self._broadcast_message(json.dumps(data))
