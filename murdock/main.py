@@ -20,7 +20,7 @@ from murdock.log import LOGGER
 
 murdock = Murdock()
 app = FastAPI(
-    debug=MURDOCK_LOG_LEVEL == logging.DEBUG,
+    debug=MURDOCK_LOG_LEVEL == "DEBUG",
     on_startup=[murdock.init],
     on_shutdown=[murdock.shutdown],
     title="Murdock API",

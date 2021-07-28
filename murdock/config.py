@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 
@@ -10,7 +11,9 @@ MURDOCK_SCRIPTS_DIR = os.getenv(
 MURDOCK_USE_SECURE_API = int(os.getenv("MURDOCK_USE_SECURE_API", 0)) == 1
 MURDOCK_API_SECRET = secrets.token_urlsafe(32)
 MURDOCK_NUM_WORKERS = int(os.getenv("MURDOCK_NUM_WORKERS", 1))
-MURDOCK_LOG_LEVEL = int(os.getenv("MURDOCK_LOG_LEVEL", 10))
+MURDOCK_LOG_LEVEL = logging.getLevelName(
+    os.getenv("MURDOCK_LOG_LEVEL", "DEBUG")
+)
 MURDOCK_DB_HOST = os.getenv("MURDOCK_DB_HOST", "localhost")
 MURDOCK_DB_PORT = int(os.getenv("MURDOCK_DB_PORT", 27017))
 MURDOCK_DB_NAME = os.getenv("MURDOCK_DB_NAME", "murdock")

@@ -1,11 +1,17 @@
 import logging
 
+from uvicorn.logging import ColourizedFormatter
+
 from murdock.config import MURDOCK_LOG_LEVEL
 
 LOGGER = logging.getLogger("murdock")
 LOGGER.setLevel(MURDOCK_LOG_LEVEL)
-formatter = logging.Formatter(
-    "%(asctime)-15s - %(levelname)s - %(filename)s:%(lineno)-3d - %(message)s"
+
+formatter = ColourizedFormatter(
+    fmt=(
+        "%(levelprefix)-8s %(asctime)-15s - "
+        "%(filename)10s:%(lineno)-3d - %(message)s"
+    )
 )
 
 handler = logging.StreamHandler()
