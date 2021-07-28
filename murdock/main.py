@@ -22,6 +22,7 @@ murdock = Murdock()
 app = FastAPI(
     debug=MURDOCK_LOG_LEVEL == logging.DEBUG,
     on_startup=[murdock.init],
+    on_shutdown=[murdock.shutdown],
     title="Murdock API",
     description="This is the Murdock API",
     version="1.0.0",

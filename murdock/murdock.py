@@ -77,6 +77,20 @@ class Murdock:
         )
         self.db = conn[MURDOCK_DB_NAME]
 
+    async def shutdown(self):
+        LOGGER.info("Shutting down Murdock")
+        self.db.client.close()
+        for ws in self.clients:
+            LOGGER.debug(f"Closing websocket {ws}")
+            ws.close()
+        for job in self.queued:
+            LOGGER.debug(f"Canceling job {job}")
+            job.cancelled = True
+        for job in self.running_jobs:
+            if job is not None:
+                LOGGER.debug(f"Stopping job {job}")
+                await job.stop()
+
     async def _process_job(self, job):
         if job.canceled is True:
             LOGGER.debug(f"Ignoring canceled job {job}")

@@ -205,7 +205,7 @@ class MurdockJob:
     async def stop(self):
         LOGGER.debug(f"Job {self} immediate stop requested")
         for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGKILL]:
-            if self.proc.returncode is None:
+            if self.proc is not None and self.proc.returncode is None:
                 LOGGER.debug(f"Send {sig} to job {self}")
                 self.proc.send_signal(sig)
                 try:
