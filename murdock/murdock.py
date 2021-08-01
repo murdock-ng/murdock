@@ -364,8 +364,8 @@ class Murdock:
     async def reload_jobs(self):
         await self._broadcast_message(json.dumps({"cmd": "reload"}))
 
-    async def jobs(self, max_length):
-        _queued = sorted(
+    def get_queued_jobs(self):
+        queued = sorted(
             [
                 {
                     "title" : job.pr.title,
@@ -380,8 +380,10 @@ class Murdock:
             ],
             reverse=True, key=lambda job: job["since"]
         )
-        queued = sorted(_queued, key=lambda job: job["fasttracked"])
-        building = sorted(
+        return sorted(queued, key=lambda job: job["fasttracked"])
+
+    def get_running_jobs(self):
+        return sorted(
             [
                 {
                     "title" : job.pr.title,
@@ -395,34 +397,30 @@ class Murdock:
                 for job in self.running_jobs if job is not None
             ], reverse=True, key=lambda job: job["since"]
         )
+
+    async def get_finished_jobs(self, limit, prnum=None):
+        find_filter = None
+        if prnum is not None:
+            find_filter = {"prnum": str(prnum)}
         finished = await (
             self.db.job
-            .find()
+            .find(find_filter)
             .sort("since", -1)
-            .to_list(length=max_length)
+            .to_list(length=limit)
         )
+        return [MurdockJob.from_db_entry(job) for job in finished]
 
+    async def get_jobs(self, limit):
+        finished = await self.get_finished_jobs(limit)
         return {
-            "queued": queued,
-            "building": building,
-            "finished": [
-                MurdockJob.from_db_entry(job) for job in finished
-            ]
+            "queued": self.get_queued_jobs(),
+            "building": self.get_running_jobs(),
+            "finished": finished,
         }
 
-    async def pull_jobs(self, prnum):
-        jobs = await (
-            self.db.job
-            .find({"prnum": prnum})
-            .sort("since", -1)
-            .to_list(length=None)
-        )
-        return [MurdockJob.from_db_entry(job) for job in jobs]
-
-    async def handle_commit_status_data(self, data):
-        commit = data["commit"]
+    async def handle_commit_status_data(self, commit, data):
         job = self.job_running(commit)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
-            data.update({"cmd": "status"})
+            data.update({"cmd": "status", "commit": commit})
             await self._broadcast_message(json.dumps(data))

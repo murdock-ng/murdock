@@ -6,7 +6,7 @@ import time
 
 from murdock.config import (
     GITHUB_REPO, MURDOCK_BASE_URL, MURDOCK_ROOT_DIR, MURDOCK_SCRIPTS_DIR,
-    MURDOCK_USE_SECURE_API, MURDOCK_API_SECRET
+    MURDOCK_USE_API_TOKEN, MURDOCK_API_TOKEN
 )
 from murdock.log import LOGGER
 
@@ -117,9 +117,9 @@ class MurdockJob:
             "CI_BASE_URL": MURDOCK_BASE_URL,
         }
 
-        if MURDOCK_USE_SECURE_API:
+        if MURDOCK_USE_API_TOKEN:
             _env.update({
-                "CI_API_SECRET": MURDOCK_API_SECRET,
+                "CI_API_TOKEN": MURDOCK_API_TOKEN,
             })
 
         if self.pr.mergeable:

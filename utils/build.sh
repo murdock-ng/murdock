@@ -10,7 +10,7 @@
 ACTION="$1"
 
 COLLECTING_JOBS_DELAY=2
-NUM_JOBS=10
+NUM_JOBS=30
 JOB_DELAY=1
 
 case "$ACTION" in
@@ -23,8 +23,8 @@ case "$ACTION" in
         echo "--- Start build"
 
         echo "--- Collecting jobs"
-        STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "collecting jobs"}}'
-        /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
+        STATUS='{"status" : {"status": "collecting jobs"}}'
+        /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -H "X-Murdock-Token: ${CI_API_TOKEN}" -X PUT ${CI_BASE_URL}/api/jobs/building/${CI_PULL_COMMIT}/status > /dev/null
         sleep ${COLLECTING_JOBS_DELAY}
 
         echo "--- Running jobs"
@@ -41,18 +41,18 @@ case "$ACTION" in
                     FAILED_JOBS+=", "
                 fi
                 FAILED_JOBS+='{"name": "job_'${job}'", "href": "job_'${job}'"}'
-                STATUS='{"cmd" : "prstatus","secret": "'${CI_API_SECRET}'",  "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_jobs": ['${FAILED_JOBS}']}}'
+                STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_jobs": ['${FAILED_JOBS}']}}'
             else
-                STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
+                STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
             fi
-            /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
+            /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -H "X-Murdock-Token: ${CI_API_TOKEN}" -X PUT ${CI_BASE_URL}/api/jobs/building/${CI_PULL_COMMIT}/status > /dev/null
             sleep ${JOB_DELAY}
         done
 
         if [ "${RETVAL}" -eq 1 ] && [ "${CANCELED}" -eq 1 ]
         then
-            STATUS='{"cmd" : "prstatus", "secret": "'${CI_API_SECRET}'", "commit" : "'${CI_PULL_COMMIT}'", "status" : {"status": "canceled", "failed_jobs": ['${FAILED_JOBS}']}}'
-            /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -X POST ${CI_BASE_URL}/ctrl > /dev/null
+            STATUS='{"status" : {"status": "canceled", "failed_jobs": ['${FAILED_JOBS}']}}'
+            /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -H "X-Murdock-Token: ${CI_API_TOKEN}" -X PUT ${CI_BASE_URL}/api/jobs/building/${CI_PULL_COMMIT}/status > /dev/null
         fi
 
         echo "--- Build completed (elapsed: $(($(date +%s) - ${START_TIME}))s, ret=${RETVAL})"

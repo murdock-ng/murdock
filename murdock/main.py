@@ -11,7 +11,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 
 from murdock.config import (
-    MURDOCK_LOG_LEVEL, MURDOCK_USE_SECURE_API, MURDOCK_API_SECRET,
+    MURDOCK_LOG_LEVEL, MURDOCK_USE_API_TOKEN, MURDOCK_API_TOKEN,
     MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET
 )
 from murdock.murdock import Murdock
@@ -53,52 +53,60 @@ async def github_webhook_handler(request: Request):
             raise HTTPException(status_code=400, detail=ret)
 
 
-@app.post("/api/commit/status", include_in_schema=False)
-async def commit_status_handler(request: Request):
+@app.put("/api/jobs/building/{commit}/status", include_in_schema=False)
+async def commit_status_handler(request: Request, commit):
     data = await request.json()
 
     msg = ""
-    if MURDOCK_USE_SECURE_API:
-        if "secret" not in data:
+    if MURDOCK_USE_API_TOKEN:
+        if "X-Murdock-Token" not in request.headers:
             msg = "API token is missing"
-        if data["secret"] != MURDOCK_API_SECRET:
+        if request.headers["X-Murdock-Token"] != MURDOCK_API_TOKEN:
             msg = "Invalid API token"
-    if "commit" not in data:
-        msg = "Missing commit hash"
 
     if msg:
         LOGGER.warning(f"Invalid request to control_handler: {msg}")
         raise HTTPException(status_code=400, detail=msg)
 
-    await murdock.handle_commit_status_data(data)
+    await murdock.handle_commit_status_data(commit, data)
+
+
+def _json_response(data):
+    response = JSONResponse(data)
+    response.headers.update(
+        {
+            "Access-Control-Allow-Credentials" : "false",
+            "Access-Control-Allow-Origin" : "*",
+        }
+    )
+    return response
+
+
+@app.get("/api/jobs/queued")
+async def queued_jobs_handler():
+    return _json_response(murdock.get_queued_jobs())
+
+
+@app.get("/api/jobs/building")
+async def building_jobs_handler():
+    return _json_response(murdock.get_running_jobs())
+
+
+@app.get("/api/jobs/finished")
+async def finished_jobs_handler(
+        limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT,
+        prnum: Optional[int] = None
+):
+    data = await murdock.get_finished_jobs(limit, prnum)
+    return _json_response(data)
 
 
 @app.get("/api/jobs")
 async def jobs_handler(
-    max_length: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
+    limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
 ):
-    jobs = await murdock.jobs(max_length)
-    response = JSONResponse(jobs)
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-        }
-    )
-    return response
-
-
-@app.get("/api/pull/{prnum}")
-async def pull_jobs_handler(prnum):
-    jobs = await murdock.pull_jobs(prnum)
-    response = JSONResponse(jobs)
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-        }
-    )
-    return response
+    data = await murdock.get_jobs(limit)
+    return _json_response(data)
 
 
 @app.websocket("/ws/status")
