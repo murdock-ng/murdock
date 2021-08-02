@@ -4,6 +4,8 @@ import sys
 import time
 
 from collections import namedtuple
+from datetime import datetime
+from datetime import time as dtime
 
 import motor.motor_asyncio as aiomotor
 
@@ -398,13 +400,32 @@ class Murdock:
             ], reverse=True, key=lambda job: job["since"]
         )
 
-    async def get_finished_jobs(self, limit, prnum=None):
-        find_filter = None
+    async def get_finished_jobs(
+        self, limit, prnum=None, user=None, result=None,
+        from_date=None, to_date=None,
+    ):
+        query = {}
         if prnum is not None:
-            find_filter = {"prnum": str(prnum)}
+            query.update({"prnum": str(prnum)})
+        if user is not None:
+            query.update({"user": user})
+        if result in ["errored", "passed"]:
+            query.update({"result": result})
+        if from_date is not None:
+            date = datetime.strptime(from_date, "%Y-%m-%d")
+            query.update({"since": {"$gte": date.timestamp()}})
+        if to_date is not None:
+            date = datetime.combine(
+                datetime.strptime(to_date, "%Y-%m-%d"),
+                dtime(hour=23, minute=59, second=59, microsecond=999)
+            )
+            if "since" in query:
+                query["since"].update({"$lte": date.timestamp()})
+            else:
+                query.update({"since": {"$lte": date.timestamp()}})
         finished = await (
             self.db.job
-            .find(find_filter)
+            .find(query)
             .sort("since", -1)
             .to_list(length=limit)
         )

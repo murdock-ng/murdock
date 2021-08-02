@@ -95,9 +95,15 @@ async def building_jobs_handler():
 @app.get("/api/jobs/finished")
 async def finished_jobs_handler(
         limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT,
-        prnum: Optional[int] = None
+        prnum: Optional[int] = None,
+        user: Optional[str] = None,
+        result: Optional[str] = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
 ):
-    data = await murdock.get_finished_jobs(limit, prnum)
+    data = await murdock.get_finished_jobs(
+        limit, prnum, user, result, from_date, to_date
+    )
     return _json_response(data)
 
 
