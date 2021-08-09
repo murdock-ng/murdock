@@ -188,8 +188,22 @@ class Murdock:
     def cancel_queued_job(self, job):
         for queued_job in self.queued:
             if queued_job.pr.number == job.pr.number:
-                LOGGER.debug(f"Canceling job {job}")
+                LOGGER.debug(f"Canceling job {queued_job}")
                 queued_job.canceled = True
+
+    async def cancel_queued_job_with_commit(self, commit):
+        for queued_job in self.queued:
+            if queued_job.pr.commit == commit:
+                LOGGER.debug(f"Canceling job {queued_job}")
+                queued_job.canceled = True
+                status = {
+                    "state":"pending",
+                    "context": "Murdock",
+                    "target_url": MURDOCK_BASE_URL,
+                    "description": "Canceled",
+                }
+                await self.set_pull_request_status(commit, status)
+                await self.reload_jobs()
 
     def add_to_running_jobs(self, job):
         for index, running in enumerate(self.running_jobs):
@@ -253,11 +267,21 @@ class Murdock:
                 LOGGER.debug(f"Stopping job {running}")
                 await running.stop()
 
-    async def stop_job(self, job):
+    async def stop_running_job(self, commit):
         for running in self.running_jobs:
-            if running is not None and running.pr.commit == job.pr.commit:
+            if running is not None and running.pr.commit == commit:
                 LOGGER.debug(f"Stopping job {running}")
                 await running.stop()
+                status = {
+                    "state":"pending",
+                    "context": "Murdock",
+                    "target_url": MURDOCK_BASE_URL,
+                    "description": "Stopped",
+                }
+                await self.set_pull_request_status(commit, status)
+
+    async def stop_job(self, job):
+        await self.stop_running_job(job.pr.commit)
 
     async def handle_pull_request_event(self, event):
         if "action" not in event:

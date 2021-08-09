@@ -18,6 +18,8 @@ services:
         - MURDOCK_DB_HOST=mongodb
         - MURDOCK_DB_PORT=27017
         - MURDOCK_DB_NAME
+        - MURDOCK_GITHUB_APP_CLIENT_ID
+        - MURDOCK_GITHUB_APP_CLIENT_SECRET
         - GITHUB_REPO
         - GITHUB_WEBHOOK_SECRET
         - GITHUB_API_TOKEN

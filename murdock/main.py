@@ -1,9 +1,10 @@
 import hmac
 import hashlib
 import json
-import logging
 
 from typing import Optional
+
+import httpx
 
 from fastapi import (
     FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
@@ -12,7 +13,8 @@ from fastapi.responses import JSONResponse
 
 from murdock.config import (
     MURDOCK_LOG_LEVEL, MURDOCK_USE_API_TOKEN, MURDOCK_API_TOKEN,
-    MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET
+    MURDOCK_GITHUB_APP_CLIENT_ID, MURDOCK_GITHUB_APP_CLIENT_SECRET,
+    MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET, GITHUB_REPO
 )
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
@@ -53,8 +55,92 @@ async def github_webhook_handler(request: Request):
             raise HTTPException(status_code=400, detail=ret)
 
 
+@app.get("/github/authenticate/{code}", include_in_schema=False)
+async def github_authenticate_handler(code: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": MURDOCK_GITHUB_APP_CLIENT_ID,
+                "client_secret": MURDOCK_GITHUB_APP_CLIENT_SECRET,
+                "code": code,
+            },
+            headers={"Accept": "application/vnd.github.v3+json"}
+        )
+    return _json_response({"token": response.json()["access_token"]})
+
+
+def _json_response(data):
+    response = JSONResponse(data)
+    response.headers.update(
+        {
+            "Access-Control-Allow-Credentials" : "false",
+            "Access-Control-Allow-Origin" : "*",
+        }
+    )
+    return response
+
+
+async def _check_push_permissions(token: str) -> bool:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.github.com/repos/{GITHUB_REPO}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {token}"
+            }
+        )
+    if response.status_code != 200:
+        LOGGER.warning(f"Cannot fetch push permissions ({response})")
+
+    return (
+        response.status_code == 200 and response.json()["permissions"]["push"]
+    )
+
+
+@app.get("/api/jobs/queued")
+async def queued_jobs_handler():
+    return _json_response(murdock.get_queued_jobs())
+
+
+@app.options("/api/jobs/queued/{commit}", include_in_schema=False)
+async def queued_commit_cancel_handler():
+    response = JSONResponse({})
+    response.headers.update(
+        {
+            "Access-Control-Allow-Credentials" : "false",
+            "Access-Control-Allow-Origin" : "*",
+            "Access-Control-Allow-Methods" : "OPTIONS,DELETE",
+            "Access-Control-Allow-Headers" : "authorization,content-type",
+        }
+    )
+    return response
+
+
+@app.delete("/api/jobs/queued/{commit}")
+async def queued_commit_cancel_handler(request: Request, commit: str):
+    msg = ""
+    if "Authorization" not in request.headers:
+        msg = "Authorization token is missing"
+        LOGGER.warning(f"Invalid request: {msg}")
+        raise HTTPException(status_code=400, detail=msg)
+
+    can_push = await _check_push_permissions(request.headers["Authorization"])
+    if not can_push:
+        raise HTTPException(status_code=403, detail="Missing push permissions")
+
+    await murdock.cancel_queued_job_with_commit(commit)
+
+    return _json_response({})
+
+
+@app.get("/api/jobs/building")
+async def building_jobs_handler():
+    return _json_response(murdock.get_running_jobs())
+
+
 @app.put("/api/jobs/building/{commit}/status")
-async def building_commit_status_handler(request: Request, commit):
+async def building_commit_status_handler(request: Request, commit: str):
     data = await request.json()
 
     msg = ""
@@ -71,25 +157,36 @@ async def building_commit_status_handler(request: Request, commit):
     await murdock.handle_commit_status_data(commit, data)
 
 
-def _json_response(data):
-    response = JSONResponse(data)
+@app.options("/api/jobs/building/{commit}", include_in_schema=False)
+async def building_commit_stop_handler():
+    response = JSONResponse({})
     response.headers.update(
         {
             "Access-Control-Allow-Credentials" : "false",
             "Access-Control-Allow-Origin" : "*",
+            "Access-Control-Allow-Methods" : "OPTIONS,DELETE",
+            "Access-Control-Allow-Headers" : "authorization,content-type",
         }
     )
     return response
 
 
-@app.get("/api/jobs/queued")
-async def queued_jobs_handler():
-    return _json_response(murdock.get_queued_jobs())
+@app.delete("/api/jobs/building/{commit}")
+async def building_commit_stop_handler(request: Request, commit: str):
+    msg = ""
+    if "Authorization" not in request.headers:
+        msg = "Authorization token is missing"
+        LOGGER.warning(f"Invalid request: {msg}")
+        raise HTTPException(status_code=400, detail=msg)
 
+    can_push = await _check_push_permissions(request.headers["Authorization"])
 
-@app.get("/api/jobs/building")
-async def building_jobs_handler():
-    return _json_response(murdock.get_running_jobs())
+    if not can_push:
+        raise HTTPException(status_code=403, detail="Missing push permissions")
+
+    await murdock.stop_running_job(commit)
+
+    return _json_response({})
 
 
 @app.get("/api/jobs/finished")
