@@ -12,7 +12,7 @@ services:
     environment:
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
-        - MURDOCK_USE_API_TOKEN
+        - MURDOCK_USE_JOB_TOKEN
         - MURDOCK_API_TOKEN
         - MURDOCK_NUM_WORKERS
         - MURDOCK_DB_HOST=mongodb

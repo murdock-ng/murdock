@@ -12,7 +12,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 
 from murdock.config import (
-    MURDOCK_LOG_LEVEL, MURDOCK_USE_API_TOKEN, MURDOCK_API_TOKEN,
+    MURDOCK_LOG_LEVEL, MURDOCK_USE_JOB_TOKEN,
     MURDOCK_GITHUB_APP_CLIENT_ID, MURDOCK_GITHUB_APP_CLIENT_SECRET,
     MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET, GITHUB_REPO
 )
@@ -144,10 +144,13 @@ async def building_commit_status_handler(request: Request, commit: str):
     data = await request.json()
 
     msg = ""
-    if MURDOCK_USE_API_TOKEN:
+    if MURDOCK_USE_JOB_TOKEN:
+        job = murdock.job_running(commit)
+        if job is None:
+            msg = f"No job running for commit {commit}"
         if "Authorization" not in request.headers:
-            msg = "API token is missing"
-        if request.headers["Authorization"] != MURDOCK_API_TOKEN:
+            msg = "Job token is missing"
+        if request.headers["Authorization"] != job.token:
             msg = "Invalid API token"
 
     if msg:

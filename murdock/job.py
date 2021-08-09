@@ -1,12 +1,13 @@
 import asyncio
 import os
+import secrets
 import shutil
 import signal
 import time
 
 from murdock.config import (
     GITHUB_REPO, MURDOCK_BASE_URL, MURDOCK_ROOT_DIR, MURDOCK_SCRIPTS_DIR,
-    MURDOCK_USE_API_TOKEN, MURDOCK_API_TOKEN
+    MURDOCK_USE_JOB_TOKEN
 )
 from murdock.log import LOGGER
 
@@ -23,6 +24,7 @@ class MurdockJob:
         self.canceled = False
         self.status = ""
         self.fasttracked = fasttracked
+        self.token = secrets.token_urlsafe(32)
         work_dir_relative = os.path.join(
             GITHUB_REPO,
             self.pr.number,
@@ -118,9 +120,9 @@ class MurdockJob:
             "CI_BASE_URL": MURDOCK_BASE_URL,
         }
 
-        if MURDOCK_USE_API_TOKEN:
+        if MURDOCK_USE_JOB_TOKEN:
             _env.update({
-                "CI_API_TOKEN": MURDOCK_API_TOKEN,
+                "CI_API_TOKEN": self.token,
             })
 
         if self.pr.mergeable:

@@ -1,6 +1,5 @@
 import logging
 import os
-import secrets
 
 
 MURDOCK_BASE_URL = os.getenv("MURDOCK_BASE_URL", "https://ci.riot-os.org")
@@ -8,8 +7,7 @@ MURDOCK_ROOT_DIR = os.getenv("MURDOCK_ROOT_DIR", "/var/lib/murdock-data")
 MURDOCK_SCRIPTS_DIR = os.getenv(
     "MURDOCK_SCRIPTS_DIR", "/var/lib/murdock-scripts"
 )
-MURDOCK_USE_API_TOKEN = int(os.getenv("MURDOCK_USE_API_TOKEN", 0)) == 1
-MURDOCK_API_TOKEN = os.getenv("MURDOCK_API_TOKEN", secrets.token_urlsafe(32))
+MURDOCK_USE_JOB_TOKEN = int(os.getenv("MURDOCK_USE_JOB_TOKEN", 0)) == 1
 MURDOCK_NUM_WORKERS = int(os.getenv("MURDOCK_NUM_WORKERS", 1))
 MURDOCK_LOG_LEVEL = logging.getLevelName(
     os.getenv("MURDOCK_LOG_LEVEL", "DEBUG")
@@ -38,8 +36,7 @@ Murdock Settings:
 \tMURDOCK_BASE_URL........ .........: {MURDOCK_BASE_URL}
 \tMURDOCK_ROOT_DIR..................: {MURDOCK_ROOT_DIR}
 \tMURDOCK_SCRIPTS_DIR...............: {MURDOCK_SCRIPTS_DIR}
-\tMURDOCK_USE_API_TOKEN.............: {MURDOCK_USE_API_TOKEN}
-\tMURDOCK_API_TOKEN.................: {MURDOCK_API_TOKEN}
+\tMURDOCK_USE_JOB_TOKEN.............: {MURDOCK_USE_JOB_TOKEN}
 \tMURDOCK_NUM_WORKERS...............: {MURDOCK_NUM_WORKERS}
 \tMURDOCK_LOG_LEVEL.................: {MURDOCK_LOG_LEVEL}
 \tMURDOCK_GITHUB_APP_CLIENT_ID......: {MURDOCK_GITHUB_APP_CLIENT_ID}
