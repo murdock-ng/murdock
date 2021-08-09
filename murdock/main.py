@@ -29,7 +29,7 @@ app = FastAPI(
 )
 
 
-@app.post("/github", include_in_schema=False)
+@app.post("/github/webhook", include_in_schema=False)
 async def github_webhook_handler(request: Request):
     headers = request.headers
     body = await request.body()
