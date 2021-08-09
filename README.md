@@ -6,10 +6,7 @@ Developed for RIOT (riot-os.org).
 # Requirements
 
 Murdock is fully written in Python (requires >= 3.8) and is based on the
-[FastAPI](https://fastapi.tiangolo.com/)
-for the HTTP requests and
-[gidgethub](https://gidgethub.readthedocs.io/en/latest/) to interact with the
-GitHub REST API.
+[FastAPI](https://fastapi.tiangolo.com/) framework for the REST API.
 In order to keep the history of completed jobs, they are stored in a
 [MongoDb](https://www.mongodb.com/) database.
 
@@ -24,8 +21,7 @@ the [Github WebHook documentation](https://docs.github.com/en/developers/webhook
 
 First you have to adapt the [.env](.env) file with your project setup:
 - It is important that the variables `GITHUB_REPO` (in the form `orga/repo`) ,
-`GITHUB_WEBHOOK_SECRET`, `GITHUB_API_USER` and `GITHUB_API_TOKEN` are correctly
-set.
+`GITHUB_WEBHOOK_SECRET` and `GITHUB_API_TOKEN` are correctly set.
 - `MURDOCK_ROOT_DIR` corresponds to the base location where all build jobs output
 will be stored. Each job is launched from a directory with the path
 `<MURDOCK_ROOT_DIR>/<orga>/<repo>/<pr number>/<commit hash>` and all output data

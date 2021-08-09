@@ -23,7 +23,6 @@ MURDOCK_MAX_FINISHED_LENGTH_DEFAULT = int(os.getenv(
 
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
-GITHUB_API_USER = os.getenv("GITHUB_API_USER")
 GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN")
 
 CI_CANCEL_ON_UPDATE = int(os.getenv("CI_CANCEL_ON_UPDATE", 1)) == 1
@@ -45,7 +44,6 @@ Murdock Settings:
 Github Settings:
 \tGITHUB_REPO...............: {GITHUB_REPO}
 \tGITHUB_WEBHOOK_SECRET.....: {GITHUB_WEBHOOK_SECRET}
-\tGITHUB_API_USER...........: {GITHUB_API_USER}
 \tGITHUB_API_TOKEN..........: {GITHUB_API_TOKEN}
 
 CI Settings:
@@ -65,8 +63,6 @@ def check_config():
         msg = "'GITHUB_REPO' is not set"
     if not GITHUB_WEBHOOK_SECRET:
         msg = "'GITHUB_WEBHOOK_SECRET' is not set"
-    if not GITHUB_API_USER:
-        msg = "'GITHUB_API_USER' is not set"
     if not GITHUB_API_TOKEN:
         msg = "'GITHUB_API_TOKEN' is not set"
     return msg

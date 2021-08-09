@@ -20,7 +20,6 @@ services:
         - MURDOCK_DB_NAME
         - GITHUB_REPO
         - GITHUB_WEBHOOK_SECRET
-        - GITHUB_API_USER
         - GITHUB_API_TOKEN
         - CI_CANCEL_ON_UPDATE
         - CI_READY_LABEL

@@ -10,14 +10,13 @@ from datetime import time as dtime
 import motor.motor_asyncio as aiomotor
 
 import httpx
-import gidgethub.httpx
 
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.config import (
     check_config, CONFIG_MSG,
     CI_FASTTRACK_LABELS, CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
-    GITHUB_API_TOKEN, GITHUB_API_USER, GITHUB_REPO,
+    GITHUB_API_TOKEN, GITHUB_REPO,
     MURDOCK_BASE_URL, MURDOCK_NUM_WORKERS,
     MURDOCK_DB_HOST, MURDOCK_DB_PORT, MURDOCK_DB_NAME
 )
@@ -344,11 +343,16 @@ class Murdock:
             f"Setting commit {commit[0:7]} status to '{status['description']}'"
         )
         async with httpx.AsyncClient() as client:
-            gh = gidgethub.httpx.GitHubAPI(client, GITHUB_API_USER,
-                                           oauth_token=GITHUB_API_TOKEN)
-            await gh.post(
-                f"/repos/{GITHUB_REPO}/statuses/{commit}", data=status
+            response = await client.post(
+                f"https://api.github.com/repos/{GITHUB_REPO}/statuses/{commit}",
+                headers={
+                    "Accept": "application/vnd.github.v3+json",
+                    "Authorization": f"token {GITHUB_API_TOKEN}"
+                }
+                , data=json.dumps(status)
             )
+            if response.status_code != 201:
+                LOGGER.warning(f"{response}: {response.json()}")
 
     def add_ws_client(self, ws):
         if ws not in self.clients:

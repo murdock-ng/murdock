@@ -1,4 +1,3 @@
 fastapi[all]
-gidgethub
 motor
 httpx
