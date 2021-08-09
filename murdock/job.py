@@ -86,6 +86,7 @@ class MurdockJob:
     @staticmethod
     def from_db_entry(entry):
         return {
+            "id": str(entry["_id"]),
             "title" : entry["title"],
             "user" : entry["user"],
             "url" : entry["url"],
