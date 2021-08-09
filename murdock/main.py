@@ -53,15 +53,15 @@ async def github_webhook_handler(request: Request):
             raise HTTPException(status_code=400, detail=ret)
 
 
-@app.put("/api/jobs/building/{commit}/status", include_in_schema=False)
-async def commit_status_handler(request: Request, commit):
+@app.put("/api/jobs/building/{commit}/status")
+async def building_commit_status_handler(request: Request, commit):
     data = await request.json()
 
     msg = ""
     if MURDOCK_USE_API_TOKEN:
-        if "X-Murdock-Token" not in request.headers:
+        if "Authorization" not in request.headers:
             msg = "API token is missing"
-        if request.headers["X-Murdock-Token"] != MURDOCK_API_TOKEN:
+        if request.headers["Authorization"] != MURDOCK_API_TOKEN:
             msg = "Invalid API token"
 
     if msg:
