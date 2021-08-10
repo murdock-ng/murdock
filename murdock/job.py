@@ -5,38 +5,64 @@ import shutil
 import signal
 import time
 
+from collections import namedtuple
+from typing import Optional
+from asyncio.subprocess import Process
+
 from murdock.config import (
     GITHUB_REPO, MURDOCK_BASE_URL, MURDOCK_ROOT_DIR, MURDOCK_SCRIPTS_DIR,
-    MURDOCK_USE_JOB_TOKEN
+    MURDOCK_USE_JOB_TOKEN, CI_FASTTRACK_LABELS
 )
 from murdock.log import LOGGER
 
 
+PullRequestInfo = namedtuple(
+    "PullRequestInfo",
+    [
+        "title",
+        "number",
+        "merge_commit",
+        "branch",
+        "commit",
+        "user",
+        "url",
+        "base_repo",
+        "base_branch",
+        "base_commit",
+        "base_full_name",
+        "mergeable",
+        "labels",
+    ]
+)
+
+
 class MurdockJob:
 
-    def __init__(self, pr, fasttracked=False):
-        self.result = -1
-        self.proc = None
-        self.output = ""
-        self.pr = pr
-        self.start_time = time.time()
-        self.stop_time = 0
-        self.canceled = False
-        self.status = ""
-        self.fasttracked = fasttracked
-        self.token = secrets.token_urlsafe(32)
-        work_dir_relative = os.path.join(
+    def __init__(self, pr: PullRequestInfo):
+        self.result : Optional[str] = None
+        self.proc : Optional[Process] = None
+        self.output : str = ""
+        self.pr : PullRequestInfo = pr
+        self.start_time : float = time.time()
+        self.stop_time  : float = 0
+        self.canceled : bool = False
+        self.status : str = ""
+        self.fasttracked : bool = any(
+            label in CI_FASTTRACK_LABELS for label in pr.labels
+        )
+        self.token : str = secrets.token_urlsafe(32)
+        work_dir_relative : str = os.path.join(
             GITHUB_REPO,
             self.pr.number,
             self.pr.commit
         )
-        self.work_dir = os.path.join(MURDOCK_ROOT_DIR, work_dir_relative)
+        self.work_dir : str = os.path.join(MURDOCK_ROOT_DIR, work_dir_relative)
         MurdockJob.create_dir(self.work_dir)
-        self.http_dir = os.path.join(MURDOCK_BASE_URL, work_dir_relative)
-        self.output_url = os.path.join(self.http_dir, "output.html")
+        self.http_dir : str = os.path.join(MURDOCK_BASE_URL, work_dir_relative)
+        self.output_url : str = os.path.join(self.http_dir, "output.html")
 
     @staticmethod
-    def create_dir(work_dir):
+    def create_dir(work_dir: str):
         try:
             LOGGER.debug(f"Creating directory '{work_dir}'")
             os.makedirs(work_dir)
@@ -55,11 +81,11 @@ class MurdockJob:
             )
 
     @property
-    def runtime(self):
+    def runtime(self) -> float:
         return self.stop_time - self.start_time
 
     @property
-    def runtime_human(self):
+    def runtime_human(self) -> str:
         if self.runtime > 86400:
             runtime_format = "%Dd:%Hh:%Mm:%Ss"
         elif self.runtime > 3600:
@@ -86,7 +112,7 @@ class MurdockJob:
         }
 
     @staticmethod
-    def from_db_entry(entry):
+    def from_db_entry(entry: dict):
         return {
             "id": str(entry["_id"]),
             "title" : entry["title"],
@@ -130,12 +156,12 @@ class MurdockJob:
 
         return _env
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
-            f"sha:{self.pr.commit[0:7]} (PR #{self.pr.number}))"
+            f"sha:{self.pr.commit[0:7]} (PR #{self.pr.number})"
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return other is not None and self.pr.commit == other.pr.commit
 
     async def execute(self):
@@ -209,7 +235,7 @@ class MurdockJob:
         LOGGER.debug(f"Job {self} immediate stop requested")
         for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGKILL]:
             if self.proc is not None and self.proc.returncode is None:
-                LOGGER.debug(f"Send {sig} to job {self}")
+                LOGGER.debug(f"Send signal {sig} to job {self}")
                 self.proc.send_signal(sig)
                 try:
                     await asyncio.wait_for(self.proc.wait(), timeout=1.0)

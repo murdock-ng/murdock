@@ -3,19 +3,21 @@ import json
 import sys
 import time
 
-from collections import namedtuple
 from datetime import datetime
 from datetime import time as dtime
+from typing import Optional
 
 import motor.motor_asyncio as aiomotor
 
 import httpx
 
+from fastapi import WebSocket
+
 from murdock.log import LOGGER
-from murdock.job import MurdockJob
+from murdock.job import MurdockJob, PullRequestInfo
 from murdock.config import (
     check_config, CONFIG_MSG,
-    CI_FASTTRACK_LABELS, CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
+    CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
     GITHUB_API_TOKEN, GITHUB_REPO,
     MURDOCK_BASE_URL, MURDOCK_NUM_WORKERS,
     MURDOCK_DB_HOST, MURDOCK_DB_PORT, MURDOCK_DB_NAME
@@ -26,34 +28,14 @@ ALLOWED_ACTIONS = [
     "closed", "opened", "reopened",
 ]
 
-PullRequestInfo = namedtuple(
-    "PullRequestInfo",
-    [
-        "title",
-        "number",
-        "merge_commit",
-        "branch",
-        "commit",
-        "user",
-        "url",
-        "base_repo",
-        "base_branch",
-        "base_commit",
-        "base_full_name",
-        "mergeable",
-        "labels",
-    ]
-)
-
-
 class Murdock:
 
     def __init__(self):
-        self.clients = []
-        self.queued = []
-        self.running_jobs = [None] * MURDOCK_NUM_WORKERS
-        self.queue = asyncio.Queue()
-        self.fasttrack_queue = asyncio.Queue()
+        self.clients : list[WebSocket] = []
+        self.queued : list[MurdockJob] = []
+        self.running_jobs : list[MurdockJob] = [None] * MURDOCK_NUM_WORKERS
+        self.queue : asyncio.Queue = asyncio.Queue()
+        self.fasttrack_queue : asyncio.Queue = asyncio.Queue()
         self.db = None
 
     async def init(self):
@@ -92,7 +74,7 @@ class Murdock:
                 LOGGER.debug(f"Stopping job {job}")
                 await job.stop()
 
-    async def _process_job(self, job):
+    async def _process_job(self, job: MurdockJob):
         if job.canceled is True:
             LOGGER.debug(f"Ignoring canceled job {job}")
         else:
@@ -120,7 +102,7 @@ class Murdock:
                 await self._process_job(job)
                 self.queue.task_done()
 
-    async def job_prepare(self, job):
+    async def job_prepare(self, job: MurdockJob):
         if job in self.queued:
             self.queued.remove(job)
         self.add_to_running_jobs(job)
@@ -136,7 +118,7 @@ class Murdock:
         )
         await self.reload_jobs()
 
-    async def job_finalize(self, job):
+    async def job_finalize(self, job: MurdockJob):
         job.stop_time = time.time()
         if job.status["status"] == "working":
             job.status["status"] = "finished"
@@ -160,7 +142,7 @@ class Murdock:
             await self.db.job.insert_one(MurdockJob.to_db_entry(job))
         await self.reload_jobs()
 
-    async def add_job_to_queue(self, job, reload_jobs=True):
+    async def add_job_to_queue(self, job: MurdockJob, reload_jobs=True):
         all_busy = all(running is not None for running in self.running_jobs)
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
@@ -180,18 +162,18 @@ class Murdock:
         if reload_jobs is True:
             await self.reload_jobs()
 
-    def job_matching_pr_is_queued(self, prnum):
+    def job_matching_pr_is_queued(self, prnum: int):
         return any(
             [(queued.pr.number ==  prnum) for queued in self.queued]
         )
 
-    def cancel_queued_job(self, job):
+    def cancel_queued_job(self, job: MurdockJob):
         for queued_job in self.queued:
             if queued_job.pr.number == job.pr.number:
                 LOGGER.debug(f"Canceling job {queued_job}")
                 queued_job.canceled = True
 
-    async def cancel_queued_job_with_commit(self, commit):
+    async def cancel_queued_job_with_commit(self, commit: str):
         for queued_job in self.queued:
             if queued_job.pr.commit == commit:
                 LOGGER.debug(f"Canceling job {queued_job}")
@@ -205,22 +187,20 @@ class Murdock:
                 await self.set_pull_request_status(commit, status)
                 await self.reload_jobs()
 
-    def add_to_running_jobs(self, job):
+    def add_to_running_jobs(self, job: MurdockJob):
         for index, running in enumerate(self.running_jobs):
             if running is None:
                 self.running_jobs[index] = job
-                LOGGER.debug(
-                    f"{job} added to the running jobs {self.running_jobs}"
-                )
+                LOGGER.debug(f"{job} added to the running jobs")
                 break
 
-    def job_running(self, commit):
+    def job_running(self, commit: str) -> Optional[MurdockJob]:
         for running in self.running_jobs:
             if running is not None and running.pr.commit == commit:
                 return running
         return None
 
-    def job_matching_pr_is_running(self, prnum):
+    def job_matching_pr_is_running(self, prnum: int) -> bool:
         return any(
             [
                 running is not None and running.pr.number == prnum
@@ -228,16 +208,14 @@ class Murdock:
             ]
         )
 
-    def remove_from_running_jobs(self, job):
+    def remove_from_running_jobs(self, job: MurdockJob):
         for index, running in enumerate(self.running_jobs):
             if running is not None and running.pr.commit == job.pr.commit:
                 self.running_jobs[index] = None
-                LOGGER.debug(
-                    f"{job} removed from the running jobs {self.running_jobs}"
-                )
+                LOGGER.debug(f"{job} removed from the running jobs")
                 break
 
-    async def disable_jobs_matching_pr(self, prnum, description=None):
+    async def disable_jobs_matching_pr(self, prnum: int, description=None):
         disabled_jobs = []
         for job in self.running_jobs:
             if self.job_matching_pr_is_running(prnum):
@@ -261,13 +239,13 @@ class Murdock:
             await self.set_pull_request_status(job.pr.commit, status)
         await self.reload_jobs()
 
-    async def stop_running_jobs_matching_pr(self, prnum):
+    async def stop_running_jobs_matching_pr(self, prnum: int):
         for running in self.running_jobs:
             if running is not None and running.pr.number == prnum:
                 LOGGER.debug(f"Stopping job {running}")
                 await running.stop()
 
-    async def stop_running_job(self, commit):
+    async def stop_running_job(self, commit: str):
         for running in self.running_jobs:
             if running is not None and running.pr.commit == commit:
                 LOGGER.debug(f"Stopping job {running}")
@@ -280,10 +258,10 @@ class Murdock:
                 }
                 await self.set_pull_request_status(commit, status)
 
-    async def stop_job(self, job):
+    async def stop_job(self, job: MurdockJob):
         await self.stop_running_job(job.pr.commit)
 
-    async def handle_pull_request_event(self, event):
+    async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
             return "Unsupported event"
         action = event["action"]
@@ -308,10 +286,7 @@ class Murdock:
             )
         )
 
-        fasttrack_allowed = any(
-            label in CI_FASTTRACK_LABELS for label in pull_request.labels
-        )
-        job = MurdockJob(pull_request, fasttracked=fasttrack_allowed)
+        job = MurdockJob(pull_request)
         action = event["action"]
         if action == "closed":
             if (
@@ -362,7 +337,7 @@ class Murdock:
         else:
             await self.add_job_to_queue(job)
 
-    async def set_pull_request_status(self, commit, status):
+    async def set_pull_request_status(self, commit: str, status: dict):
         LOGGER.debug(
             f"Setting commit {commit[0:7]} status to '{status['description']}'"
         )
@@ -378,15 +353,15 @@ class Murdock:
             if response.status_code != 201:
                 LOGGER.warning(f"{response}: {response.json()}")
 
-    def add_ws_client(self, ws):
+    def add_ws_client(self, ws: WebSocket):
         if ws not in self.clients:
             self.clients.append(ws)
 
-    def remove_ws_client(self, ws):
+    def remove_ws_client(self, ws: WebSocket):
         if ws in self.clients:
             self.clients.remove(ws)
 
-    async def _broadcast_message(self, msg):
+    async def _broadcast_message(self, msg: str):
         await asyncio.gather(
             *[client.send_text(msg) for client in self.clients]
         )
@@ -394,7 +369,7 @@ class Murdock:
     async def reload_jobs(self):
         await self._broadcast_message(json.dumps({"cmd": "reload"}))
 
-    def get_queued_jobs(self):
+    def get_queued_jobs(self) -> list:
         queued = sorted(
             [
                 {
@@ -412,7 +387,7 @@ class Murdock:
         )
         return sorted(queued, key=lambda job: job["fasttracked"])
 
-    def get_running_jobs(self):
+    def get_running_jobs(self) -> list:
         return sorted(
             [
                 {
@@ -429,9 +404,14 @@ class Murdock:
         )
 
     async def get_finished_jobs(
-        self, limit, prnum=None, user=None, result=None,
-        from_date=None, to_date=None,
-    ):
+        self,
+        limit: int,
+        prnum: Optional[int] = None,
+        user: Optional[str] = None,
+        result: Optional[str] = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
+    ) -> list:
         query = {}
         if prnum is not None:
             query.update({"prnum": str(prnum)})
@@ -459,7 +439,7 @@ class Murdock:
         )
         return [MurdockJob.from_db_entry(job) for job in finished]
 
-    async def get_jobs(self, limit):
+    async def get_jobs(self, limit: int) -> dict:
         finished = await self.get_finished_jobs(limit)
         return {
             "queued": self.get_queued_jobs(),
@@ -467,7 +447,7 @@ class Murdock:
             "finished": finished,
         }
 
-    async def handle_commit_status_data(self, commit, data):
+    async def handle_commit_status_data(self, commit: str, data: dict):
         job = self.job_running(commit)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
