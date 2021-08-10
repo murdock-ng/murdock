@@ -28,6 +28,7 @@ app = FastAPI(
     title="Murdock API",
     description="This is the Murdock API",
     version="1.0.0",
+    docs_url="/api", redoc_url=None,
 )
 
 
@@ -98,7 +99,10 @@ async def _check_push_permissions(token: str) -> bool:
     )
 
 
-@app.get("/api/jobs/queued")
+@app.get(
+    path="/api/jobs/queued",
+    summary="Return the list of queued jobs"
+)
 async def queued_jobs_handler():
     return _json_response(murdock.get_queued_jobs())
 
@@ -117,7 +121,10 @@ async def queued_commit_cancel_handler():
     return response
 
 
-@app.delete("/api/jobs/queued/{commit}")
+@app.delete(
+    path="/api/jobs/queued/{commit}",
+    summary="Remove a job from the queue"
+)
 async def queued_commit_cancel_handler(request: Request, commit: str):
     msg = ""
     if "Authorization" not in request.headers:
@@ -134,12 +141,18 @@ async def queued_commit_cancel_handler(request: Request, commit: str):
     return _json_response({})
 
 
-@app.get("/api/jobs/building")
+@app.get(
+    path="/api/jobs/building",
+    summary="Return the list of building jobs"
+)
 async def building_jobs_handler():
     return _json_response(murdock.get_running_jobs())
 
 
-@app.put("/api/jobs/building/{commit}/status")
+@app.put(
+    path="/api/jobs/building/{commit}/status",
+    summary="Update the status of a building job"
+)
 async def building_commit_status_handler(request: Request, commit: str):
     data = await request.json()
 
@@ -174,7 +187,10 @@ async def building_commit_stop_handler():
     return response
 
 
-@app.delete("/api/jobs/building/{commit}")
+@app.delete(
+    path="/api/jobs/building/{commit}",
+    summary="Stop a building job"
+)
 async def building_commit_stop_handler(request: Request, commit: str):
     msg = ""
     if "Authorization" not in request.headers:
@@ -192,7 +208,10 @@ async def building_commit_stop_handler(request: Request, commit: str):
     return _json_response({})
 
 
-@app.get("/api/jobs/finished")
+@app.get(
+    path="/api/jobs/finished",
+    summary="Return the list of finished jobs sorted by end time, reversed"
+)
 async def finished_jobs_handler(
         limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT,
         prnum: Optional[int] = None,
@@ -207,7 +226,9 @@ async def finished_jobs_handler(
     return _json_response(data)
 
 
-@app.get("/api/jobs")
+@app.get(
+    path="/api/jobs",
+    summary="Return the list of all jobs (queued, building, finished)")
 async def jobs_handler(
     limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
 ):
