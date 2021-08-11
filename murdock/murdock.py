@@ -271,7 +271,7 @@ class Murdock:
         pr_data = event["pull_request"]
         pull_request = PullRequestInfo(
             title=pr_data["title"],
-            number=str(pr_data["number"]),
+            number=pr_data["number"],
             merge_commit=pr_data["merge_commit_sha"],
             branch=pr_data["head"]["ref"],
             commit=pr_data["head"]["sha"],

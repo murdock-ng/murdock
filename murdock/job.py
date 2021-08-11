@@ -5,9 +5,10 @@ import shutil
 import signal
 import time
 
-from collections import namedtuple
 from typing import Optional
 from asyncio.subprocess import Process
+
+from pydantic import BaseModel
 
 from murdock.config import (
     GITHUB_REPO, MURDOCK_BASE_URL, MURDOCK_ROOT_DIR, MURDOCK_SCRIPTS_DIR,
@@ -16,24 +17,20 @@ from murdock.config import (
 from murdock.log import LOGGER
 
 
-PullRequestInfo = namedtuple(
-    "PullRequestInfo",
-    [
-        "title",
-        "number",
-        "merge_commit",
-        "branch",
-        "commit",
-        "user",
-        "url",
-        "base_repo",
-        "base_branch",
-        "base_commit",
-        "base_full_name",
-        "mergeable",
-        "labels",
-    ]
-)
+class PullRequestInfo(BaseModel):
+    title: str
+    number: int
+    merge_commit: str
+    branch: str
+    commit: str
+    user: str
+    url: str
+    base_repo: str
+    base_branch: str
+    base_commit: str
+    base_full_name: str
+    mergeable: bool
+    labels: list[str]
 
 
 class MurdockJob:
@@ -46,14 +43,14 @@ class MurdockJob:
         self.start_time : float = time.time()
         self.stop_time  : float = 0
         self.canceled : bool = False
-        self.status : str = ""
+        self.status : dict = { "status": "" }
         self.fasttracked : bool = any(
             label in CI_FASTTRACK_LABELS for label in pr.labels
         )
         self.token : str = secrets.token_urlsafe(32)
         work_dir_relative : str = os.path.join(
             GITHUB_REPO,
-            self.pr.number,
+            str(self.pr.number),
             self.pr.commit
         )
         self.work_dir : str = os.path.join(MURDOCK_ROOT_DIR, work_dir_relative)
@@ -99,11 +96,7 @@ class MurdockJob:
     @staticmethod
     def to_db_entry(job):
         return {
-            "title" : job.pr.title,
-            "user" : job.pr.user,
-            "url" : job.pr.url,
-            "commit" : job.pr.commit,
-            "prnum": job.pr.number,
+            "prinfo": job.pr.dict(),
             "since" : job.start_time,
             "runtime": job.runtime,
             "result": job.result,
@@ -115,11 +108,11 @@ class MurdockJob:
     def from_db_entry(entry: dict):
         return {
             "id": str(entry["_id"]),
-            "title" : entry["title"],
-            "user" : entry["user"],
-            "url" : entry["url"],
-            "commit" : entry["commit"],
-            "prnum": entry["prnum"],
+            "title" : entry["prinfo"]["title"],
+            "user" : entry["prinfo"]["user"],
+            "url" : entry["prinfo"]["url"],
+            "commit" : entry["prinfo"]["commit"],
+            "prnum": entry["prinfo"]["number"],
             "since" : entry["since"],
             "result" : entry["result"],
             "output_url": entry["output_url"],
@@ -133,7 +126,7 @@ class MurdockJob:
             "CI_PULL_COMMIT" : self.pr.commit,
             "CI_PULL_REPO" : GITHUB_REPO,
             "CI_PULL_BRANCH" : self.pr.branch,
-            "CI_PULL_NR" : self.pr.number,
+            "CI_PULL_NR" : str(self.pr.number),
             "CI_PULL_URL" : self.pr.url,
             "CI_PULL_TITLE" : self.pr.title,
             "CI_PULL_USER" : self.pr.user,
