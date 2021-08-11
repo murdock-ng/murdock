@@ -245,6 +245,29 @@ async def finished_job_restart_handler(request: Request, job_id: str):
 
     return _json_response({})
 
+
+@app.delete(
+    path="/api/jobs/finished",
+    summary="Removed finished jobs older than 'before' date"
+)
+async def finished_job_delete_handler(
+    request: Request, before: str
+):
+    if "Authorization" not in request.headers:
+        msg = "Authorization token is missing"
+        LOGGER.warning(f"Invalid request: {msg}")
+        raise HTTPException(status_code=400, detail=msg)
+
+    can_push = await _check_push_permissions(request.headers["Authorization"])
+
+    if not can_push:
+        raise HTTPException(status_code=403, detail="Missing push permissions")
+
+    jobs_removed = await murdock.remove_finished_jobs(before)
+
+    return _json_response({"removed":jobs_removed })
+
+
 @app.get(
     path="/api/jobs",
     summary="Return the list of all jobs (queued, building, finished)")

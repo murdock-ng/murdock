@@ -51,7 +51,8 @@ class MurdockJob:
         work_dir_relative : str = os.path.join(
             GITHUB_REPO,
             str(self.pr.number),
-            self.pr.commit
+            self.pr.commit,
+            str(self.start_time)
         )
         self.work_dir : str = os.path.join(MURDOCK_ROOT_DIR, work_dir_relative)
         self.http_dir : str = os.path.join(MURDOCK_BASE_URL, work_dir_relative)
@@ -69,6 +70,7 @@ class MurdockJob:
 
     @staticmethod
     def remove_dir(work_dir):
+        LOGGER.info(f"Removing directory '{work_dir}'")
         try:
             shutil.rmtree(work_dir)
         except FileNotFoundError:

@@ -455,6 +455,26 @@ class Murdock:
         )
         return [MurdockJob.from_db_entry(job) for job in finished]
 
+    async def remove_finished_jobs(self, before: str) -> int:
+        date = datetime.strptime(before, "%Y-%m-%d")
+        jobs_before = await self.db.job.count_documents({})
+        query = {"since": {"$gte": date.timestamp()}}
+        jobs_count = await self.db.job.count_documents(query)
+        jobs = await (
+            self.db.job
+            .find(query)
+            .sort("since", -1)
+            .to_list(length=jobs_count)
+        )
+        for job_data in jobs:
+            MurdockJob.remove_dir(job_data["work_dir"])
+        await self.db.job.delete_many(query)
+        jobs_removed = jobs_before - (await self.db.job.count_documents({}))
+        LOGGER.info(f"{jobs_removed} jobs removed (before {before})")
+        await self.reload_jobs()
+        return jobs_removed
+
+
     async def get_jobs(self, limit: int) -> dict:
         finished = await self.get_finished_jobs(limit)
         return {
