@@ -218,11 +218,11 @@ async def finished_jobs_handler(
         prnum: Optional[int] = None,
         user: Optional[str] = None,
         result: Optional[str] = None,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
 ):
     data = await murdock.get_finished_jobs(
-        limit, job_id, prnum, user, result, from_date, to_date
+        limit, job_id, prnum, user, result, after, before
     )
     return _json_response(data)
 

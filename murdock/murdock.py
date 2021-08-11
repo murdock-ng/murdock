@@ -411,8 +411,8 @@ class Murdock:
         prnum: Optional[int] = None,
         user: Optional[str] = None,
         result: Optional[str] = None,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
     ) -> list:
         query = {}
         if job_id is not None:
@@ -423,12 +423,12 @@ class Murdock:
             query.update({"user": user})
         if result in ["errored", "passed"]:
             query.update({"result": result})
-        if from_date is not None:
-            date = datetime.strptime(from_date, "%Y-%m-%d")
+        if after is not None:
+            date = datetime.strptime(after, "%Y-%m-%d")
             query.update({"since": {"$gte": date.timestamp()}})
-        if to_date is not None:
+        if before is not None:
             date = datetime.combine(
-                datetime.strptime(to_date, "%Y-%m-%d"),
+                datetime.strptime(before, "%Y-%m-%d"),
                 dtime(hour=23, minute=59, second=59, microsecond=999)
             )
             if "since" in query:
