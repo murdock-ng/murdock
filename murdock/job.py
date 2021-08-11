@@ -54,7 +54,6 @@ class MurdockJob:
             self.pr.commit
         )
         self.work_dir : str = os.path.join(MURDOCK_ROOT_DIR, work_dir_relative)
-        MurdockJob.create_dir(self.work_dir)
         self.http_dir : str = os.path.join(MURDOCK_BASE_URL, work_dir_relative)
         self.output_url : str = os.path.join(self.http_dir, "output.html")
 
@@ -158,6 +157,7 @@ class MurdockJob:
         return other is not None and self.pr.commit == other.pr.commit
 
     async def execute(self):
+        MurdockJob.create_dir(self.work_dir)
         LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
             os.path.join(MURDOCK_SCRIPTS_DIR, "build.sh"), "build",
