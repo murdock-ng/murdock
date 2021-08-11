@@ -11,6 +11,7 @@ import motor.motor_asyncio as aiomotor
 
 import httpx
 
+from bson.objectid import ObjectId
 from fastapi import WebSocket
 
 from murdock.log import LOGGER
@@ -406,6 +407,7 @@ class Murdock:
     async def get_finished_jobs(
         self,
         limit: int,
+        job_id: Optional[str] = None,
         prnum: Optional[int] = None,
         user: Optional[str] = None,
         result: Optional[str] = None,
@@ -413,6 +415,8 @@ class Murdock:
         to_date: Optional[str] = None,
     ) -> list:
         query = {}
+        if job_id is not None:
+            query.update({"_id": ObjectId(job_id)})
         if prnum is not None:
             query.update({"prnum": str(prnum)})
         if user is not None:
