@@ -226,6 +226,20 @@ async def finished_jobs_handler(
     return _json_response(data)
 
 
+@app.options("/api/jobs/finished/{job_id}", include_in_schema=False)
+async def queued_commit_cancel_handler():
+    response = JSONResponse({})
+    response.headers.update(
+        {
+            "Access-Control-Allow-Credentials" : "false",
+            "Access-Control-Allow-Origin" : "*",
+            "Access-Control-Allow-Methods" : "OPTIONS,POST",
+            "Access-Control-Allow-Headers" : "authorization,content-type",
+        }
+    )
+    return response
+
+
 @app.post(
     path="/api/jobs/finished/{job_id}",
     summary="Restart a finished job"
