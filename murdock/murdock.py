@@ -394,11 +394,7 @@ class Murdock:
         queued = sorted(
             [
                 {
-                    "title" : job.pr.title,
-                    "user" : job.pr.user,
-                    "url" : job.pr.url,
-                    "commit" : job.pr.commit,
-                    "prnum": job.pr.number,
+                    "prinfo": job.pr.dict(),
                     "since" : job.start_time,
                     "fasttracked": job.fasttracked,
                 }
@@ -412,11 +408,7 @@ class Murdock:
         return sorted(
             [
                 {
-                    "title" : job.pr.title,
-                    "user" : job.pr.user,
-                    "url" : job.pr.url,
-                    "commit" : job.pr.commit,
-                    "prnum": job.pr.number,
+                    "prinfo": job.pr.dict(),
                     "since" : job.start_time,
                     "status": job.status,
                 }

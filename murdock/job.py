@@ -95,28 +95,25 @@ class MurdockJob:
     @staticmethod
     def to_db_entry(job):
         return {
-            "prinfo": job.pr.dict(),
             "since" : job.start_time,
             "runtime": job.runtime,
             "result": job.result,
             "output_url": job.output_url,
+            "work_dir": job.work_dir,
             "status": job.status,
+            "prinfo": job.pr.dict(),
         }
 
     @staticmethod
     def from_db_entry(entry: dict):
         return {
             "id": str(entry["_id"]),
-            "title" : entry["prinfo"]["title"],
-            "user" : entry["prinfo"]["user"],
-            "url" : entry["prinfo"]["url"],
-            "commit" : entry["prinfo"]["commit"],
-            "prnum": entry["prinfo"]["number"],
             "since" : entry["since"],
             "result" : entry["result"],
             "output_url": entry["output_url"],
             "runtime" : entry["runtime"],
             "status": entry["status"],
+            "prinfo": entry["prinfo"],
         }
 
     @property
