@@ -192,7 +192,6 @@ async def building_commit_stop_handler():
     summary="Stop a building job"
 )
 async def building_commit_stop_handler(request: Request, commit: str):
-    msg = ""
     if "Authorization" not in request.headers:
         msg = "Authorization token is missing"
         LOGGER.warning(f"Invalid request: {msg}")
@@ -226,6 +225,25 @@ async def finished_jobs_handler(
     )
     return _json_response(data)
 
+
+@app.post(
+    path="/api/jobs/finished/{job_id}",
+    summary="Restart a finished job"
+)
+async def finished_job_restart_handler(request: Request, job_id: str):
+    if "Authorization" not in request.headers:
+        msg = "Authorization token is missing"
+        LOGGER.warning(f"Invalid request: {msg}")
+        raise HTTPException(status_code=400, detail=msg)
+
+    can_push = await _check_push_permissions(request.headers["Authorization"])
+
+    if not can_push:
+        raise HTTPException(status_code=403, detail="Missing push permissions")
+
+    await murdock.restart_job(job_id)
+
+    return _json_response({})
 
 @app.get(
     path="/api/jobs",

@@ -262,6 +262,44 @@ class Murdock:
     async def stop_job(self, job: MurdockJob):
         await self.stop_running_job(job.pr.commit)
 
+    async def restart_job(self, job_id: str):
+        entry = await (
+            self.db.job
+            .find({"_id": ObjectId(job_id)})
+            .to_list(length=1)
+        )
+        if not entry:
+            LOGGER.warning(f"Cannot find job matching id '{job_id}'")
+
+        job = MurdockJob(PullRequestInfo(**entry[0]["prinfo"]))
+        LOGGER.info(f"Restarting job {job}")
+        await self.schedule_job(job)
+
+    async def schedule_job(self, job: MurdockJob):
+        if job in self.queued or job in self.running_jobs:
+            LOGGER.debug(f"job {job} is already handled, ignoring")
+            return
+
+        LOGGER.info(f"Scheduling new job {job}")
+        if  (
+            CI_CANCEL_ON_UPDATE and
+            self.job_matching_pr_is_queued(job.pr.number)
+        ):
+            LOGGER.debug(f"Re-queue job {job}")
+            # Similar job is already queued => cancel it and queue the new one
+            self.cancel_queued_jobs_matching_pr(job.pr.number)
+            await self.add_job_to_queue(job)
+        elif (
+            CI_CANCEL_ON_UPDATE and
+            self.job_matching_pr_is_running(job.pr.number)
+        ):
+            # Similar job is already running => stop it and queue the new one
+            LOGGER.debug(f"{job} job is already running")
+            await self.stop_running_jobs_matching_pr(job.pr.number)
+            await self.add_job_to_queue(job, reload_jobs=False)
+        else:
+            await self.add_job_to_queue(job)
+
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
             return "Unsupported event"
@@ -318,25 +356,7 @@ class Murdock:
                 )
             return
 
-        LOGGER.info(f"Handling new job {job}")
-        if  (
-            CI_CANCEL_ON_UPDATE and
-            self.job_matching_pr_is_queued(job.pr.number)
-        ):
-            LOGGER.debug(f"Re-queue job {job}")
-            # Similar job is already queued => cancel it and queue the new one
-            self.cancel_queued_jobs_matching_pr(job.pr.number)
-            await self.add_job_to_queue(job)
-        elif (
-            CI_CANCEL_ON_UPDATE and
-            self.job_matching_pr_is_running(job.pr.number)
-        ):
-            # Similar job is already running => stop it and queue the new one
-            LOGGER.debug(f"{job} job is already running")
-            await self.stop_running_jobs_matching_pr(job.pr.number)
-            await self.add_job_to_queue(job, reload_jobs=False)
-        else:
-            await self.add_job_to_queue(job)
+        await self.schedule_job(job)
 
     async def set_pull_request_status(self, commit: str, status: dict):
         LOGGER.debug(
