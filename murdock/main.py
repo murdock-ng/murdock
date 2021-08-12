@@ -7,7 +7,7 @@ from typing import Optional
 import httpx
 
 from fastapi import (
-    FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
+    FastAPI, Header, Request, HTTPException, WebSocket, WebSocketDisconnect
 )
 from fastapi.responses import JSONResponse
 
@@ -125,15 +125,11 @@ async def queued_commit_cancel_handler():
     path="/api/jobs/queued/{commit}",
     summary="Remove a job from the queue"
 )
-async def queued_commit_cancel_handler(request: Request, commit: str):
-    msg = ""
-    if "Authorization" not in request.headers:
-        msg = "Authorization token is missing"
-        LOGGER.warning(f"Invalid request: {msg}")
-        raise HTTPException(status_code=400, detail=msg)
-
-    can_push = await _check_push_permissions(request.headers["Authorization"])
-    if not can_push:
+async def queued_commit_cancel_handler(
+    commit: str,
+    authorization: Optional[str]=Header(None, description="Github OAuth token")
+):
+    if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     await murdock.cancel_queued_job_with_commit(commit)
@@ -191,15 +187,11 @@ async def building_commit_stop_handler():
     path="/api/jobs/building/{commit}",
     summary="Stop a building job"
 )
-async def building_commit_stop_handler(request: Request, commit: str):
-    if "Authorization" not in request.headers:
-        msg = "Authorization token is missing"
-        LOGGER.warning(f"Invalid request: {msg}")
-        raise HTTPException(status_code=400, detail=msg)
-
-    can_push = await _check_push_permissions(request.headers["Authorization"])
-
-    if not can_push:
+async def building_commit_stop_handler(
+    commit: str,
+    authorization: Optional[str]=Header(None, description="Github OAuth token")
+):
+    if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     await murdock.stop_running_job(commit)
@@ -227,7 +219,7 @@ async def finished_jobs_handler(
 
 
 @app.options("/api/jobs/finished/{job_id}", include_in_schema=False)
-async def queued_commit_cancel_handler():
+async def finished_job_restart_handler():
     response = JSONResponse({})
     response.headers.update(
         {
@@ -244,15 +236,11 @@ async def queued_commit_cancel_handler():
     path="/api/jobs/finished/{job_id}",
     summary="Restart a finished job"
 )
-async def finished_job_restart_handler(request: Request, job_id: str):
-    if "Authorization" not in request.headers:
-        msg = "Authorization token is missing"
-        LOGGER.warning(f"Invalid request: {msg}")
-        raise HTTPException(status_code=400, detail=msg)
-
-    can_push = await _check_push_permissions(request.headers["Authorization"])
-
-    if not can_push:
+async def finished_job_restart_handler(
+    job_id: str,
+    authorization: Optional[str]=Header(None, description="Github OAuth token")
+):
+    if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     await murdock.restart_job(job_id)
@@ -265,16 +253,10 @@ async def finished_job_restart_handler(request: Request, job_id: str):
     summary="Removed finished jobs older than 'before' date"
 )
 async def finished_job_delete_handler(
-    request: Request, before: str
+    before: str,
+    authorization: Optional[str]=Header(None, description="Github OAuth token")
 ):
-    if "Authorization" not in request.headers:
-        msg = "Authorization token is missing"
-        LOGGER.warning(f"Invalid request: {msg}")
-        raise HTTPException(status_code=400, detail=msg)
-
-    can_push = await _check_push_permissions(request.headers["Authorization"])
-
-    if not can_push:
+    if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     jobs_removed = await murdock.remove_finished_jobs(before)
