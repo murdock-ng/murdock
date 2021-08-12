@@ -82,6 +82,16 @@ def _json_response(data):
     return response
 
 
+def _job_json_response(job):
+    return _json_response(
+        {
+            "prinfo": job.pr.dict(),
+            "since" : job.start_time,
+            "status": job.status,
+        }
+    )
+
+
 async def _check_push_permissions(token: str) -> bool:
     async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -132,9 +142,14 @@ async def queued_commit_cancel_handler(
     if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
-    await murdock.cancel_queued_job_with_commit(commit)
+    job = await murdock.cancel_queued_job_with_commit(commit)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail=f"No job matching commit '{commit}' found"
+        )
 
-    return _json_response({})
+    return _job_json_response(job)
+
 
 
 @app.get(
@@ -166,7 +181,13 @@ async def building_commit_status_handler(request: Request, commit: str):
         LOGGER.warning(f"Invalid request to control_handler: {msg}")
         raise HTTPException(status_code=400, detail=msg)
 
-    await murdock.handle_commit_status_data(commit, data)
+    job = await murdock.handle_commit_status_data(commit, data)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail=f"No job matching commit '{commit}' found"
+        )
+
+    return _job_json_response(job)
 
 
 @app.options("/api/jobs/building/{commit}", include_in_schema=False)
@@ -194,9 +215,13 @@ async def building_commit_stop_handler(
     if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
-    await murdock.stop_running_job(commit)
+    job = await murdock.stop_running_job(commit)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail=f"No job matching commit '{commit}' found"
+        )
 
-    return _json_response({})
+    return _job_json_response(job)
 
 
 @app.get(
@@ -243,9 +268,9 @@ async def finished_job_restart_handler(
     if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
-    await murdock.restart_job(job_id)
+    job = await murdock.restart_job(job_id)
 
-    return _json_response({})
+    return _job_json_response(job)
 
 
 @app.delete(
@@ -261,7 +286,7 @@ async def finished_job_delete_handler(
 
     jobs_removed = await murdock.remove_finished_jobs(before)
 
-    return _json_response({"removed":jobs_removed })
+    return _json_response({ "removed":jobs_removed })
 
 
 @app.get(

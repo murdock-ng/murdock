@@ -187,6 +187,7 @@ class Murdock:
                 }
                 await self.set_pull_request_status(commit, status)
                 await self.reload_jobs()
+                return queued_job
 
     def add_to_running_jobs(self, job: MurdockJob):
         for index, running in enumerate(self.running_jobs):
@@ -258,6 +259,7 @@ class Murdock:
                     "description": "Stopped",
                 }
                 await self.set_pull_request_status(commit, status)
+                return running
 
     async def stop_job(self, job: MurdockJob):
         await self.stop_running_job(job.pr.commit)
@@ -483,9 +485,12 @@ class Murdock:
             "finished": finished,
         }
 
-    async def handle_commit_status_data(self, commit: str, data: dict):
+    async def handle_commit_status_data(
+        self, commit: str, data: dict
+    ) -> MurdockJob:
         job = self.job_running(commit)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
             data.update({"cmd": "status", "commit": commit})
             await self._broadcast_message(json.dumps(data))
+        return job
