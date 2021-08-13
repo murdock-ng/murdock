@@ -7,8 +7,9 @@ from typing import Optional, List
 import httpx
 
 from fastapi import (
-    FastAPI, Header, Request, HTTPException, WebSocket, WebSocketDisconnect
+    FastAPI, Request, HTTPException, Security, WebSocket, WebSocketDisconnect
 )
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import JSONResponse
 
 from murdock.config import (
@@ -16,11 +17,13 @@ from murdock.config import (
     MURDOCK_GITHUB_APP_CLIENT_ID, MURDOCK_GITHUB_APP_CLIENT_SECRET,
     MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET, GITHUB_REPO
 )
+from murdock.job import FinishedJobModel, QueuedJobModel, RunningJobModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
 
 murdock = Murdock()
+security = HTTPBearer()
 app = FastAPI(
     debug=MURDOCK_LOG_LEVEL == "DEBUG",
     on_startup=[murdock.init],
@@ -129,9 +132,9 @@ async def queued_commit_cancel_handler():
 )
 async def queued_commit_cancel_handler(
     commit: str,
-    authorization: Optional[str]=Header(None, description="Github OAuth token")
+    authorization: HTTPAuthorizationCredentials = Security(security)
 ):
-    if (await _check_push_permissions(authorization)) is False:
+    if (await _check_push_permissions(authorization.credentials)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     job = await murdock.cancel_queued_job_with_commit(commit)
@@ -205,9 +208,9 @@ async def building_commit_stop_handler():
 )
 async def building_commit_stop_handler(
     commit: str,
-    authorization: Optional[str]=Header(None, description="Github OAuth token")
+    authorization: HTTPAuthorizationCredentials = Security(security)
 ):
-    if (await _check_push_permissions(authorization)) is False:
+    if (await _check_push_permissions(authorization.credentials)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     job = await murdock.stop_running_job(commit)
@@ -260,9 +263,9 @@ async def finished_job_restart_handler():
 )
 async def finished_job_restart_handler(
     job_id: str,
-    authorization: Optional[str]=Header(None, description="Github OAuth token")
+    authorization: HTTPAuthorizationCredentials = Security(security)
 ):
-    if (await _check_push_permissions(authorization)) is False:
+    if (await _check_push_permissions(authorization.credentials)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     job = await murdock.restart_job(job_id)
@@ -282,9 +285,9 @@ async def finished_job_restart_handler(
 )
 async def finished_job_delete_handler(
     before: str,
-    authorization: Optional[str]=Header(None, description="Github OAuth token")
+    authorization: HTTPAuthorizationCredentials = Security(security)
 ):
-    if (await _check_push_permissions(authorization)) is False:
+    if (await _check_push_permissions(authorization.credentials)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
     removed_jobs = await murdock.remove_finished_jobs(before)
