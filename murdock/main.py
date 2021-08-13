@@ -2,7 +2,7 @@ import hmac
 import hashlib
 import json
 
-from typing import Optional
+from typing import Optional, List
 
 import httpx
 
@@ -82,16 +82,6 @@ def _json_response(data):
     return response
 
 
-def _job_json_response(job):
-    return _json_response(
-        {
-            "prinfo": job.pr.dict(),
-            "since" : job.start_time,
-            "status": job.status,
-        }
-    )
-
-
 async def _check_push_permissions(token: str) -> bool:
     async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -111,6 +101,7 @@ async def _check_push_permissions(token: str) -> bool:
 
 @app.get(
     path="/api/jobs/queued",
+    response_model=List[QueuedJobModel],
     summary="Return the list of queued jobs"
 )
 async def queued_jobs_handler():
@@ -133,6 +124,7 @@ async def queued_commit_cancel_handler():
 
 @app.delete(
     path="/api/jobs/queued/{commit}",
+    response_model=QueuedJobModel,
     summary="Remove a job from the queue"
 )
 async def queued_commit_cancel_handler(
@@ -148,12 +140,13 @@ async def queued_commit_cancel_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _job_json_response(job)
+    return _json_response(job.queued_model())
 
 
 
 @app.get(
     path="/api/jobs/building",
+    response_model=List[RunningJobModel],
     summary="Return the list of building jobs"
 )
 async def building_jobs_handler():
@@ -162,6 +155,7 @@ async def building_jobs_handler():
 
 @app.put(
     path="/api/jobs/building/{commit}/status",
+    response_model=RunningJobModel,
     summary="Update the status of a building job"
 )
 async def building_commit_status_handler(request: Request, commit: str):
@@ -187,7 +181,7 @@ async def building_commit_status_handler(request: Request, commit: str):
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _job_json_response(job)
+    return _json_response(job.running_model())
 
 
 @app.options("/api/jobs/building/{commit}", include_in_schema=False)
@@ -206,6 +200,7 @@ async def building_commit_stop_handler():
 
 @app.delete(
     path="/api/jobs/building/{commit}",
+    response_model=RunningJobModel,
     summary="Stop a building job"
 )
 async def building_commit_stop_handler(
@@ -221,11 +216,12 @@ async def building_commit_stop_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _job_json_response(job)
+    return _json_response(job.running_model())
 
 
 @app.get(
     path="/api/jobs/finished",
+    response_model=List[FinishedJobModel],
     summary="Return the list of finished jobs sorted by end time, reversed"
 )
 async def finished_jobs_handler(
@@ -259,6 +255,7 @@ async def finished_job_restart_handler():
 
 @app.post(
     path="/api/jobs/finished/{job_id}",
+    response_model=QueuedJobModel,
     summary="Restart a finished job"
 )
 async def finished_job_restart_handler(
@@ -270,11 +267,17 @@ async def finished_job_restart_handler(
 
     job = await murdock.restart_job(job_id)
 
-    return _job_json_response(job)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail=f"Cannot restart job '{job_id}'"
+        )
+
+    return _json_response(job.queued_model())
 
 
 @app.delete(
     path="/api/jobs/finished",
+    response_model=List[FinishedJobModel],
     summary="Removed finished jobs older than 'before' date"
 )
 async def finished_job_delete_handler(
@@ -284,9 +287,13 @@ async def finished_job_delete_handler(
     if (await _check_push_permissions(authorization)) is False:
         raise HTTPException(status_code=403, detail="Missing push permissions")
 
-    jobs_removed = await murdock.remove_finished_jobs(before)
+    removed_jobs = await murdock.remove_finished_jobs(before)
+    if not removed_jobs:
+        raise HTTPException(
+            status_code=404, detail=f"Found no finished job to remove"
+        )
 
-    return _json_response({ "removed":jobs_removed })
+    return _json_response(removed_jobs)
 
 
 @app.get(

@@ -8,6 +8,7 @@ import time
 from typing import Optional
 from asyncio.subprocess import Process
 
+from bson.objectid import ObjectId
 from pydantic import BaseModel
 
 from murdock.config import (
@@ -31,6 +32,28 @@ class PullRequestInfo(BaseModel):
     base_full_name: str
     mergeable: bool
     labels: list[str]
+
+
+class FinishedJobModel(BaseModel):
+    id: str
+    since: float
+    result: str
+    output_url: str
+    runtime: float
+    status: dict
+    prinfo: PullRequestInfo
+
+
+class QueuedJobModel(BaseModel):
+    prinfo: PullRequestInfo
+    since: float
+    fasttracked: bool
+
+
+class RunningJobModel(BaseModel):
+    prinfo: PullRequestInfo
+    since: float
+    status: dict
 
 
 class MurdockJob:
@@ -94,6 +117,20 @@ class MurdockJob:
             runtime_format = "%Ss"
         return time.strftime(runtime_format, time.gmtime(self.runtime))
 
+    def queued_model(self):
+        return QueuedJobModel(
+            prinfo=self.pr,
+            since=self.start_time,
+            fasttracked=self.fasttracked
+        ).dict()
+
+    def running_model(self):
+        return RunningJobModel(
+            prinfo=self.pr,
+            since=self.start_time,
+            status=self.status
+        ).dict()
+
     @staticmethod
     def to_db_entry(job):
         return {
@@ -108,15 +145,9 @@ class MurdockJob:
 
     @staticmethod
     def from_db_entry(entry: dict):
-        return {
-            "id": str(entry["_id"]),
-            "since" : entry["since"],
-            "result" : entry["result"],
-            "output_url": entry["output_url"],
-            "runtime" : entry["runtime"],
-            "status": entry["status"],
-            "prinfo": entry["prinfo"],
-        }
+        return FinishedJobModel(
+            id=str(entry["_id"]), **entry
+        ).dict()
 
     @property
     def env(self):

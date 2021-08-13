@@ -15,7 +15,9 @@ from bson.objectid import ObjectId
 from fastapi import WebSocket
 
 from murdock.log import LOGGER
-from murdock.job import MurdockJob, PullRequestInfo
+from murdock.job import (
+    MurdockJob, PullRequestInfo
+)
 from murdock.config import (
     check_config, CONFIG_MSG,
     CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
@@ -264,7 +266,7 @@ class Murdock:
     async def stop_job(self, job: MurdockJob):
         await self.stop_running_job(job.pr.commit)
 
-    async def restart_job(self, job_id: str):
+    async def restart_job(self, job_id: str) -> MurdockJob:
         entry = await (
             self.db.job
             .find({"_id": ObjectId(job_id)})
@@ -276,8 +278,9 @@ class Murdock:
         job = MurdockJob(PullRequestInfo(**entry[0]["prinfo"]))
         LOGGER.info(f"Restarting job {job}")
         await self.schedule_job(job)
+        return job
 
-    async def schedule_job(self, job: MurdockJob):
+    async def schedule_job(self, job: MurdockJob) -> MurdockJob:
         if job in self.queued or job in self.running_jobs:
             LOGGER.debug(f"job {job} is already handled, ignoring")
             return
@@ -301,6 +304,7 @@ class Murdock:
             await self.add_job_to_queue(job, reload_jobs=False)
         else:
             await self.add_job_to_queue(job)
+        return job
 
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
@@ -395,11 +399,7 @@ class Murdock:
     def get_queued_jobs(self) -> list:
         queued = sorted(
             [
-                {
-                    "prinfo": job.pr.dict(),
-                    "since" : job.start_time,
-                    "fasttracked": job.fasttracked,
-                }
+                job.queued_model()
                 for job in self.queued if job.canceled is False
             ],
             reverse=True, key=lambda job: job["since"]
@@ -409,11 +409,7 @@ class Murdock:
     def get_running_jobs(self) -> list:
         return sorted(
             [
-                {
-                    "prinfo": job.pr.dict(),
-                    "since" : job.start_time,
-                    "status": job.status,
-                }
+                job.running_model()
                 for job in self.running_jobs if job is not None
             ], reverse=True, key=lambda job: job["since"]
         )
@@ -462,19 +458,19 @@ class Murdock:
         jobs_before = await self.db.job.count_documents({})
         query = {"since": {"$gte": date.timestamp()}}
         jobs_count = await self.db.job.count_documents(query)
-        jobs = await (
+        jobs_to_remove = await (
             self.db.job
             .find(query)
             .sort("since", -1)
             .to_list(length=jobs_count)
         )
-        for job_data in jobs:
+        for job_data in jobs_to_remove:
             MurdockJob.remove_dir(job_data["work_dir"])
         await self.db.job.delete_many(query)
         jobs_removed = jobs_before - (await self.db.job.count_documents({}))
         LOGGER.info(f"{jobs_removed} jobs removed (before {before})")
         await self.reload_jobs()
-        return jobs_removed
+        return [MurdockJob.from_db_entry(job) for job in jobs_to_remove]
 
 
     async def get_jobs(self, limit: int) -> dict:
