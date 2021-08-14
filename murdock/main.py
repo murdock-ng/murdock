@@ -105,7 +105,8 @@ async def _check_push_permissions(token: str) -> bool:
 @app.get(
     path="/api/jobs/queued",
     response_model=List[QueuedJobModel],
-    summary="Return the list of queued jobs"
+    summary="Return the list of queued jobs",
+    tags=["queued jobs"]
 )
 async def queued_jobs_handler():
     return _json_response(murdock.get_queued_jobs())
@@ -128,7 +129,8 @@ async def queued_commit_cancel_handler():
 @app.delete(
     path="/api/jobs/queued/{commit}",
     response_model=QueuedJobModel,
-    summary="Remove a job from the queue"
+    summary="Remove a job from the queue",
+    tags=["queued jobs"]
 )
 async def queued_commit_cancel_handler(
     commit: str,
@@ -150,7 +152,8 @@ async def queued_commit_cancel_handler(
 @app.get(
     path="/api/jobs/building",
     response_model=List[RunningJobModel],
-    summary="Return the list of building jobs"
+    summary="Return the list of building jobs",
+    tags=["building jobs"]
 )
 async def building_jobs_handler():
     return _json_response(murdock.get_running_jobs())
@@ -159,7 +162,8 @@ async def building_jobs_handler():
 @app.put(
     path="/api/jobs/building/{commit}/status",
     response_model=RunningJobModel,
-    summary="Update the status of a building job"
+    summary="Update the status of a building job",
+    tags=["building jobs"]
 )
 async def building_commit_status_handler(request: Request, commit: str):
     data = await request.json()
@@ -204,7 +208,8 @@ async def building_commit_stop_handler():
 @app.delete(
     path="/api/jobs/building/{commit}",
     response_model=RunningJobModel,
-    summary="Stop a building job"
+    summary="Stop a building job",
+    tags=["building jobs"]
 )
 async def building_commit_stop_handler(
     commit: str,
@@ -225,7 +230,8 @@ async def building_commit_stop_handler(
 @app.get(
     path="/api/jobs/finished",
     response_model=List[FinishedJobModel],
-    summary="Return the list of finished jobs sorted by end time, reversed"
+    summary="Return the list of finished jobs sorted by end time, reversed",
+    tags=["finished jobs"]
 )
 async def finished_jobs_handler(
         limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT,
@@ -259,7 +265,8 @@ async def finished_job_restart_handler():
 @app.post(
     path="/api/jobs/finished/{job_id}",
     response_model=QueuedJobModel,
-    summary="Restart a finished job"
+    summary="Restart a finished job",
+    tags=["finished jobs"]
 )
 async def finished_job_restart_handler(
     job_id: str,
@@ -281,7 +288,8 @@ async def finished_job_restart_handler(
 @app.delete(
     path="/api/jobs/finished",
     response_model=List[FinishedJobModel],
-    summary="Removed finished jobs older than 'before' date"
+    summary="Removed finished jobs older than 'before' date",
+    tags=["finished jobs"]
 )
 async def finished_job_delete_handler(
     before: str,
@@ -301,7 +309,9 @@ async def finished_job_delete_handler(
 
 @app.get(
     path="/api/jobs",
-    summary="Return the list of all jobs (queued, building, finished)")
+    summary="Return the list of all jobs (queued, building, finished)",
+    tags=["jobs"]
+)
 async def jobs_handler(
     limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
 ):
