@@ -292,7 +292,7 @@ class Murdock:
         ):
             LOGGER.debug(f"Re-queue job {job}")
             # Similar job is already queued => cancel it and queue the new one
-            self.cancel_queued_jobs_matching_pr(job.pr.number)
+            self.cancel_queued_job(job)
             await self.add_job_to_queue(job)
         elif (
             CI_CANCEL_ON_UPDATE and
