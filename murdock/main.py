@@ -12,6 +12,7 @@ from fastapi import (
 )
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from murdock.config import (
     MURDOCK_LOG_LEVEL, MURDOCK_USE_JOB_TOKEN,
@@ -32,6 +33,13 @@ app = FastAPI(
     description="This is the Murdock API",
     version="1.0.0",
     docs_url="/api", redoc_url=None,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -71,18 +79,7 @@ async def github_authenticate_handler(code: str):
             },
             headers={"Accept": "application/vnd.github.v3+json"}
         )
-    return _json_response({"token": response.json()["access_token"]})
-
-
-def _json_response(data):
-    response = JSONResponse(data)
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-        }
-    )
-    return response
+    return JSONResponse({"token": response.json()["access_token"]})
 
 
 async def _check_push_permissions(
@@ -116,21 +113,7 @@ async def _check_push_permissions(
     tags=["queued jobs"]
 )
 async def queued_jobs_handler():
-    return _json_response(murdock.get_queued_jobs())
-
-
-@app.options("/api/jobs/queued/{commit}", include_in_schema=False)
-async def queued_commit_cancel_handler():
-    response = JSONResponse({})
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-            "Access-Control-Allow-Methods" : "OPTIONS,DELETE",
-            "Access-Control-Allow-Headers" : "authorization,content-type",
-        }
-    )
-    return response
+    return JSONResponse(murdock.get_queued_jobs())
 
 
 @app.delete(
@@ -148,8 +131,7 @@ async def queued_commit_cancel_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _json_response(job.queued_model())
-
+    return JSONResponse(job.queued_model())
 
 
 @app.get(
@@ -159,7 +141,7 @@ async def queued_commit_cancel_handler(
     tags=["building jobs"]
 )
 async def building_jobs_handler():
-    return _json_response(murdock.get_running_jobs())
+    return JSONResponse(murdock.get_running_jobs())
 
 
 @app.put(
@@ -191,21 +173,7 @@ async def building_commit_status_handler(request: Request, commit: str):
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _json_response(job.running_model())
-
-
-@app.options("/api/jobs/building/{commit}", include_in_schema=False)
-async def building_commit_stop_handler():
-    response = JSONResponse({})
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-            "Access-Control-Allow-Methods" : "OPTIONS,DELETE",
-            "Access-Control-Allow-Headers" : "authorization,content-type",
-        }
-    )
-    return response
+    return JSONResponse(job.running_model())
 
 
 @app.delete(
@@ -224,7 +192,7 @@ async def building_commit_stop_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return _json_response(job.running_model())
+    return JSONResponse(job.running_model())
 
 
 @app.get(
@@ -245,21 +213,7 @@ async def finished_jobs_handler(
     data = await murdock.get_finished_jobs(
         limit, job_id, prnum, user, result, after, before
     )
-    return _json_response(data)
-
-
-@app.options("/api/jobs/finished/{job_id}", include_in_schema=False)
-async def finished_job_restart_handler():
-    response = JSONResponse({})
-    response.headers.update(
-        {
-            "Access-Control-Allow-Credentials" : "false",
-            "Access-Control-Allow-Origin" : "*",
-            "Access-Control-Allow-Methods" : "OPTIONS,POST",
-            "Access-Control-Allow-Headers" : "authorization,content-type",
-        }
-    )
-    return response
+    return JSONResponse(data)
 
 
 @app.post(
@@ -279,7 +233,7 @@ async def finished_job_restart_handler(
             status_code=404, detail=f"Cannot restart job '{job_id}'"
         )
 
-    return _json_response(job.queued_model())
+    return JSONResponse(job.queued_model())
 
 
 @app.delete(
@@ -299,7 +253,7 @@ async def finished_job_delete_handler(
             status_code=404, detail=f"Found no finished job to remove"
         )
 
-    return _json_response(removed_jobs)
+    return JSONResponse(removed_jobs)
 
 
 @app.get(
@@ -311,7 +265,7 @@ async def jobs_handler(
     limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
 ):
     data = await murdock.get_jobs(limit)
-    return _json_response(data)
+    return JSONResponse(data)
 
 
 @app.websocket("/ws/status")
