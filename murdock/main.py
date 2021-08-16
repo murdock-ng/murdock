@@ -1,7 +1,6 @@
 import hmac
 import hashlib
 import json
-import pprint
 
 from typing import Optional, List
 
@@ -22,7 +21,7 @@ from murdock.log import LOGGER
 
 
 LOGGER.debug(
-    f"CONFIG:\n{pprint.pformat(CONFIG.dict(), indent=4, sort_dicts=False)}"
+    f"CONFIG:\n{json.dumps(CONFIG.dict(), indent=4)}"
 )
 
 murdock = Murdock()
