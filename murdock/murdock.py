@@ -14,7 +14,8 @@ from bson.objectid import ObjectId
 from fastapi import WebSocket
 
 from murdock.log import LOGGER
-from murdock.job import MurdockJob, PullRequestInfo
+from murdock.job import MurdockJob
+from murdock.models import PullRequestInfo
 from murdock.config import CONFIG
 
 

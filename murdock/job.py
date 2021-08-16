@@ -6,54 +6,12 @@ import signal
 import time
 import uuid
 
-from typing import Optional, List
+from typing import Optional
 from asyncio.subprocess import Process
-
-from pydantic import BaseModel
 
 from murdock.config import CONFIG
 from murdock.log import LOGGER
-
-
-class PullRequestInfo(BaseModel):
-    title: str
-    number: int
-    merge_commit: str
-    branch: str
-    commit: str
-    user: str
-    url: str
-    base_repo: str
-    base_branch: str
-    base_commit: str
-    base_full_name: str
-    mergeable: bool
-    labels: list[str]
-
-
-class FinishedJobModel(BaseModel):
-    uid: str
-    since: float
-    result: str
-    output_url: str
-    runtime: float
-    status: dict
-    work_dir: str
-    prinfo: PullRequestInfo
-
-
-class JobModel(BaseModel):
-    uid: str
-    prinfo: PullRequestInfo
-    since: float
-    fasttracked: Optional[bool]
-    status: Optional[dict]
-
-
-class CategorizedJobsModel(BaseModel):
-    queued: List[JobModel]
-    building: List[JobModel]
-    finished: List[FinishedJobModel]
+from murdock.models import PullRequestInfo, JobModel, FinishedJobModel
 
 
 class MurdockJob:

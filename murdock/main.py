@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from murdock.config import CONFIG
-from murdock.job import FinishedJobModel, JobModel, CategorizedJobsModel
+from murdock.models import FinishedJobModel, JobModel, CategorizedJobsModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
