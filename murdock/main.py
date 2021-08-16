@@ -218,20 +218,20 @@ async def finished_jobs_handler(
 
 
 @app.post(
-    path="/api/jobs/finished/{job_id}",
+    path="/api/jobs/finished/{uid}",
     response_model=QueuedJobModel,
     summary="Restart a finished job",
     tags=["finished jobs"]
 )
 async def finished_job_restart_handler(
-    job_id: str,
+    uid: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    job = await murdock.restart_job(job_id)
+    job = await murdock.restart_job(uid)
 
     if job is None:
         raise HTTPException(
-            status_code=404, detail=f"Cannot restart job '{job_id}'"
+            status_code=404, detail=f"Cannot restart job '{uid}'"
         )
 
     return JSONResponse(job.queued_model())

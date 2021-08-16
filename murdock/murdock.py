@@ -255,14 +255,10 @@ class Murdock:
     async def stop_job(self, job: MurdockJob):
         await self.stop_running_job(job.pr.commit)
 
-    async def restart_job(self, job_id: str) -> MurdockJob:
-        entry = await (
-            self.db.job
-            .find({"_id": ObjectId(job_id)})
-            .to_list(length=1)
-        )
+    async def restart_job(self, uid: str) -> MurdockJob:
+        entry = await self.db.job.find({"uid": uid}).to_list(length=1)
         if not entry:
-            LOGGER.warning(f"Cannot find job matching id '{job_id}'")
+            LOGGER.warning(f"Cannot find job matching uid '{uid}'")
 
         job = MurdockJob(PullRequestInfo(**entry[0]["prinfo"]))
         LOGGER.info(f"Restarting job {job}")

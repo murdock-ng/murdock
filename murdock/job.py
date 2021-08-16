@@ -4,11 +4,11 @@ import secrets
 import shutil
 import signal
 import time
+import uuid
 
 from typing import Optional
 from asyncio.subprocess import Process
 
-from bson.objectid import ObjectId
 from pydantic import BaseModel
 
 from murdock.config import CONFIG
@@ -32,7 +32,7 @@ class PullRequestInfo(BaseModel):
 
 
 class FinishedJobModel(BaseModel):
-    id: str
+    uid: str
     since: float
     result: str
     output_url: str
@@ -42,12 +42,14 @@ class FinishedJobModel(BaseModel):
 
 
 class QueuedJobModel(BaseModel):
+    uid: str
     prinfo: PullRequestInfo
     since: float
     fasttracked: bool
 
 
 class RunningJobModel(BaseModel):
+    uid: str
     prinfo: PullRequestInfo
     since: float
     status: dict
@@ -56,6 +58,7 @@ class RunningJobModel(BaseModel):
 class MurdockJob:
 
     def __init__(self, pr: PullRequestInfo):
+        self.uid : str = uuid.uuid4().hex
         self.result : Optional[str] = None
         self.proc : Optional[Process] = None
         self.output : str = ""
@@ -120,6 +123,7 @@ class MurdockJob:
 
     def queued_model(self):
         return QueuedJobModel(
+            uid=self.uid,
             prinfo=self.pr,
             since=self.start_time,
             fasttracked=self.fasttracked
@@ -127,6 +131,7 @@ class MurdockJob:
 
     def running_model(self):
         return RunningJobModel(
+            uid=self.uid,
             prinfo=self.pr,
             since=self.start_time,
             status=self.status
@@ -135,6 +140,7 @@ class MurdockJob:
     @staticmethod
     def to_db_entry(job):
         return {
+            "uid": job.uid,
             "since" : job.start_time,
             "runtime": job.runtime,
             "result": job.result,
@@ -146,9 +152,7 @@ class MurdockJob:
 
     @staticmethod
     def from_db_entry(entry: dict):
-        return FinishedJobModel(
-            id=str(entry["_id"]), **entry
-        ).dict()
+        return FinishedJobModel(**entry).dict()
 
     @property
     def env(self):
