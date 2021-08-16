@@ -197,6 +197,7 @@ async def building_commit_stop_handler(
 @app.get(
     path="/api/jobs/finished",
     response_model=List[FinishedJobModel],
+    response_model_exclude={"work_dir"},
     summary="Return the list of finished jobs sorted by end time, reversed",
     tags=["finished jobs"]
 )
@@ -236,6 +237,7 @@ async def finished_job_restart_handler(
 @app.delete(
     path="/api/jobs/finished",
     response_model=List[FinishedJobModel],
+    response_model_exclude={"work_dir"},
     summary="Removed finished jobs older than 'before' date",
     tags=["finished jobs"]
 )

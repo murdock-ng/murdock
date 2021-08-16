@@ -38,6 +38,7 @@ class FinishedJobModel(BaseModel):
     output_url: str
     runtime: float
     status: dict
+    work_dir: str
     prinfo: PullRequestInfo
 
 
@@ -146,7 +147,9 @@ class MurdockJob:
 
     @staticmethod
     def from_db_entry(entry: dict):
-        return FinishedJobModel(**entry).dict()
+        job = FinishedJobModel(**entry).dict()
+        job.pop("work_dir")
+        return job
 
     @property
     def env(self):
