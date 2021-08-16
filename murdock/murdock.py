@@ -259,6 +259,7 @@ class Murdock:
         entry = await self.db.job.find({"uid": uid}).to_list(length=1)
         if not entry:
             LOGGER.warning(f"Cannot find job matching uid '{uid}'")
+            return
 
         job = MurdockJob(PullRequestInfo(**entry[0]["prinfo"]))
         LOGGER.info(f"Restarting job {job}")
