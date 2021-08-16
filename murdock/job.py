@@ -133,16 +133,16 @@ class MurdockJob:
 
     @staticmethod
     def to_db_entry(job):
-        return {
-            "uid": job.uid,
-            "since" : job.start_time,
-            "runtime": job.runtime,
-            "result": job.result,
-            "output_url": job.output_url,
-            "work_dir": job.work_dir,
-            "status": job.status,
-            "prinfo": job.pr.dict(),
-        }
+        return FinishedJobModel(
+            uid=job.uid,
+            since= job.start_time,
+            runtime=job.runtime,
+            result=job.result,
+            output_url=job.output_url,
+            work_dir=job.work_dir,
+            status=job.status,
+            prinfo=job.pr.dict(),
+        ).dict()
 
     @staticmethod
     def from_db_entry(entry: dict):
