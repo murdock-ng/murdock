@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from murdock.config import CONFIG
-from murdock.job import FinishedJobModel, JobModel
+from murdock.job import FinishedJobModel, JobModel, CategorizedJobsModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
@@ -256,6 +256,7 @@ async def finished_job_delete_handler(
 
 @app.get(
     path="/api/jobs",
+    response_model=CategorizedJobsModel,
     summary="Return the list of all jobs (queued, building, finished)",
     tags=["jobs"]
 )

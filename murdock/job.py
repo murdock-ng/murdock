@@ -6,7 +6,7 @@ import signal
 import time
 import uuid
 
-from typing import Optional
+from typing import Optional, List
 from asyncio.subprocess import Process
 
 from pydantic import BaseModel
@@ -48,6 +48,12 @@ class JobModel(BaseModel):
     since: float
     fasttracked: Optional[bool]
     status: Optional[dict]
+
+
+class CategorizedJobsModel(BaseModel):
+    queued: List[JobModel]
+    building: List[JobModel]
+    finished: List[FinishedJobModel]
 
 
 class MurdockJob:
