@@ -1,73 +1,81 @@
-import logging
 import os
 
-
-MURDOCK_BASE_URL = os.getenv("MURDOCK_BASE_URL", "https://ci.riot-os.org")
-MURDOCK_ROOT_DIR = os.getenv("MURDOCK_ROOT_DIR", "/var/lib/murdock-data")
-MURDOCK_SCRIPTS_DIR = os.getenv(
-    "MURDOCK_SCRIPTS_DIR", "/var/lib/murdock-scripts"
-)
-MURDOCK_USE_JOB_TOKEN = int(os.getenv("MURDOCK_USE_JOB_TOKEN", 0)) == 1
-MURDOCK_NUM_WORKERS = int(os.getenv("MURDOCK_NUM_WORKERS", 1))
-MURDOCK_LOG_LEVEL = logging.getLevelName(
-    os.getenv("MURDOCK_LOG_LEVEL", "DEBUG")
-)
-MURDOCK_DB_HOST = os.getenv("MURDOCK_DB_HOST", "localhost")
-MURDOCK_DB_PORT = int(os.getenv("MURDOCK_DB_PORT", 27017))
-MURDOCK_DB_NAME = os.getenv("MURDOCK_DB_NAME", "murdock")
-MURDOCK_MAX_FINISHED_LENGTH_DEFAULT = int(os.getenv(
-    "MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", 25
-))
-MURDOCK_GITHUB_APP_CLIENT_ID=os.getenv("MURDOCK_GITHUB_APP_CLIENT_ID")
-MURDOCK_GITHUB_APP_CLIENT_SECRET=os.getenv("MURDOCK_GITHUB_APP_CLIENT_SECRET")
-
-GITHUB_REPO = os.getenv("GITHUB_REPO")
-GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
-GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN")
-
-CI_CANCEL_ON_UPDATE = int(os.getenv("CI_CANCEL_ON_UPDATE", 1)) == 1
-CI_READY_LABEL = os.getenv("CI_READY_LABEL", "CI: ready for build")
-CI_FASTTRACK_LABELS = os.getenv(
-    "CI_FASTTRACK_LABELS", "CI: skip compile test;Process: release backport"
-).split(";")
-
-CONFIG_MSG = f"""
-Murdock Settings:
-\tMURDOCK_BASE_URL........ .........: {MURDOCK_BASE_URL}
-\tMURDOCK_ROOT_DIR..................: {MURDOCK_ROOT_DIR}
-\tMURDOCK_SCRIPTS_DIR...............: {MURDOCK_SCRIPTS_DIR}
-\tMURDOCK_USE_JOB_TOKEN.............: {MURDOCK_USE_JOB_TOKEN}
-\tMURDOCK_NUM_WORKERS...............: {MURDOCK_NUM_WORKERS}
-\tMURDOCK_LOG_LEVEL.................: {MURDOCK_LOG_LEVEL}
-\tMURDOCK_GITHUB_APP_CLIENT_ID......: {MURDOCK_GITHUB_APP_CLIENT_ID}
-\tMURDOCK_GITHUB_APP_CLIENT_SECRET..: {MURDOCK_GITHUB_APP_CLIENT_SECRET}
-
-Github Settings:
-\tGITHUB_REPO.......................: {GITHUB_REPO}
-\tGITHUB_WEBHOOK_SECRET.............: {GITHUB_WEBHOOK_SECRET}
-\tGITHUB_API_TOKEN..................: {GITHUB_API_TOKEN}
-
-CI Settings:
-\tCI_CANCEL_ON_UPDATE...............: {CI_CANCEL_ON_UPDATE}
-\tCI_READY_LABEL....................: {CI_READY_LABEL}
-\tCI_FASTTRACK_LABELS...............: {CI_FASTTRACK_LABELS}
-"""
+from typing import List
+from pydantic import BaseSettings, Field, validator
 
 
-def check_config():
-    msg = ""
-    if not os.path.exists(MURDOCK_ROOT_DIR):
-        msg = "'MURDOCK_ROOT_DIR' doesn't exists"
-    if not os.path.exists(MURDOCK_SCRIPTS_DIR):
-        msg = "'MURDOCK_SCRIPTS_DIR' doesn't exists"
-    if not MURDOCK_GITHUB_APP_CLIENT_ID:
-        msg = "'MURDOCK_GITHUB_APP_CLIENT_ID' is not set"
-    if not MURDOCK_GITHUB_APP_CLIENT_SECRET:
-        msg = "'MURDOCK_GITHUB_APP_CLIENT_SECRET' is not set"
-    if not GITHUB_REPO:
-        msg = "'GITHUB_REPO' is not set"
-    if not GITHUB_WEBHOOK_SECRET:
-        msg = "'GITHUB_WEBHOOK_SECRET' is not set"
-    if not GITHUB_API_TOKEN:
-        msg = "'GITHUB_API_TOKEN' is not set"
-    return msg
+class Settings(BaseSettings):
+    murdock_base_url: str = Field(
+        env="MURDOCK_BASE_URL", default="https://ci.riot-os.org"
+    )
+    murdock_root_dir: str = Field(
+        env="MURDOCK_ROOT_DIR", default="/var/lib/murdock-data"
+    )
+    murdock_scripts_dir: str = Field(
+        env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
+    )
+    murdock_use_job_token: bool = Field(
+        env="MURDOCK_USE_JOB_TOKEN", default=False
+    )
+    murdock_num_workers: int = Field(
+        env="MURDOCK_NUM_WORKERS", default=1
+    )
+    murdock_log_level: str = Field(
+        env="MURDOCK_LOG_LEVEL", default="DEBUG"
+    )
+    murdock_db_host: str = Field(
+        env="MURDOCK_DB_HOST", default="localhost"
+    )
+    murdock_db_port: int = Field(
+        env="MURDOCK_DB_PORT", default=27017
+    )
+    murdock_db_name: str = Field(
+        env="MURDOCK_DB_NAME", default="murdock"
+    )
+    murdock_max_finished_length_default: int = Field(
+        env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
+    )
+    murdock_github_app_client_id: str = Field(
+        env="MURDOCK_GITHUB_APP_CLIENT_ID"
+    )
+    murdock_github_app_client_secret: str = Field(
+        env="MURDOCK_GITHUB_APP_CLIENT_SECRET"
+    )
+    github_repo: str = Field(
+        env="GITHUB_REPO"
+    )
+    github_webhook_secret: str = Field(
+        env="GITHUB_WEBHOOK_SECRET"
+    )
+    github_api_token: str = Field(
+        env="GITHUB_API_TOKEN"
+    )
+    ci_cancel_on_update: bool = Field(
+        env="CI_CANCEL_ON_UPDATE", default=True
+    )
+    ci_ready_label: str = Field(
+        env="CI_READY_LABEL", default="CI: ready for build"
+    )
+    ci_fasttrack_labels: List[str] = Field(
+        env="CI_FASTTRACK_LABELS",
+        default=["CI: skip compile test", "Process: release backport"]
+    )
+
+    @validator("murdock_root_dir")
+    def murdock_root_dir_exists(cls, path):
+        if not os.path.exists(path):
+            raise ValueError(
+                f"'MURDOCK_ROOT_DIR' doesn't exist ({path})"
+            )
+        return path
+
+    @validator("murdock_scripts_dir")
+    def murdock_scripts_dir_exists(cls, path):
+        if not os.path.exists(path):
+            raise ValueError(
+                f"'MURDOCK_SCRIPTS_DIR' doesn't exist ({path})"
+            )
+        return path
+
+
+CONFIG = Settings()

@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import json
+import pprint
 
 from typing import Optional, List
 
@@ -14,19 +15,19 @@ from fastapi.security.api_key import APIKeyHeader, APIKey
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from murdock.config import (
-    MURDOCK_LOG_LEVEL, MURDOCK_USE_JOB_TOKEN,
-    MURDOCK_GITHUB_APP_CLIENT_ID, MURDOCK_GITHUB_APP_CLIENT_SECRET,
-    MURDOCK_MAX_FINISHED_LENGTH_DEFAULT, GITHUB_WEBHOOK_SECRET, GITHUB_REPO
-)
+from murdock.config import CONFIG
 from murdock.job import FinishedJobModel, QueuedJobModel, RunningJobModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
 
+LOGGER.debug(
+    f"CONFIG:\n{pprint.pformat(CONFIG.dict(), indent=4, sort_dicts=False)}"
+)
+
 murdock = Murdock()
 app = FastAPI(
-    debug=MURDOCK_LOG_LEVEL == "DEBUG",
+    debug=CONFIG.murdock_log_level == "DEBUG",
     on_startup=[murdock.init],
     on_shutdown=[murdock.shutdown],
     title="Murdock API",
@@ -47,7 +48,7 @@ app.add_middleware(
 async def github_webhook_handler(request: Request):
     headers = request.headers
     body = await request.body()
-    secret = bytes(GITHUB_WEBHOOK_SECRET, "utf-8")
+    secret = bytes(CONFIG.github_webhook_secret, "utf-8")
     expected_signature = hmac.new(
         key=secret,
         msg=body,
@@ -73,8 +74,8 @@ async def github_authenticate_handler(code: str):
         response = await client.post(
             "https://github.com/login/oauth/access_token",
             data={
-                "client_id": MURDOCK_GITHUB_APP_CLIENT_ID,
-                "client_secret": MURDOCK_GITHUB_APP_CLIENT_SECRET,
+                "client_id": CONFIG.murdock_github_app_client_id,
+                "client_secret": CONFIG.murdock_github_app_client_secret,
                 "code": code,
             },
             headers={"Accept": "application/vnd.github.v3+json"}
@@ -91,7 +92,7 @@ async def _check_push_permissions(
 ):
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api.github.com/repos/{GITHUB_REPO}",
+            f"https://api.github.com/repos/{CONFIG.github_repo}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {token}"
@@ -154,7 +155,7 @@ async def building_commit_status_handler(request: Request, commit: str):
     data = await request.json()
 
     msg = ""
-    if MURDOCK_USE_JOB_TOKEN:
+    if CONFIG.murdock_use_job_token:
         job = murdock.job_running(commit)
         if job is None:
             msg = f"No job running for commit {commit}"
@@ -202,7 +203,7 @@ async def building_commit_stop_handler(
     tags=["finished jobs"]
 )
 async def finished_jobs_handler(
-        limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT,
+        limit: Optional[int] = CONFIG.murdock_max_finished_length_default,
         job_id: Optional[str] = None,
         prnum: Optional[int] = None,
         user: Optional[str] = None,
@@ -262,7 +263,7 @@ async def finished_job_delete_handler(
     tags=["jobs"]
 )
 async def jobs_handler(
-    limit: Optional[int] = MURDOCK_MAX_FINISHED_LENGTH_DEFAULT
+    limit: Optional[int] = CONFIG.murdock_max_finished_length_default
 ):
     data = await murdock.get_jobs(limit)
     return JSONResponse(data)

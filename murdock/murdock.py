@@ -1,11 +1,10 @@
 import asyncio
 import json
-import sys
 import time
 
 from datetime import datetime
 from datetime import time as dtime
-from typing import Optional
+from typing import Optional, List
 
 import motor.motor_asyncio as aiomotor
 
@@ -15,40 +14,30 @@ from bson.objectid import ObjectId
 from fastapi import WebSocket
 
 from murdock.log import LOGGER
-from murdock.job import (
-    MurdockJob, PullRequestInfo
-)
-from murdock.config import (
-    check_config, CONFIG_MSG,
-    CI_READY_LABEL, CI_CANCEL_ON_UPDATE,
-    GITHUB_API_TOKEN, GITHUB_REPO,
-    MURDOCK_BASE_URL, MURDOCK_NUM_WORKERS,
-    MURDOCK_DB_HOST, MURDOCK_DB_PORT, MURDOCK_DB_NAME
-)
+from murdock.job import MurdockJob, PullRequestInfo
+from murdock.config import CONFIG
+
 
 ALLOWED_ACTIONS = [
     "labeled", "unlabeled", "synchronize", "created",
     "closed", "opened", "reopened",
 ]
 
+
 class Murdock:
 
     def __init__(self):
-        self.clients : list[WebSocket] = []
-        self.queued : list[MurdockJob] = []
-        self.running_jobs : list[MurdockJob] = [None] * MURDOCK_NUM_WORKERS
+        self.clients : List[WebSocket] = []
+        self.queued : List[MurdockJob] = []
+        self.num_workers = CONFIG.murdock_num_workers
+        self.running_jobs : List[MurdockJob] = [None] * self.num_workers
         self.queue : asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue : asyncio.Queue = asyncio.Queue()
         self.db = None
 
     async def init(self):
-        LOGGER.debug(CONFIG_MSG)
-        check_msg = check_config()
-        if check_msg:
-            LOGGER.error(f"Error: {check_msg}")
-            sys.exit(1)
         await self.init_db()
-        for index in range(MURDOCK_NUM_WORKERS):
+        for index in range(self.num_workers):
             asyncio.create_task(
                 self.job_processing_task(), name=f"MurdockWorker_{index}"
         )
@@ -57,11 +46,11 @@ class Murdock:
         LOGGER.info("Initializing database connection")
         loop = asyncio.get_event_loop()
         conn = aiomotor.AsyncIOMotorClient(
-            f"mongodb://{MURDOCK_DB_HOST}:{MURDOCK_DB_PORT}",
+            f"mongodb://{CONFIG.murdock_db_host}:{CONFIG.murdock_db_port}",
             maxPoolSize=5,
             io_loop=loop
         )
-        self.db = conn[MURDOCK_DB_NAME]
+        self.db = conn[CONFIG.murdock_db_name]
 
     async def shutdown(self):
         LOGGER.info("Shutting down Murdock")
@@ -116,7 +105,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has started",
-                "target_url": MURDOCK_BASE_URL,
+                "target_url": CONFIG.murdock_base_url,
             }
         )
         await self.reload_jobs()
@@ -159,7 +148,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has been queued",
-                "target_url": MURDOCK_BASE_URL,
+                "target_url": CONFIG.murdock_base_url,
             }
         )
         if reload_jobs is True:
@@ -184,7 +173,7 @@ class Murdock:
                 status = {
                     "state":"pending",
                     "context": "Murdock",
-                    "target_url": MURDOCK_BASE_URL,
+                    "target_url": CONFIG.murdock_base_url,
                     "description": "Canceled",
                 }
                 await self.set_pull_request_status(commit, status)
@@ -234,7 +223,7 @@ class Murdock:
             status = {
                 "state":"pending",
                 "context": "Murdock",
-                "target_url": MURDOCK_BASE_URL,
+                "target_url": CONFIG.murdock_base_url,
             }
             if description is not None:
                 status.update({
@@ -257,7 +246,7 @@ class Murdock:
                 status = {
                     "state":"pending",
                     "context": "Murdock",
-                    "target_url": MURDOCK_BASE_URL,
+                    "target_url": CONFIG.murdock_base_url,
                     "description": "Stopped",
                 }
                 await self.set_pull_request_status(commit, status)
@@ -287,7 +276,7 @@ class Murdock:
 
         LOGGER.info(f"Scheduling new job {job}")
         if  (
-            CI_CANCEL_ON_UPDATE and
+            CONFIG.ci_cancel_on_update and
             self.job_matching_pr_is_queued(job.pr.number)
         ):
             LOGGER.debug(f"Re-queue job {job}")
@@ -295,7 +284,7 @@ class Murdock:
             self.cancel_queued_job(job)
             await self.add_job_to_queue(job)
         elif (
-            CI_CANCEL_ON_UPDATE and
+            CONFIG.ci_cancel_on_update and
             self.job_matching_pr_is_running(job.pr.number)
         ):
             # Similar job is already running => stop it and queue the new one
@@ -343,22 +332,22 @@ class Murdock:
 
         if (
             action == "labeled" and
-            event["label"]["name"] == CI_READY_LABEL and
-            CI_READY_LABEL in pull_request.labels and
+            event["label"]["name"] == CONFIG.ci_ready_label and
+            CONFIG.ci_ready_label in pull_request.labels and
             (job in self.queued or job in self.running_jobs)
         ):
             LOGGER.debug(f"job {job} is already handled, ignoring")
             return
 
-        if CI_READY_LABEL not in pull_request.labels:
-            LOGGER.debug(f"'{CI_READY_LABEL}' label not set")
+        if CONFIG.ci_ready_label not in pull_request.labels:
+            LOGGER.debug(f"'{CONFIG.ci_ready_label}' label not set")
             if (
                 self.job_matching_pr_is_queued(job.pr.number) or
                 self.job_matching_pr_is_running(job.pr.number)
             ):
                 await self.disable_jobs_matching_pr(
                     job.pr.number,
-                    description=f"\"{CI_READY_LABEL}\" label not set",
+                    description=f"\"{CONFIG.ci_ready_label}\" label not set",
                 )
             return
 
@@ -370,10 +359,10 @@ class Murdock:
         )
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://api.github.com/repos/{GITHUB_REPO}/statuses/{commit}",
+                f"https://api.github.com/repos/{CONFIG.github_repo}/statuses/{commit}",
                 headers={
                     "Accept": "application/vnd.github.v3+json",
-                    "Authorization": f"token {GITHUB_API_TOKEN}"
+                    "Authorization": f"token {CONFIG.github_api_token}"
                 }
                 , data=json.dumps(status)
             )
