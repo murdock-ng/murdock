@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from murdock.config import CONFIG
-from murdock.job import FinishedJobModel, QueuedJobModel, RunningJobModel
+from murdock.job import FinishedJobModel, JobModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
@@ -109,7 +109,8 @@ async def _check_push_permissions(
 
 @app.get(
     path="/api/jobs/queued",
-    response_model=List[QueuedJobModel],
+    response_model=List[JobModel],
+    response_model_exclude_unset=True,
     summary="Return the list of queued jobs",
     tags=["queued jobs"]
 )
@@ -119,7 +120,8 @@ async def queued_jobs_handler():
 
 @app.delete(
     path="/api/jobs/queued/{commit}",
-    response_model=QueuedJobModel,
+    response_model=JobModel,
+    response_model_exclude_unset=True,
     summary="Remove a job from the queue",
     tags=["queued jobs"]
 )
@@ -137,7 +139,8 @@ async def queued_commit_cancel_handler(
 
 @app.get(
     path="/api/jobs/building",
-    response_model=List[RunningJobModel],
+    response_model=List[JobModel],
+    response_model_exclude_unset=True,
     summary="Return the list of building jobs",
     tags=["building jobs"]
 )
@@ -147,7 +150,8 @@ async def building_jobs_handler():
 
 @app.put(
     path="/api/jobs/building/{commit}/status",
-    response_model=RunningJobModel,
+    response_model=JobModel,
+    response_model_exclude_unset=True,
     summary="Update the status of a building job",
     tags=["building jobs"]
 )
@@ -179,7 +183,8 @@ async def building_commit_status_handler(request: Request, commit: str):
 
 @app.delete(
     path="/api/jobs/building/{commit}",
-    response_model=RunningJobModel,
+    response_model=JobModel,
+    response_model_exclude_unset=True,
     summary="Stop a building job",
     tags=["building jobs"]
 )
@@ -219,7 +224,8 @@ async def finished_jobs_handler(
 
 @app.post(
     path="/api/jobs/finished/{uid}",
-    response_model=QueuedJobModel,
+    response_model=JobModel,
+    response_model_exclude_unset=True,
     summary="Restart a finished job",
     tags=["finished jobs"]
 )

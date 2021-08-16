@@ -41,18 +41,12 @@ class FinishedJobModel(BaseModel):
     prinfo: PullRequestInfo
 
 
-class QueuedJobModel(BaseModel):
+class JobModel(BaseModel):
     uid: str
     prinfo: PullRequestInfo
     since: float
-    fasttracked: bool
-
-
-class RunningJobModel(BaseModel):
-    uid: str
-    prinfo: PullRequestInfo
-    since: float
-    status: dict
+    fasttracked: Optional[bool]
+    status: Optional[dict]
 
 
 class MurdockJob:
@@ -122,7 +116,7 @@ class MurdockJob:
         return time.strftime(runtime_format, time.gmtime(self.runtime))
 
     def queued_model(self):
-        return QueuedJobModel(
+        return JobModel(
             uid=self.uid,
             prinfo=self.pr,
             since=self.start_time,
@@ -130,7 +124,7 @@ class MurdockJob:
         ).dict()
 
     def running_model(self):
-        return RunningJobModel(
+        return JobModel(
             uid=self.uid,
             prinfo=self.pr,
             since=self.start_time,
