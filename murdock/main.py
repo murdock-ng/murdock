@@ -47,24 +47,22 @@ app.add_middleware(
 @app.post("/github/webhook", include_in_schema=False)
 async def github_webhook_handler(request: Request):
     headers = request.headers
-    body = await request.body()
-    secret = bytes(CONFIG.github_webhook_secret, "utf-8")
     expected_signature = hmac.new(
-        key=secret,
-        msg=body,
+        key=bytes(CONFIG.github_webhook_secret, "utf-8"),
+        msg=(body := await request.body()),
         digestmod=hashlib.sha256
     ).hexdigest()
     gh_signature = headers["X-Hub-Signature-256"].split('sha256=')[-1].strip()
     if not hmac.compare_digest(gh_signature, expected_signature):
-        msg = "Invalid webhook token"
-        LOGGER.warning(msg)
+        LOGGER.warning(msg := "Invalid webhook token")
         return HTTPException(status_code=400, detail=msg)
 
     if request.headers.get("X-Github-Event") == "pull_request":
         LOGGER.info("Handle pull request event")
         event_data = json.loads(body.decode())
-        ret = await murdock.handle_pull_request_event(event_data)
-        if ret is not None:
+        if (
+            ret := await murdock.handle_pull_request_event(event_data)
+        ) is not None:
             raise HTTPException(status_code=400, detail=ret)
 
 
@@ -128,8 +126,7 @@ async def queued_jobs_handler():
 async def queued_commit_cancel_handler(
     commit: str, _: APIKey = Depends(_check_push_permissions)
 ):
-    job = await murdock.cancel_queued_job_with_commit(commit)
-    if job is None:
+    if (job := await murdock.cancel_queued_job_with_commit(commit)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
@@ -156,24 +153,21 @@ async def building_jobs_handler():
     tags=["building jobs"]
 )
 async def building_commit_status_handler(request: Request, commit: str):
-    data = await request.json()
-
-    msg = ""
     if CONFIG.murdock_use_job_token:
-        job = murdock.job_running(commit)
-        if job is None:
+        msg = ""
+        if (job := murdock.job_running(commit)) is None:
             msg = f"No job running for commit {commit}"
         if "Authorization" not in request.headers:
             msg = "Job token is missing"
         if request.headers["Authorization"] != job.token:
             msg = "Invalid API token"
 
-    if msg:
-        LOGGER.warning(f"Invalid request to control_handler: {msg}")
-        raise HTTPException(status_code=400, detail=msg)
+        if msg:
+            LOGGER.warning(f"Invalid request to control_handler: {msg}")
+            raise HTTPException(status_code=400, detail=msg)
 
-    job = await murdock.handle_commit_status_data(commit, data)
-    if job is None:
+    data = await request.json()
+    if (job := await murdock.handle_commit_status_data(commit, data)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
@@ -192,8 +186,7 @@ async def building_commit_stop_handler(
     commit: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    job = await murdock.stop_running_job(commit)
-    if job is None:
+    if (job := await murdock.stop_running_job(commit)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
@@ -216,10 +209,9 @@ async def finished_jobs_handler(
         after: Optional[str] = None,
         before: Optional[str] = None,
 ):
-    data = await murdock.get_finished_jobs(
+    return JSONResponse(await murdock.get_finished_jobs(
         limit, job_id, prnum, user, result, after, before
-    )
-    return JSONResponse(data)
+    ))
 
 
 @app.post(
@@ -233,9 +225,7 @@ async def finished_job_restart_handler(
     uid: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    job = await murdock.restart_job(uid)
-
-    if job is None:
+    if (job := await murdock.restart_job(uid)) is None:
         raise HTTPException(
             status_code=404, detail=f"Cannot restart job '{uid}'"
         )
@@ -254,13 +244,12 @@ async def finished_job_delete_handler(
     _: APIKey = Depends(_check_push_permissions)
 ):
 
-    removed_jobs = await murdock.remove_finished_jobs(before)
-    if not removed_jobs:
+    if not (jobs := await murdock.remove_finished_jobs(before)):
         raise HTTPException(
             status_code=404, detail=f"Found no finished job to remove"
         )
 
-    return JSONResponse(removed_jobs)
+    return JSONResponse(jobs)
 
 
 @app.get(
@@ -271,8 +260,7 @@ async def finished_job_delete_handler(
 async def jobs_handler(
     limit: Optional[int] = CONFIG.murdock_max_finished_length_default
 ):
-    data = await murdock.get_jobs(limit)
-    return JSONResponse(data)
+    return JSONResponse(await murdock.get_jobs(limit))
 
 
 @app.websocket("/ws/status")
