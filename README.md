@@ -71,3 +71,20 @@ $ uvicorn murdock.main:app --reload
 
 You can specify environment variables to the command line (the `GITHUB_*`
 vars are required). Check the [default config](murdock/config.py).
+
+# Testing
+
+Unittests are available and performed using [pytest](https://pytest.org). The
+full test suite can be launched using [Tox](https://tox.readthedocs.io):
+
+Install Tox:
+
+```
+$ python 3 -m pip install tox
+```
+
+Run the tests:
+
+```
+$ tox
+```
