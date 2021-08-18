@@ -51,18 +51,22 @@ async def github_webhook_handler(request: Request):
         msg=(body := await request.body()),
         digestmod=hashlib.sha256
     ).hexdigest()
-    gh_signature = headers["X-Hub-Signature-256"].split('sha256=')[-1].strip()
+    gh_signature = headers.get(
+        "X-Hub-Signature-256"
+    ).split('sha256=')[-1].strip()
     if not hmac.compare_digest(gh_signature, expected_signature):
-        LOGGER.warning(msg := "Invalid webhook token")
-        return HTTPException(status_code=400, detail=msg)
+        LOGGER.warning(msg := "Invalid event signature")
+        raise HTTPException(status_code=400, detail=msg)
 
-    if request.headers.get("X-Github-Event") == "pull_request":
-        LOGGER.info("Handle pull request event")
-        event_data = json.loads(body.decode())
-        if (
-            ret := await murdock.handle_pull_request_event(event_data)
-        ) is not None:
-            raise HTTPException(status_code=400, detail=ret)
+    if headers.get("X-Github-Event") != "pull_request":
+        raise HTTPException(status_code=400, detail="Unsupported event")
+
+    LOGGER.info("Handle pull request event")
+    event_data = json.loads(body.decode())
+    if (
+        ret := await murdock.handle_pull_request_event(event_data)
+    ) is not None:
+        raise HTTPException(status_code=400, detail=ret)
 
 
 @app.get("/github/authenticate/{code}", include_in_schema=False)
@@ -156,10 +160,13 @@ async def building_commit_status_handler(request: Request, commit: str):
         msg = ""
         if (job := murdock.job_running(commit)) is None:
             msg = f"No job running for commit {commit}"
-        if "Authorization" not in request.headers:
+        elif "Authorization" not in request.headers:
             msg = "Job token is missing"
-        if request.headers["Authorization"] != job.token:
-            msg = "Invalid API token"
+        elif (
+            "Authorization" in request.headers and
+            request.headers["Authorization"] != job.token
+        ):
+            msg = "Invalid Job token"
 
         if msg:
             LOGGER.warning(f"Invalid request to control_handler: {msg}")
@@ -244,7 +251,6 @@ async def finished_job_delete_handler(
     before: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-
     if not (jobs := await murdock.remove_finished_jobs(before)):
         raise HTTPException(
             status_code=404, detail=f"Found no finished job to remove"
