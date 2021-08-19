@@ -10,9 +10,9 @@ from httpx import Response
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from murdock.main import app, murdock, _check_push_permissions
-from murdock.job import MurdockJob
-from murdock.models import (
+from ..main import app, _check_push_permissions
+from ..job import MurdockJob
+from ..models import (
     CategorizedJobsModel, FinishedJobModel, JobModel, PullRequestInfo
 )
 
