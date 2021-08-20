@@ -156,6 +156,11 @@ class Murdock:
         if reload_jobs is True:
             await self.reload_jobs()
 
+    def find_queued_job_matching_commit(self, commit):
+        for queued_job in self.queued:
+            if queued_job.pr.commit == commit:
+                return queued_job
+
     def job_matching_pr_is_queued(self, prnum: int):
         return any(
             [(queued.pr.number ==  prnum) for queued in self.queued]
@@ -213,15 +218,16 @@ class Murdock:
     async def disable_jobs_matching_pr(self, prnum: int, description=None):
         disabled_jobs = []
         for job in self.running_jobs:
-            if self.job_matching_pr_is_running(prnum):
+            if job.pr.number == prnum:
                 await self.stop_job(job)
                 disabled_jobs.append(job)
         for job in self.queued:
-            if self.job_matching_pr_is_queued(prnum):
+            if job.pr.number == prnum:
                 self.cancel_queued_job(job)
                 disabled_jobs.append(job)
         LOGGER.debug(f"All jobs matching {job} disabled")
         for job in disabled_jobs:
+            self.queued.remove(job)
             status = {
                 "state":"pending",
                 "context": "Murdock",
@@ -313,6 +319,7 @@ class Murdock:
         action = event["action"]
         if action not in ALLOWED_ACTIONS:
             return f"Unsupported action '{action}'"
+        LOGGER.info(f"Handle pull request event '{action}'")
         pr_data = event["pull_request"]
         commit_message = (
             await self.fetch_commit_message(pr_data["head"]["sha"])
@@ -363,14 +370,25 @@ class Murdock:
             )
             return
 
-        if (
-            action == "labeled" and
-            event["label"]["name"] == CONFIG.ci_ready_label and
-            CONFIG.ci_ready_label in pull_request.labels and
-            (job in self.queued or job in self.running_jobs)
-        ):
-            LOGGER.debug(f"job {job} is already handled, ignoring")
-            return
+        if action == "labeled":
+            label = event["label"]["name"]
+            if CONFIG.ci_ready_label not in pull_request.labels:
+                return
+            elif (
+                label == CONFIG.ci_ready_label and
+                (job in self.queued or job in self.running_jobs)
+            ):
+                LOGGER.debug(f"job {job} is already handled, ignoring")
+                return
+            elif (
+                label != CONFIG.ci_ready_label and
+                (queued_job := self.find_queued_job_matching_commit(job.pr.commit)) is not None
+            ):
+                LOGGER.debug(
+                    f"Updating queued job {queued_job} with new label '{label}'"
+                )
+                queued_job.pr.labels.append(label)
+                return
 
         if CONFIG.ci_ready_label not in pull_request.labels:
             LOGGER.debug(f"'{CONFIG.ci_ready_label}' label not set")
@@ -383,6 +401,16 @@ class Murdock:
                     description=f"\"{CONFIG.ci_ready_label}\" label not set",
                 )
             return
+
+        if (
+            action == "unlabeled" and
+            (queued_job := self.find_queued_job_matching_commit(job.pr.commit)) is not None
+        ):
+            label = event["label"]["name"]
+            LOGGER.debug(
+                f"Removing '{label}' from queued job {queued_job}"
+            )
+            queued_job.pr.labels.remove(label)
 
         await self.schedule_job(job)
 

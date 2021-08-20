@@ -61,7 +61,6 @@ async def github_webhook_handler(request: Request):
     if headers.get("X-Github-Event") != "pull_request":
         raise HTTPException(status_code=400, detail="Unsupported event")
 
-    LOGGER.info("Handle pull request event")
     event_data = json.loads(body.decode())
     if (
         ret := await murdock.handle_pull_request_event(event_data)
