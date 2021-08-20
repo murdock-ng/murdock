@@ -60,6 +60,10 @@ class Settings(BaseSettings):
         env="CI_FASTTRACK_LABELS",
         default=["CI: skip compile test", "Process: release backport"]
     )
+    ci_skip_keywords: List[str] = Field(
+        env="CI_SKIP_KEYWORDS",
+        default=["ci: skip", "ci: no", "ci: ignore"]
+    )
 
     @validator("murdock_root_dir")
     def murdock_root_dir_exists(cls, path):

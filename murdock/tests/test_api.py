@@ -25,6 +25,7 @@ prinfo = PullRequestInfo(
     merge_commit="test",
     branch="test",
     commit="test",
+    commit_message="test message",
     user="test",
     url="test",
     base_repo="test",

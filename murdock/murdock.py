@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 
 from datetime import datetime
@@ -293,6 +294,19 @@ class Murdock:
             await self.add_job_to_queue(job)
         return job
 
+    async def fetch_commit_message(self, commit: str) -> str:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.github.com/repos/{CONFIG.github_repo}"
+                f"/commits/{commit}",
+                headers={
+                    "Accept": "application/vnd.github.v3+json"
+                }
+            )
+            if response.status_code != 200:
+                return ""
+            return response.json()["commit"]["message"]
+
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
             return "Unsupported event"
@@ -300,12 +314,16 @@ class Murdock:
         if action not in ALLOWED_ACTIONS:
             return f"Unsupported action '{action}'"
         pr_data = event["pull_request"]
+        commit_message = (
+            await self.fetch_commit_message(pr_data["head"]["sha"])
+        )
         pull_request = PullRequestInfo(
             title=pr_data["title"],
             number=pr_data["number"],
             merge_commit=pr_data["merge_commit_sha"],
             branch=pr_data["head"]["ref"],
             commit=pr_data["head"]["sha"],
+            commit_message=commit_message,
             user=pr_data["head"]["user"]["login"],
             url=pr_data["_links"]["html"]["href"],
             base_repo=pr_data["base"]["repo"]["clone_url"],
@@ -326,6 +344,23 @@ class Murdock:
                 self.job_matching_pr_is_running(job.pr.number)
             ):
                 await self.disable_jobs_matching_pr(job.pr.number)
+            return
+
+        if any(
+            re.match(rf"^({'|'.join(CONFIG.ci_skip_keywords)})$", line)
+            for line in commit_message.split('\n')
+        ):
+            LOGGER.debug(
+                f"Commit message contains skip keywords, skipping job {job}"
+            )
+            await self.set_pull_request_status(
+                job.pr.commit,
+                {
+                    "state": "pending",
+                    "context": "Murdock",
+                    "description": "The build was skipped."
+                }
+            )
             return
 
         if (

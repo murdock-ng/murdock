@@ -9,6 +9,7 @@ class PullRequestInfo(BaseModel):
     merge_commit: str
     branch: str
     commit: str
+    commit_message: str
     user: str
     url: str
     base_repo: str
