@@ -111,9 +111,8 @@ class MurdockJob:
 
     @staticmethod
     def from_db_entry(entry: dict):
-        job = FinishedJobModel(**entry).dict()
-        job.pop("work_dir")
-        return job
+        entry.pop("work_dir")
+        return FinishedJobModel(**entry).dict()
 
     @property
     def env(self):

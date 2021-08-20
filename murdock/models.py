@@ -31,7 +31,7 @@ class FinishedJobModel(JobModel):
     result: str
     output_url: str
     runtime: float
-    work_dir: str
+    work_dir: Optional[str]
 
 
 class CategorizedJobsModel(BaseModel):
