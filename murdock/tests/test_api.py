@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 
 from unittest import mock
 
@@ -364,9 +365,15 @@ def test_get_jobs(jobs, result):
     assert CategorizedJobsModel(**response.json()) == result
 
 
+# @pytest.mark.usefixtures("log_level_debug")
+@mock.patch("murdock.murdock.Murdock.remove_ws_client")
 @mock.patch("murdock.murdock.Murdock.add_ws_client")
-def test_ws_client(add_ws_client):
-    # Smoke test to cover the websocket handler
+def test_ws_client(add_ws_client, remove_ws_client, caplog):
+    caplog.set_level(logging.DEBUG, logger="murdock")
     with client.websocket_connect("/ws/status") as websocket:
-        websocket.close()
+        assert "websocket opening" in caplog.text
+    assert "websocket connection opened" in caplog.text
+    websocket.close()
+    assert "websocket connection closed" in caplog.text
     add_ws_client.assert_called_once()
+    remove_ws_client.assert_called_once()
