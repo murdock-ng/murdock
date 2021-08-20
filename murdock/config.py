@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         env="MURDOCK_NUM_WORKERS", default=1
     )
     murdock_log_level: str = Field(
-        env="MURDOCK_LOG_LEVEL", default="DEBUG"
+        env="MURDOCK_LOG_LEVEL", default="INFO"
     )
     murdock_db_host: str = Field(
         env="MURDOCK_DB_HOST", default="localhost"
