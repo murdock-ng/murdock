@@ -71,7 +71,7 @@ class MurdockJob:
     @property
     def runtime_human(self) -> str:
         if self.runtime > 86400:
-            runtime_format = "%Dd:%Hh:%Mm:%Ss"
+            runtime_format = "%dd:%Hh:%Mm:%Ss"
         elif self.runtime > 3600:
             runtime_format = "%Hh:%Mm:%Ss"
         elif self.runtime > 60:
