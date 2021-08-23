@@ -1,4 +1,5 @@
 import os
+import json
 
 import httpx
 
@@ -71,3 +72,34 @@ async def comment_on_pr(job: MurdockJob):
             LOGGER.warning(f"{response}: {response.json()}")
         else:
             LOGGER.info(f"Comment posted on PR #{job.pr.number}")
+
+
+async def fetch_commit_message(commit: str) -> str:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.github.com/repos/{CONFIG.github_repo}"
+            f"/commits/{commit}",
+            headers={
+                "Accept": "application/vnd.github.v3+json"
+            }
+        )
+        if response.status_code != 200:
+            return ""
+        return response.json()["commit"]["message"]
+
+
+async def set_pull_request_status(commit: str, status: dict):
+    LOGGER.debug(
+        f"Setting commit {commit[0:7]} status to '{status['description']}'"
+    )
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"https://api.github.com/repos/{CONFIG.github_repo}/statuses/{commit}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {CONFIG.github_api_token}"
+            }
+            , data=json.dumps(status)
+        )
+        if response.status_code != 201:
+            LOGGER.warning(f"{response}: {response.json()}")

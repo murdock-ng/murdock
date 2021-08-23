@@ -17,7 +17,9 @@ from fastapi import WebSocket
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import PullRequestInfo
-from murdock.github import comment_on_pr
+from murdock.github import (
+    comment_on_pr, fetch_commit_message, set_pull_request_status
+)
 from murdock.config import CONFIG
 
 
@@ -102,7 +104,7 @@ class Murdock:
             self.queued.remove(job)
         self.add_to_running_jobs(job)
         job.start_time = time.time()
-        await self.set_pull_request_status(
+        await set_pull_request_status(
             job.pr.commit,
             {
                 "state": "pending",
@@ -123,7 +125,7 @@ class Murdock:
             job_status_desc = (
                 "succeeded" if job.result == "passed" else "failed"
             )
-            await self.set_pull_request_status(
+            await set_pull_request_status(
                 job.pr.commit,
                 {
                     "state": job_state,
@@ -148,7 +150,7 @@ class Murdock:
             self.queue.put_nowait(job)
         self.queued.append(job)
         LOGGER.info(f"Job {job} added to queued jobs")
-        await self.set_pull_request_status(
+        await set_pull_request_status(
             job.pr.commit,
             {
                 "state": "pending",
@@ -187,7 +189,7 @@ class Murdock:
                     "target_url": CONFIG.murdock_base_url,
                     "description": "Canceled",
                 }
-                await self.set_pull_request_status(commit, status)
+                await set_pull_request_status(commit, status)
                 await self.reload_jobs()
                 return queued_job
 
@@ -241,7 +243,7 @@ class Murdock:
                 status.update({
                     "description": description,
                 })
-            await self.set_pull_request_status(job.pr.commit, status)
+            await set_pull_request_status(job.pr.commit, status)
         await self.reload_jobs()
 
     async def stop_running_jobs_matching_pr(self, prnum: int):
@@ -261,7 +263,7 @@ class Murdock:
                     "target_url": CONFIG.murdock_base_url,
                     "description": "Stopped",
                 }
-                await self.set_pull_request_status(commit, status)
+                await set_pull_request_status(commit, status)
                 return running
 
     async def stop_job(self, job: MurdockJob):
@@ -304,19 +306,6 @@ class Murdock:
             await self.add_job_to_queue(job)
         return job
 
-    async def fetch_commit_message(self, commit: str) -> str:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.github.com/repos/{CONFIG.github_repo}"
-                f"/commits/{commit}",
-                headers={
-                    "Accept": "application/vnd.github.v3+json"
-                }
-            )
-            if response.status_code != 200:
-                return ""
-            return response.json()["commit"]["message"]
-
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
             return "Unsupported event"
@@ -326,7 +315,7 @@ class Murdock:
         LOGGER.info(f"Handle pull request event '{action}'")
         pr_data = event["pull_request"]
         commit_message = (
-            await self.fetch_commit_message(pr_data["head"]["sha"])
+            await fetch_commit_message(pr_data["head"]["sha"])
         )
         pull_request = PullRequestInfo(
             title=pr_data["title"],
@@ -364,7 +353,7 @@ class Murdock:
             LOGGER.debug(
                 f"Commit message contains skip keywords, skipping job {job}"
             )
-            await self.set_pull_request_status(
+            await set_pull_request_status(
                 job.pr.commit,
                 {
                     "state": "pending",
@@ -417,22 +406,6 @@ class Murdock:
             queued_job.pr.labels.remove(label)
 
         await self.schedule_job(job)
-
-    async def set_pull_request_status(self, commit: str, status: dict):
-        LOGGER.debug(
-            f"Setting commit {commit[0:7]} status to '{status['description']}'"
-        )
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"https://api.github.com/repos/{CONFIG.github_repo}/statuses/{commit}",
-                headers={
-                    "Accept": "application/vnd.github.v3+json",
-                    "Authorization": f"token {CONFIG.github_api_token}"
-                }
-                , data=json.dumps(status)
-            )
-            if response.status_code != 201:
-                LOGGER.warning(f"{response}: {response.json()}")
 
     def add_ws_client(self, ws: WebSocket):
         if ws not in self.clients:
