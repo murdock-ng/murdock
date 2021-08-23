@@ -1,0 +1,24 @@
+### Murdock results
+
+{% if job.result == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} [{{ job.result | upper }}]({{ job.output_url }})
+
+{% if not sticky_comment %}
+{{ job.pr.commit }} {{ job.pr.commit_message }}
+
+{% endif %}
+
+{% if "passed" in job.status and "failed" in job.status and "total" in job.status %}
+| Success | Failures | Total | Runtime |
+| ------- | -------- | ----- | ------- |
+| {{ job.status.passed }} | {{ job.status.failed }} | {{ job.status.total }} | {{ job.runtime_human }} |
+{% endif %}
+
+{% if "failed_jobs" in job.status and job.status.failed_jobs %}
+<details><summary><strong>Failed jobs ({{ job.status.failed_jobs | length }})</strong></summary>
+
+{% for failure in job.status.failed_jobs %}
+- [{{ failure.name }}]({{ failure.href }})
+{% endfor %}
+
+</details>
+{% endif %}

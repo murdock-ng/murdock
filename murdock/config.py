@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     murdock_use_job_token: bool = Field(
         env="MURDOCK_USE_JOB_TOKEN", default=False
     )
+    murdock_enable_comments: bool = Field(
+        env="MURDOCK_ENABLE_COMMENTS", default=True
+    )
+    murdock_use_sticky_comment: bool = Field(
+        env="MURDOCK_USE_STICKY_COMMENT", default=False
+    )
     murdock_num_workers: int = Field(
         env="MURDOCK_NUM_WORKERS", default=1
     )

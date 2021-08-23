@@ -17,6 +17,7 @@ from fastapi import WebSocket
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import PullRequestInfo
+from murdock.github import comment_on_pr
 from murdock.config import CONFIG
 
 
@@ -133,6 +134,9 @@ class Murdock:
                     )
                 }
             )
+            if CONFIG.murdock_enable_comments:
+                LOGGER.info(f"Posting comment on PR #{job.pr.number}")
+                await comment_on_pr(job)
             await self.db.job.insert_one(MurdockJob.to_db_entry(job))
         await self.reload_jobs()
 
