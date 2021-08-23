@@ -69,8 +69,13 @@ Launch the `uvicorn` server with the `--reload` option:
 $ uvicorn murdock.main:app --reload
 ```
 
-You can specify environment variables to the command line (the `GITHUB_*`
-vars are required). Check the [default config](murdock/config.py).
+To configure the application, you can specify environment variables
+(the `GITHUB_*` vars are required):
+- to the command line
+- in a `.env.local` and add `ENV_FILE=.env.local` to the command line. See the
+[.env](.env) as example.
+
+Check the [default config](murdock/config.py).
 
 # Testing
 

@@ -80,8 +80,8 @@ def test_basic(capsys):
         "CI_BASE_COMMIT" : "test_base_commit",
         "CI_SCRIPTS_DIR" : "/tmp",
         "CI_PULL_LABELS" : "test",
-        "CI_BUILD_HTTP_ROOT" : f"https://ci.riot-os.org/test/repo/123/test_commit/{job.start_time}",
-        "CI_BASE_URL": "https://ci.riot-os.org",
+        "CI_BUILD_HTTP_ROOT" : f"http://localhost:8000/test/repo/123/test_commit/{job.start_time}",
+        "CI_BASE_URL": "http://localhost:8000",
         "CI_API_TOKEN": job.token,
         "CI_MERGE_COMMIT": "test_merge_commit"
     }

@@ -88,4 +88,9 @@ class Settings(BaseSettings):
         return path
 
 
-CONFIG = Settings()
+CONFIG = Settings(
+    _env_file=os.getenv(
+        "ENV_FILE",
+        os.path.join(os.path.dirname(__file__), "..", ".env")
+    )
+)
