@@ -111,8 +111,7 @@ class MurdockJob:
 
     @staticmethod
     def from_db_entry(entry: dict):
-        entry.pop("work_dir")
-        return FinishedJobModel(**entry).dict()
+        return FinishedJobModel(**entry).dict(exclude={"work_dir"})
 
     @property
     def env(self):

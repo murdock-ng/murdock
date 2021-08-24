@@ -194,4 +194,4 @@ def test_from_db_entry():
         output_url="output.html",
         status={"status": "test"},
         prinfo=prinfo.dict(),
-    ).dict()
+    ).dict(exclude={"work_dir"})
