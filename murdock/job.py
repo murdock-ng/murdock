@@ -216,6 +216,12 @@ class MurdockJob:
                 f"out: {out.decode()}"
                 f"err: {err.decode()}"
             )
+        if self.proc.returncode in [
+            int(signal.SIGINT) * -1,
+            int(signal.SIGKILL) * -1,
+            int(signal.SIGTERM) * -1,
+        ]:
+            self.result = "stopped"
         self.proc = None
 
     async def stop(self):
