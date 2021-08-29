@@ -11,16 +11,24 @@ from asyncio.subprocess import Process
 
 from murdock.config import CONFIG
 from murdock.log import LOGGER
-from murdock.models import PullRequestInfo, JobModel, FinishedJobModel
+from murdock.models import (
+    PullRequestInfo, CommitModel, JobModel, FinishedJobModel
+)
 
 
 class MurdockJob:
 
-    def __init__(self, pr: PullRequestInfo):
+    def __init__(
+        self, commit: CommitModel,
+        branch: Optional[str] = None,
+        pr: Optional[PullRequestInfo] = None
+    ):
         self.uid : str = uuid.uuid4().hex
         self.result : Optional[str] = None
         self.proc : Optional[Process] = None
         self.output : str = ""
+        self.commit : CommitModel = commit
+        self.branch : str = branch
         self.pr : PullRequestInfo = pr
         self.start_time : float = time.time()
         self.stop_time  : float = 0
@@ -75,6 +83,8 @@ class MurdockJob:
     def queued_model(self):
         return JobModel(
             uid=self.uid,
+            commit=self.commit,
+            branch=self.branch,
             prinfo=self.pr,
             since=self.start_time,
             fasttracked=self.fasttracked
@@ -83,6 +93,8 @@ class MurdockJob:
     def running_model(self):
         return JobModel(
             uid=self.uid,
+            commit=self.commit,
+            branch=self.branch,
             prinfo=self.pr,
             since=self.start_time,
             status=self.status
@@ -92,12 +104,14 @@ class MurdockJob:
     def to_db_entry(job):
         return FinishedJobModel(
             uid=job.uid,
+            commit=job.commit,
             since= job.start_time,
             runtime=job.runtime,
             result=job.result,
             output_url=job.output_url,
             status=job.status,
             prinfo=job.pr.dict(),
+            branch=job.branch,
         ).dict()
 
     @staticmethod
@@ -107,21 +121,29 @@ class MurdockJob:
     @property
     def env(self):
         _env = { 
-            "CI_PULL_COMMIT" : self.pr.commit,
-            "CI_PULL_REPO" : CONFIG.github_repo,
-            "CI_PULL_BRANCH" : self.pr.branch,
-            "CI_PULL_NR" : str(self.pr.number),
-            "CI_PULL_URL" : self.pr.url,
-            "CI_PULL_TITLE" : self.pr.title,
-            "CI_PULL_USER" : self.pr.user,
-            "CI_BASE_REPO" : self.pr.base_repo,
-            "CI_BASE_BRANCH" : self.pr.base_branch,
-            "CI_BASE_COMMIT" : self.pr.base_commit,
             "CI_SCRIPTS_DIR" : CONFIG.murdock_scripts_dir,
-            "CI_PULL_LABELS" : ";".join(self.pr.labels),
             "CI_BUILD_HTTP_ROOT" : self.http_dir,
             "CI_BASE_URL": CONFIG.murdock_base_url,
         }
+
+        if self.pr is not None:
+            _env.update({
+                "CI_PULL_COMMIT" : self.commit.sha,
+                "CI_PULL_REPO" : CONFIG.github_repo,
+                "CI_PULL_NR" : str(self.pr.number),
+                "CI_PULL_URL" : self.pr.url,
+                "CI_PULL_TITLE" : self.pr.title,
+                "CI_PULL_USER" : self.pr.user,
+                "CI_BASE_REPO" : self.pr.base_repo,
+                "CI_BASE_BRANCH" : self.pr.base_branch,
+                "CI_BASE_COMMIT" : self.pr.base_commit,
+                "CI_PULL_LABELS" : ";".join(self.pr.labels),
+            })
+        if self.branch is not None:
+            _env.update({
+                "CI_BUILD_COMMIT" : self.commit.sha,
+                "CI_BUILD_BRANCH" : self.branch,
+            })
 
         if CONFIG.murdock_use_job_token:
             _env.update({
@@ -134,12 +156,15 @@ class MurdockJob:
         return _env
 
     def __repr__(self) -> str:
-        return (
-            f"sha:{self.pr.commit[0:7]} (PR #{self.pr.number})"
-        )
+        ret = f"sha:{self.commit.sha[0:7]}"
+        if self.pr is not None:
+            ret += f" (PR #{self.pr.number})"
+        if self.branch is not None:
+            ret += f" ({self.branch})"
+        return ret
 
     def __eq__(self, other) -> bool:
-        return other is not None and self.pr.commit == other.pr.commit
+        return other is not None and self.commit.sha == other.commit.sha
 
     async def execute(self):
         MurdockJob.create_dir(self.work_dir)

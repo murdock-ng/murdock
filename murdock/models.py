@@ -16,18 +16,6 @@ class PullRequestInfo(BaseModel):
         None,
         title="SHA value of the merged commit",
     )
-    branch: str = Field(
-        None,
-        title="Branch name of the pull request",
-    )
-    commit: str = Field(
-        None,
-        title="SHA value of the pull request commit",
-    )
-    commit_message: str = Field(
-        None,
-        title="Commit message of the pull request commit",
-    )
     user: str = Field(
         None,
         title="Github user corresponding to the commit author",
@@ -62,14 +50,36 @@ class PullRequestInfo(BaseModel):
     )
 
 
+class CommitModel(BaseModel):
+    sha: str = Field(
+        None,
+        title="SHA value of the commit to process",
+    )
+    message: str = Field(
+        None,
+        title="Commit message",
+    )
+    author: str = Field(
+        None,
+        title="Author of the commit",
+    )
+
 class JobModel(BaseModel):
     uid: str = Field(
         None,
         title="Unique identifier of the job (hex format)",
     )
-    prinfo: PullRequestInfo = Field(
+    commit: CommitModel = Field(
         None,
-        title="Pull Request detailed information",
+        title="Information of the commit to process",
+    )
+    branch: Optional[str] = Field(
+        None,
+        title="Branch name (if any)",
+    )
+    prinfo: Optional[PullRequestInfo] = Field(
+        None,
+        title="Pull Request detailed information (if any)",
     )
     since: float = Field(
         None,

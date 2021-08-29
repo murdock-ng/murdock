@@ -3,7 +3,7 @@
 {% if job.result == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} [{{ job.result | upper }}]({{ job.output_url }})
 
 {% if not sticky_comment %}
-{{ job.pr.commit }} {{ job.pr.commit_message.split('\n')[0] }}
+{{ job.commit.sha }} {{ job.commit.message.split('\n')[0] }}
 
 {% endif %}
 
