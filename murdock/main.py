@@ -108,7 +108,7 @@ async def _check_push_permissions(
 
 
 @app.get(
-    path="/api/jobs/queued",
+    path="/jobs/queued",
     response_model=List[JobModel],
     response_model_exclude_unset=True,
     summary="Return the list of queued jobs",
@@ -119,7 +119,7 @@ async def queued_jobs_handler():
 
 
 @app.delete(
-    path="/api/jobs/queued/{commit}",
+    path="/jobs/queued/{commit}",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Remove a job from the queue",
@@ -137,7 +137,7 @@ async def queued_commit_cancel_handler(
 
 
 @app.get(
-    path="/api/jobs/building",
+    path="/jobs/building",
     response_model=List[JobModel],
     response_model_exclude_unset=True,
     summary="Return the list of building jobs",
@@ -148,7 +148,7 @@ async def building_jobs_handler():
 
 
 @app.put(
-    path="/api/jobs/building/{commit}/status",
+    path="/jobs/building/{commit}/status",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Update the status of a building job",
@@ -181,7 +181,7 @@ async def building_commit_status_handler(request: Request, commit: str):
 
 
 @app.delete(
-    path="/api/jobs/building/{commit}",
+    path="/jobs/building/{commit}",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Stop a building job",
@@ -200,7 +200,7 @@ async def building_commit_stop_handler(
 
 
 @app.get(
-    path="/api/jobs/finished",
+    path="/jobs/finished",
     response_model=List[FinishedJobModel],
     response_model_exclude={"work_dir"},
     summary="Return the list of finished jobs sorted by end time, reversed",
@@ -221,7 +221,7 @@ async def finished_jobs_handler(
 
 
 @app.post(
-    path="/api/jobs/finished/{uid}",
+    path="/jobs/finished/{uid}",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Restart a finished job",
@@ -240,7 +240,7 @@ async def finished_job_restart_handler(
 
 
 @app.delete(
-    path="/api/jobs/finished",
+    path="/jobs/finished",
     response_model=List[FinishedJobModel],
     response_model_exclude={"work_dir"},
     summary="Removed finished jobs older than 'before' date",
@@ -259,7 +259,7 @@ async def finished_job_delete_handler(
 
 
 @app.get(
-    path="/api/jobs",
+    path="/jobs",
     response_model=CategorizedJobsModel,
     summary="Return the list of all jobs (queued, building, finished)",
     tags=["jobs"]
