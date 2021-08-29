@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     murdock_base_url: str = Field(
         env="MURDOCK_BASE_URL", default="https://ci.riot-os.org"
     )
-    murdock_root_dir: str = Field(
-        env="MURDOCK_ROOT_DIR", default="/var/lib/murdock-data"
+    murdock_work_dir: str = Field(
+        env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data"
     )
     murdock_scripts_dir: str = Field(
         env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
@@ -71,11 +71,11 @@ class Settings(BaseSettings):
         default=["ci: skip", "ci: no", "ci: ignore"]
     )
 
-    @validator("murdock_root_dir")
-    def murdock_root_dir_exists(cls, path):
+    @validator("murdock_work_dir")
+    def murdock_work_dir_exists(cls, path):
         if not os.path.exists(path):
             raise ValueError(
-                f"'MURDOCK_ROOT_DIR' doesn't exist ({path})"
+                f"'MURDOCK_WORK_DIR' doesn't exist ({path})"
             )
         return path
 

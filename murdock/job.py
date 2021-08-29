@@ -30,19 +30,11 @@ class MurdockJob:
             label in CONFIG.ci_fasttrack_labels for label in pr.labels
         )
         self.token : str = secrets.token_urlsafe(32)
-        work_dir_relative : str = os.path.join(
-            CONFIG.github_repo,
-            str(self.pr.number),
-            self.pr.commit,
-            str(self.start_time)
+        self.work_dir : str = os.path.join(CONFIG.murdock_work_dir, self.uid)
+        self.http_dir : str = os.path.join("results", self.uid)
+        self.output_url : str = os.path.join(
+            CONFIG.murdock_base_url, self.http_dir, "output.html"
         )
-        self.work_dir : str = os.path.join(
-            CONFIG.murdock_root_dir, work_dir_relative
-        )
-        self.http_dir : str = os.path.join(
-            CONFIG.murdock_base_url, work_dir_relative
-        )
-        self.output_url : str = os.path.join(self.http_dir, "output.html")
 
     @staticmethod
     def create_dir(work_dir: str):
@@ -104,14 +96,13 @@ class MurdockJob:
             runtime=job.runtime,
             result=job.result,
             output_url=job.output_url,
-            work_dir=job.work_dir,
             status=job.status,
             prinfo=job.pr.dict(),
         ).dict()
 
     @staticmethod
     def from_db_entry(entry: dict):
-        return FinishedJobModel(**entry).dict(exclude={"work_dir"})
+        return FinishedJobModel(**entry).dict()
 
     @property
     def env(self):

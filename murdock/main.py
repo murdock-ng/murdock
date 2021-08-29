@@ -13,6 +13,7 @@ from fastapi import (
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from murdock.config import CONFIG
 from murdock.models import FinishedJobModel, JobModel, CategorizedJobsModel
@@ -40,6 +41,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.mount(
+    "/results",
+    StaticFiles(directory=CONFIG.murdock_work_dir, html=True, check_dir=False),
+    name="results",
 )
 
 

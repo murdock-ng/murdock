@@ -98,10 +98,6 @@ class FinishedJobModel(JobModel):
         None,
         title="Runtime of the job",
     )
-    work_dir: Optional[str] = Field(
-        None,
-        title="Local work dir of the job",
-    )
 
 
 class CategorizedJobsModel(BaseModel):

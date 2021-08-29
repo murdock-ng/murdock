@@ -22,10 +22,9 @@ the [Github WebHook documentation](https://docs.github.com/en/developers/webhook
 First you have to adapt the [.env](.env) file with your project setup:
 - It is important that the variables `GITHUB_REPO` (in the form `orga/repo`) ,
 `GITHUB_WEBHOOK_SECRET` and `GITHUB_API_TOKEN` are correctly set.
-- `MURDOCK_ROOT_DIR` corresponds to the base location where all build jobs output
+- `MURDOCK_WORK_DIR` corresponds to the base location where all build jobs results
 will be stored. Each job is launched from a directory with the path
-`<MURDOCK_ROOT_DIR>/<orga>/<repo>/<pr number>/<commit hash>` and all output data
-for a given job is located there
+`<MURDOCK_WORK_DIR>/<job uid>` and all output data for a given job is located there
 - `MURDOCK_SCRIPTS_DIR` corresponds to the location where the `build.sh` is
 located. You can find examples [here](utils/buils.sh) and
 [here](scripts.example/build.sh.example).
@@ -66,7 +65,7 @@ $ docker-compose up mongo
 Launch the `uvicorn` server with the `--reload` option:
 
 ```
-$ uvicorn murdock.main:app --reload
+$ uvicorn murdock.main:app --reload --reload-dir murdock
 ```
 
 To configure the application, you can specify environment variables
