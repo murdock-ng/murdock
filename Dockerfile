@@ -23,4 +23,4 @@ RUN python3 -m pip install --upgrade pip && \
 WORKDIR /var/lib/murdock
 EXPOSE 8000
 
-ENTRYPOINT [ "uvicorn", "murdock.main:app", "--host", "0.0.0.0"]
+ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000"]

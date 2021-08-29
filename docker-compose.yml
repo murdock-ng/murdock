@@ -4,7 +4,7 @@ services:
   murdock:
     user: 0:0
     ports:
-      - 8000:8000
+      - ${MURDOCK_PORT}:8000
     build:
       context: .
     image: ${MURDOCK_DOCKER_IMAGE}
