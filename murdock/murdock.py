@@ -16,7 +16,7 @@ from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel, PullRequestInfo
 from murdock.github import (
-    comment_on_pr, fetch_commit_info, set_pull_request_status
+    comment_on_pr, fetch_commit_info, set_commit_status
 )
 from murdock.config import CONFIG
 
@@ -102,7 +102,7 @@ class Murdock:
             self.queued.remove(job)
         self.add_to_running_jobs(job)
         job.start_time = time.time()
-        await set_pull_request_status(
+        await set_commit_status(
             job.commit.sha,
             {
                 "state": "pending",
@@ -123,7 +123,7 @@ class Murdock:
             job_status_desc = (
                 "succeeded" if job.result == "passed" else "failed"
             )
-            await set_pull_request_status(
+            await set_commit_status(
                 job.commit.sha,
                 {
                     "state": job_state,
@@ -148,7 +148,7 @@ class Murdock:
             self.queue.put_nowait(job)
         self.queued.append(job)
         LOGGER.info(f"Job {job} added to queued jobs")
-        await set_pull_request_status(
+        await set_commit_status(
             job.commit.sha,
             {
                 "state": "pending",
@@ -193,7 +193,7 @@ class Murdock:
                     "target_url": CONFIG.murdock_base_url,
                     "description": "Canceled",
                 }
-                await set_pull_request_status(commit, status)
+                await set_commit_status(commit, status)
                 await self.reload_jobs()
                 return queued_job
 
@@ -251,7 +251,7 @@ class Murdock:
                 status.update({
                     "description": description,
                 })
-            await set_pull_request_status(job.commit.sha, status)
+            await set_commit_status(job.commit.sha, status)
         await self.reload_jobs()
 
     async def stop_running_jobs_matching_pr(self, prnum: int):
@@ -275,7 +275,7 @@ class Murdock:
                     "target_url": CONFIG.murdock_base_url,
                     "description": "Stopped",
                 }
-                await set_pull_request_status(commit, status)
+                await set_commit_status(commit, status)
                 return running
 
     async def stop_job(self, job: MurdockJob):
@@ -369,7 +369,7 @@ class Murdock:
             LOGGER.debug(
                 f"Commit message contains skip keywords, skipping job {job}"
             )
-            await set_pull_request_status(
+            await set_commit_status(
                 job.commit.sha,
                 {
                     "state": "pending",

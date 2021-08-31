@@ -95,7 +95,7 @@ async def fetch_commit_info(commit: str) -> str:
         )
 
 
-async def set_pull_request_status(commit: str, status: dict):
+async def set_commit_status(commit: str, status: dict):
     LOGGER.debug(
         f"Setting commit {commit[0:7]} status to '{status['description']}'"
     )
