@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     murdock_use_job_token: bool = Field(
         env="MURDOCK_USE_JOB_TOKEN", default=False
     )
+    murdock_accepted_events: List[str] = Field(
+        env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
+    )
+    murdock_accepted_refs: List[str] = Field(
+        env="MURDOCK_ACCEPTED_REFS", default=["master"]
+    )
     murdock_enable_comments: bool = Field(
         env="MURDOCK_ENABLE_COMMENTS", default=True
     )

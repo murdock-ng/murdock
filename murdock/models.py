@@ -18,7 +18,7 @@ class PullRequestInfo(BaseModel):
     )
     user: str = Field(
         None,
-        title="Github user corresponding to the commit author",
+        title="Github user corresponding to the pull request author",
     )
     url: str = Field(
         None,

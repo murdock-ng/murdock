@@ -64,13 +64,17 @@ async def github_webhook_handler(request: Request):
         LOGGER.warning(msg := "Invalid event signature")
         raise HTTPException(status_code=400, detail=msg)
 
-    if headers.get("X-Github-Event") != "pull_request":
+    event_type = headers.get("X-Github-Event")
+    if event_type not in CONFIG.murdock_accepted_events:
         raise HTTPException(status_code=400, detail="Unsupported event")
 
     event_data = json.loads(body.decode())
-    if (
-        ret := await murdock.handle_pull_request_event(event_data)
-    ) is not None:
+    ret = None
+    if event_type == "pull_request":
+        ret = await murdock.handle_pull_request_event(event_data)
+    if event_type == "push":
+        ret = await murdock.handle_push_event(event_data)
+    if ret is not None:
         raise HTTPException(status_code=400, detail=ret)
 
 

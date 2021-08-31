@@ -34,9 +34,12 @@ class MurdockJob:
         self.stop_time  : float = 0
         self.canceled : bool = False
         self.status : dict = { "status": "" }
-        self.fasttracked : bool = any(
-            label in CONFIG.ci_fasttrack_labels for label in pr.labels
-        )
+        if self.pr is not None:
+            self.fasttracked : bool = any(
+                label in CONFIG.ci_fasttrack_labels for label in pr.labels
+            )
+        else:
+            self.fasttracked : bool = False
         self.token : str = secrets.token_urlsafe(32)
         self.work_dir : str = os.path.join(CONFIG.murdock_work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
@@ -110,7 +113,7 @@ class MurdockJob:
             result=job.result,
             output_url=job.output_url,
             status=job.status,
-            prinfo=job.pr.dict(),
+            prinfo=job.pr.dict() if job.pr is not None else None,
             branch=job.branch,
         ).dict()
 
@@ -139,6 +142,8 @@ class MurdockJob:
                 "CI_BASE_COMMIT" : self.pr.base_commit,
                 "CI_PULL_LABELS" : ";".join(self.pr.labels),
             })
+            if self.pr.mergeable:
+                _env.update({"CI_MERGE_COMMIT": self.pr.merge_commit})
         if self.branch is not None:
             _env.update({
                 "CI_BUILD_COMMIT" : self.commit.sha,
@@ -149,9 +154,6 @@ class MurdockJob:
             _env.update({
                 "CI_API_TOKEN": self.token,
             })
-
-        if self.pr.mergeable:
-            _env.update({"CI_MERGE_COMMIT": self.pr.merge_commit})
 
         return _env
 

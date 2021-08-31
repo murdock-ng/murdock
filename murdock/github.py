@@ -8,6 +8,7 @@ from jinja2 import FileSystemLoader, Environment
 from murdock.config import CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
+from murdock.models import CommitModel
 
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -85,7 +86,13 @@ async def fetch_commit_info(commit: str) -> str:
         )
         if response.status_code != 200:
             return ""
-        return response.json()["commit"]
+
+        commit_data = response.json()
+        return CommitModel(
+            sha=commit,
+            message=commit_data["commit"]["message"],
+            author=commit_data["author"]["login"],
+        )
 
 
 async def set_pull_request_status(commit: str, status: dict):
