@@ -154,7 +154,7 @@ async def queued_commit_cancel_handler(
     tags=["building jobs"]
 )
 async def building_jobs_handler():
-    return JSONResponse(murdock.get_running_jobs())
+    return JSONResponse(murdock.get_active_jobs())
 
 
 @app.put(
@@ -167,7 +167,7 @@ async def building_jobs_handler():
 async def building_commit_status_handler(request: Request, commit: str):
     if CONFIG.murdock_use_job_token:
         msg = ""
-        if (job := murdock.job_running(commit)) is None:
+        if (job := murdock.active.search_by_commit_sha(commit)) is None:
             msg = f"No job running for commit {commit}"
         elif "Authorization" not in request.headers:
             msg = "Job token is missing"
@@ -201,7 +201,7 @@ async def building_commit_stop_handler(
     commit: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.stop_running_job(commit)) is None:
+    if (job := await murdock.stop_active_job(commit)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
