@@ -1,25 +1,22 @@
 import asyncio
 import json
+import os
 import re
 import time
 
-from datetime import datetime
-from datetime import time as dtime
-from typing import Optional, List
+from typing import List
 
-import motor.motor_asyncio as aiomotor
-
-from bson.objectid import ObjectId
 from fastapi import WebSocket
 
+from murdock.config import CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
-from murdock.models import CommitModel, PullRequestInfo
+from murdock.models import PullRequestInfo
 from murdock.github import (
     comment_on_pr, fetch_commit_info, set_commit_status
 )
-from murdock.config import CONFIG
+from murdock.database import Database
 
 
 ALLOWED_ACTIONS = [
@@ -37,28 +34,19 @@ class Murdock:
         self.active : MurdockJobPool = MurdockJobPool(self.num_workers)
         self.queue : asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue : asyncio.Queue = asyncio.Queue()
-        self.db = None
+        self.db = Database()
+
 
     async def init(self):
-        await self.init_db()
+        await self.db.init()
         for index in range(self.num_workers):
             asyncio.create_task(
                 self.job_processing_task(), name=f"MurdockWorker_{index}"
         )
 
-    async def init_db(self):
-        LOGGER.info("Initializing database connection")
-        loop = asyncio.get_event_loop()
-        conn = aiomotor.AsyncIOMotorClient(
-            f"mongodb://{CONFIG.murdock_db_host}:{CONFIG.murdock_db_port}",
-            maxPoolSize=5,
-            io_loop=loop
-        )
-        self.db = conn[CONFIG.murdock_db_name]
-
     async def shutdown(self):
         LOGGER.info("Shutting down Murdock")
-        self.db.client.close()
+        self.db.close()
         for ws in self.clients:
             LOGGER.debug(f"Closing websocket {ws}")
             ws.close()
@@ -140,7 +128,7 @@ class Murdock:
             if job.pr is not None and CONFIG.murdock_enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
-            await self.db.job.insert_one(MurdockJob.to_db_entry(job))
+            await self.db.insert_job(job)
         await self.reload_jobs()
 
     def sha_is_handled(self, sha : str) -> bool:
@@ -254,17 +242,8 @@ class Murdock:
         return job
 
     async def restart_job(self, uid: str) -> MurdockJob:
-        entry = await self.db.job.find({"uid": uid}).to_list(length=1)
-        if not entry:
-            LOGGER.warning(f"Cannot find job matching uid '{uid}'")
+        if (job := await self.db.find_job(uid)) is None:
             return
-
-        commit = CommitModel(**entry[0]["commit"])
-        if entry[0]["prinfo"] is not None:
-            prinfo = PullRequestInfo(**entry[0]["prinfo"])
-        else:
-            prinfo = None
-        job = MurdockJob(commit, pr=prinfo, branch=entry[0]["branch"])
         LOGGER.info(f"Restarting job {job}")
         await self.schedule_job(job)
         return job
@@ -435,71 +414,29 @@ class Murdock:
             ], reverse=True, key=lambda job: job["since"]
         )
 
-    async def get_finished_jobs(
-        self,
-        limit: int,
-        job_id: Optional[str] = None,
-        prnum: Optional[int] = None,
-        user: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-    ) -> list:
-        query = {}
-        if job_id is not None:
-            query.update({"_id": ObjectId(job_id)})
-        if prnum is not None:
-            query.update({"prnum": str(prnum)})
-        if user is not None:
-            query.update({"user": user})
-        if result in ["errored", "passed"]:
-            query.update({"result": result})
-        if after is not None:
-            date = datetime.strptime(after, "%Y-%m-%d")
-            query.update({"since": {"$gte": date.timestamp()}})
-        if before is not None:
-            date = datetime.combine(
-                datetime.strptime(before, "%Y-%m-%d"),
-                dtime(hour=23, minute=59, second=59, microsecond=999)
-            )
-            if "since" in query:
-                query["since"].update({"$lte": date.timestamp()})
-            else:
-                query.update({"since": {"$lte": date.timestamp()}})
-        finished = await (
-            self.db.job
-            .find(query)
-            .sort("since", -1)
-            .to_list(length=limit)
-        )
-        return [MurdockJob.from_db_entry(job) for job in finished]
-
     async def remove_finished_jobs(self, before: str) -> int:
-        date = datetime.strptime(before, "%Y-%m-%d")
-        jobs_before = await self.db.job.count_documents({})
-        query = {"since": {"$gte": date.timestamp()}}
-        jobs_count = await self.db.job.count_documents(query)
+        jobs_before = await self.db.count_jobs()
+        jobs_count = await self.db.count_jobs(before=before)
         jobs_to_remove = await (
-            self.db.job
-            .find(query)
-            .sort("since", -1)
-            .to_list(length=jobs_count)
+            self.db.find_jobs(limit=jobs_count, before=before)
         )
         for job_data in jobs_to_remove:
-            MurdockJob.remove_dir(job_data["work_dir"])
-        await self.db.job.delete_many(query)
-        jobs_removed = jobs_before - (await self.db.job.count_documents({}))
-        LOGGER.info(f"{jobs_removed} jobs removed (before {before})")
+            work_dir = os.path.join(CONFIG.murdock_work_dir, job_data["uid"])
+            MurdockJob.remove_dir(work_dir)
+        await self.db.delete_jobs(before=before)
+        jobs_removed = jobs_before - await self.db.count_jobs()
+        LOGGER.info(
+            f"{jobs_removed} jobs removed (before {before})"
+        )
         await self.reload_jobs()
         return [MurdockJob.from_db_entry(job) for job in jobs_to_remove]
 
 
     async def get_jobs(self, limit: int) -> dict:
-        finished = await self.get_finished_jobs(limit)
         return {
             "queued": self.get_queued_jobs(),
             "building": self.get_active_jobs(),
-            "finished": finished,
+            "finished": await self.db.find_jobs(limit),
         }
 
     async def handle_commit_status_data(

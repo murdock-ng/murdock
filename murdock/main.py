@@ -225,7 +225,7 @@ async def finished_jobs_handler(
         after: Optional[str] = None,
         before: Optional[str] = None,
 ):
-    return JSONResponse(await murdock.get_finished_jobs(
+    return JSONResponse(await murdock.db.find_jobs(
         limit, job_id, prnum, user, result, after, before
     ))
 
