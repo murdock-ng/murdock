@@ -141,7 +141,7 @@ def test_queued_model():
     expected_model = JobModel(
         uid=job.uid, commit=commit, prinfo=prinfo,
         since=job.start_time, fasttracked=False
-    ).dict()
+    )
     assert job.queued_model() == expected_model
 
 
@@ -150,7 +150,7 @@ def test_running_model():
     expected_model = JobModel(
         uid=job.uid, commit=commit, prinfo=prinfo,
         since=job.start_time, status=job.status
-    ).dict()
+    )
     assert job.running_model() == expected_model
 
 
@@ -167,8 +167,8 @@ def test_to_db_entry():
         status=job.status,
         prinfo=job.pr.dict(),
         commit=commit.dict(),
-    ).dict()
-    assert MurdockJob.to_db_entry(job) == expected_model
+    )
+    assert MurdockJob.to_db_entry(job) == expected_model.dict(exclude_none=True)
 
 
 def test_from_db_entry():
@@ -193,4 +193,4 @@ def test_from_db_entry():
         status={"status": "test"},
         prinfo=prinfo.dict(),
         commit=commit.dict(),
-    ).dict(exclude={"work_dir"})
+    )

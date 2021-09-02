@@ -2,14 +2,14 @@ import asyncio
 
 from datetime import datetime
 from datetime import time as dtime
-from typing import Optional
+from typing import List, Optional
 
 import motor.motor_asyncio as aiomotor
 
 from murdock.config import CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
-from murdock.models import CommitModel, PullRequestInfo
+from murdock.models import CommitModel, FinishedJobModel, PullRequestInfo
 
 
 class Database:
@@ -96,7 +96,7 @@ class Database:
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None
-    ) -> list:
+    ) -> List[FinishedJobModel]:
         query = Database.query(
             uid, prnum, branch, sha, author, result, after, before
         )

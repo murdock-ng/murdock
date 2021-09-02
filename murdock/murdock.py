@@ -12,7 +12,7 @@ from murdock.config import CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
-from murdock.models import PullRequestInfo
+from murdock.models import JobModel, PullRequestInfo, CategorizedJobsModel
 from murdock.github import (
     comment_on_pr, fetch_commit_info, set_commit_status
 )
@@ -396,22 +396,22 @@ class Murdock:
     async def reload_jobs(self):
         await self._broadcast_message(json.dumps({"cmd": "reload"}))
 
-    def get_queued_jobs(self) -> list:
+    def get_queued_jobs(self) -> List[JobModel]:
         queued = sorted(
             [
                 job.queued_model()
                 for job in self.queued.jobs if job.canceled is False
             ],
-            reverse=True, key=lambda job: job["since"]
+            reverse=True, key=lambda job: job.since
         )
-        return sorted(queued, key=lambda job: job["fasttracked"])
+        return sorted(queued, key=lambda job: job.fasttracked)
 
-    def get_active_jobs(self) -> list:
+    def get_active_jobs(self) -> List[JobModel]:
         return sorted(
             [
                 job.running_model()
                 for job in self.active.jobs if job is not None
-            ], reverse=True, key=lambda job: job["since"]
+            ], reverse=True, key=lambda job: job.since
         )
 
     async def remove_finished_jobs(self, before: str) -> int:
@@ -432,12 +432,12 @@ class Murdock:
         return [MurdockJob.from_db_entry(job) for job in jobs_to_remove]
 
 
-    async def get_jobs(self, limit: int) -> dict:
-        return {
-            "queued": self.get_queued_jobs(),
-            "building": self.get_active_jobs(),
-            "finished": await self.db.find_jobs(limit),
-        }
+    async def get_jobs(self, limit: int) -> CategorizedJobsModel:
+        return CategorizedJobsModel(
+            queued=self.get_queued_jobs(),
+            building=self.get_active_jobs(),
+            finished=await self.db.find_jobs(limit)
+        )
 
     async def handle_commit_status_data(
         self, commit: str, data: dict

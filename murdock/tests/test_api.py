@@ -36,22 +36,17 @@ prinfo = PullRequestInfo(
 )
 test_job_queued = JobModel(
     uid="1234", commit=commit, prinfo=prinfo, since=12345.6, fasttracked=True
-).dict()
+)
 test_job_building = JobModel(
     uid="1234", commit=commit, prinfo=prinfo,
     since=12345.6, status={"status": "test"}
-).dict()
+)
 test_job_finished = FinishedJobModel(
     uid="1234", commit=commit, prinfo=prinfo,
     since=12345.6, status={"status": "test"},
-    result="passed", output_url="test", runtime=1234.5, work_dir="/tmp"
-).dict()
+    result="passed", output_url="test", runtime=1234.5,
+)
 test_job = MurdockJob(commit, pr=prinfo)
-
-
-print(test_job_queued)
-print(test_job_building)
-print(test_job_finished)
 
 
 @pytest.fixture
@@ -167,7 +162,7 @@ async def test_check_push_permissions(get, text, code, valid):
     )
 
 
-@pytest.mark.parametrize("result", [[], [test_job_queued]])
+@pytest.mark.parametrize("result", [[], [test_job_queued.dict(exclude={"status"})]])
 @mock.patch("murdock.murdock.Murdock.get_queued_jobs")
 def test_get_queued_jobs(jobs, result):
     jobs.return_value = result
@@ -187,7 +182,7 @@ def test_cancel_queued_job(cancel, result, code):
     assert response.status_code == code
     cancel.assert_called_with("abcdef")
     if result:
-        assert response.json() == result.queued_model()
+        assert response.json() == result.queued_model().dict(exclude={"status"})
     else:
         assert response.json() == {
             "detail": "No job matching commit 'abcdef' found"
@@ -203,7 +198,13 @@ def test_cancel_queued_not_allowed(cancel):
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize("result", [[], [test_job_finished]])
+@pytest.mark.parametrize(
+    "result",
+    [
+        [],
+        [test_job_building.dict(exclude={"fasttracked"})]
+    ]
+)
 @mock.patch("murdock.murdock.Murdock.get_active_jobs")
 def test_get_building_jobs(jobs, result):
     jobs.return_value = result
@@ -232,7 +233,7 @@ def test_get_building_jobs(jobs, result):
         ),
         (
             test_job, test_job, {"Authorization": test_job.token},
-            200, test_job.running_model()
+            200, test_job.running_model().dict(exclude={"fasttracked"})
         ),
     ]
 )
@@ -268,7 +269,7 @@ def test_stop_running_job(stop, result, code):
     assert response.status_code == code
     stop.assert_called_with("abcdef")
     if result:
-        assert response.json() == result.running_model()
+        assert response.json() == result.running_model().dict(exclude={"fasttracked"})
     else:
         assert response.json() == {
             "detail": "No job matching commit 'abcdef' found"
@@ -304,7 +305,7 @@ def test_restart_job(restart, result, code):
     assert response.status_code == code
     restart.assert_called_with("123")
     if result is not None:
-        assert response.json() == result.queued_model()
+        assert response.json() == result.queued_model().dict(exclude={"status"})
     else:
         assert response.json() == {"detail": f"Cannot restart job '123'"}
 

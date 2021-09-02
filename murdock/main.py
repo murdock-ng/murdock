@@ -125,7 +125,7 @@ async def _check_push_permissions(
     tags=["queued jobs"]
 )
 async def queued_jobs_handler():
-    return JSONResponse(murdock.get_queued_jobs())
+    return murdock.get_queued_jobs()
 
 
 @app.delete(
@@ -143,7 +143,7 @@ async def queued_commit_cancel_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return JSONResponse(job.queued_model())
+    return job.queued_model()
 
 
 @app.get(
@@ -154,7 +154,7 @@ async def queued_commit_cancel_handler(
     tags=["building jobs"]
 )
 async def building_jobs_handler():
-    return JSONResponse(murdock.get_active_jobs())
+    return murdock.get_active_jobs()
 
 
 @app.put(
@@ -187,7 +187,7 @@ async def building_commit_status_handler(request: Request, commit: str):
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return JSONResponse(job.running_model())
+    return job.running_model()
 
 
 @app.delete(
@@ -206,7 +206,7 @@ async def building_commit_stop_handler(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
 
-    return JSONResponse(job.running_model())
+    return job.running_model()
 
 
 @app.get(
@@ -227,9 +227,9 @@ async def finished_jobs_handler(
         after: Optional[str] = None,
         before: Optional[str] = None,
 ):
-    return JSONResponse(await murdock.db.find_jobs(
+    return await murdock.db.find_jobs(
         limit, uid, prnum, branch, sha, author, result, after, before
-    ))
+    )
 
 
 @app.post(
@@ -247,8 +247,7 @@ async def finished_job_restart_handler(
         raise HTTPException(
             status_code=404, detail=f"Cannot restart job '{uid}'"
         )
-
-    return JSONResponse(job.queued_model())
+    return job.queued_model()
 
 
 @app.delete(
@@ -266,8 +265,7 @@ async def finished_job_delete_handler(
         raise HTTPException(
             status_code=404, detail=f"Found no finished job to remove"
         )
-
-    return JSONResponse(jobs)
+    return jobs
 
 
 @app.get(
@@ -279,7 +277,7 @@ async def finished_job_delete_handler(
 async def jobs_handler(
     limit: Optional[int] = CONFIG.murdock_max_finished_length_default
 ):
-    return JSONResponse(await murdock.get_jobs(limit))
+    return await murdock.get_jobs(limit)
 
 
 @app.websocket("/ws/status")

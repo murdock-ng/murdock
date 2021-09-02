@@ -91,7 +91,7 @@ class MurdockJob:
             prinfo=self.pr,
             since=self.start_time,
             fasttracked=self.fasttracked
-        ).dict()
+        )
 
     def running_model(self):
         return JobModel(
@@ -101,7 +101,7 @@ class MurdockJob:
             prinfo=self.pr,
             since=self.start_time,
             status=self.status
-        ).dict()
+        )
 
     @staticmethod
     def to_db_entry(job):
@@ -113,13 +113,13 @@ class MurdockJob:
             result=job.result,
             output_url=job.output_url,
             status=job.status,
-            prinfo=job.pr.dict() if job.pr is not None else None,
+            prinfo=job.pr if job.pr is not None else None,
             branch=job.branch,
-        ).dict()
+        ).dict(exclude_none=True)
 
     @staticmethod
-    def from_db_entry(entry: dict):
-        return FinishedJobModel(**entry).dict()
+    def from_db_entry(entry: dict) -> FinishedJobModel:
+        return FinishedJobModel(**entry)
 
     @property
     def env(self):
