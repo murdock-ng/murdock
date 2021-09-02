@@ -20,7 +20,7 @@ class MurdockJob:
 
     def __init__(
         self, commit: CommitModel,
-        branch: Optional[str] = None,
+        ref: Optional[str] = None,
         pr: Optional[PullRequestInfo] = None
     ):
         self.uid : str = uuid.uuid4().hex
@@ -28,7 +28,7 @@ class MurdockJob:
         self.proc : Optional[Process] = None
         self.output : str = ""
         self.commit : CommitModel = commit
-        self.branch : str = branch
+        self.ref : str = ref
         self.pr : PullRequestInfo = pr
         self.start_time : float = time.time()
         self.stop_time  : float = 0
@@ -87,7 +87,7 @@ class MurdockJob:
         return JobModel(
             uid=self.uid,
             commit=self.commit,
-            branch=self.branch,
+            ref=self.ref,
             prinfo=self.pr,
             since=self.start_time,
             fasttracked=self.fasttracked
@@ -97,7 +97,7 @@ class MurdockJob:
         return JobModel(
             uid=self.uid,
             commit=self.commit,
-            branch=self.branch,
+            ref=self.ref,
             prinfo=self.pr,
             since=self.start_time,
             status=self.status
@@ -114,7 +114,7 @@ class MurdockJob:
             output_url=job.output_url,
             status=job.status,
             prinfo=job.pr if job.pr is not None else None,
-            branch=job.branch,
+            ref=job.ref,
         ).dict(exclude_none=True)
 
     @staticmethod
@@ -144,10 +144,10 @@ class MurdockJob:
             })
             if self.pr.mergeable:
                 _env.update({"CI_MERGE_COMMIT": self.pr.merge_commit})
-        if self.branch is not None:
+        if self.ref is not None:
             _env.update({
                 "CI_BUILD_COMMIT" : self.commit.sha,
-                "CI_BUILD_BRANCH" : self.branch,
+                "CI_BUILD_REF" : self.ref,
             })
 
         if MURDOCK_CONFIG.use_job_token:
@@ -161,12 +161,12 @@ class MurdockJob:
         ret = f"sha:{self.commit.sha[0:7]}"
         if self.pr is not None:
             ret += f" (PR #{self.pr.number})"
-        if self.branch is not None:
-            ret += f" ({self.branch})"
+        if self.ref is not None:
+            ret += f" ({self.ref})"
         return ret
 
     def __eq__(self, other) -> bool:
-        return other is not None and self.commit.sha == other.commit.sha
+        return other is not None and self.uid == other.uid
 
     async def execute(self):
         MurdockJob.create_dir(self.work_dir)

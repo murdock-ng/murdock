@@ -42,13 +42,13 @@ class MurdockJobListBase(ABC):
             )
         ]
 
-    def search_by_branch(self, branch : str) -> List[MurdockJob]:
+    def search_by_ref(self, ref : str) -> List[MurdockJob]:
         return [
             job for job in self._jobs
             if (
                 job is not None and
-                job.branch is not None and
-                job.branch == branch
+                job.ref is not None and
+                job.ref == ref
             )
         ]  
 

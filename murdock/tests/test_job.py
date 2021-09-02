@@ -118,12 +118,12 @@ def test_runtime(runtime, expected):
         (
             MurdockJob(commit, pr=prinfo),
             MurdockJob(commit, pr=prinfo),
-            True
+            False
         ),
         (
             MurdockJob(commit, pr=prinfo),
             MurdockJob(commit, pr=prinfo_other),
-            True
+            False
         ),
         (
             MurdockJob(commit, pr=prinfo),

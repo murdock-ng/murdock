@@ -12,7 +12,7 @@ from murdock.config import MURDOCK_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
-from murdock.models import JobModel, PullRequestInfo, CategorizedJobsModel
+from murdock.models import CategorizedJobsModel, JobModel, PullRequestInfo
 from murdock.github import (
     comment_on_pr, fetch_commit_info, set_commit_status
 )
@@ -144,7 +144,7 @@ class Murdock:
                 self.queued.search_by_pr_number(job.pr.number)
             ) or (
                 job.branch is not None and
-                self.queued.search_by_branch(job.branch)
+                self.queued.search_by_ref(job.branch)
             )
         )
 
@@ -155,7 +155,7 @@ class Murdock:
                 self.active.search_by_pr_number(job.pr.number)
             ) or (
                 job.branch is not None and
-                self.active.search_by_branch(job.branch)
+                self.active.search_by_ref(job.branch)
             )
         )
 
@@ -363,14 +363,38 @@ class Murdock:
         await self.schedule_job(job)
 
     async def handle_push_event(self, event: dict):
-        ref = event["ref"].split("/")[-1]
-        commit = (
-            await fetch_commit_info(event["after"])
-        )
-        if ref not in MURDOCK_CONFIG.accepted_refs:
-            LOGGER.debug(f"Ref '{ref}' not accepted for push events")
+        ref_type, ref = event["ref"].split("/")[-2:]
+        if event["after"] == "0000000000000000000000000000000000000000":
+            LOGGER.debug(
+                f"Ref was removed upstream, aborting all related jobs"
+            )
+            previous_ref = event["before"]
+            await self.cancel_queued_job_with_commit(previous_ref)
+            await self.stop_active_job(previous_ref)
             return
-        job = MurdockJob(commit, branch=ref)
+
+        commit = await fetch_commit_info(event["after"])
+        if (
+            ref_type == "heads" and
+            ref not in MURDOCK_CONFIG.accepted_heads and
+            all(
+                re.match(expr, ref) is None
+                for expr in MURDOCK_CONFIG.accepted_heads
+            )
+        ):
+            LOGGER.debug(f"Head '{ref}' not accepted for push events")
+            return
+        if (
+            ref_type == "tags" and
+            ref not in MURDOCK_CONFIG.accepted_tags and
+            all(
+                re.match(expr, ref) is None
+                for expr in MURDOCK_CONFIG.accepted_tags
+            )
+        ):
+            LOGGER.debug(f"Tag '{ref}' not accepted for push events")
+            return
+        job = MurdockJob(commit, ref=ref)
         if self.sha_is_handled(job.commit.sha):
             LOGGER.debug(
                 f"Commit {job.commit.sha} is already handled, ignoring"

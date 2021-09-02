@@ -82,7 +82,7 @@ def test_list_search_by_pr_number():
     )
     job3 = MurdockJob(
         CommitModel(sha="3", message="job3", author="test"),
-        branch="test_branch"
+        ref="test_branch"
     )
     job_list = MurdockJobList()
     job_list.add(*[job1, job2, job3])
@@ -91,7 +91,7 @@ def test_list_search_by_pr_number():
     assert job_list.search_by_pr_number(12) == []
 
 
-def test_list_search_by_branch():
+def test_list_search_by_ref():
     job1 = MurdockJob(
         CommitModel(sha="1", message="job1", author="test"),
         pr=PullRequestInfo(
@@ -126,12 +126,12 @@ def test_list_search_by_branch():
     )
     job3 = MurdockJob(
         CommitModel(sha="3", message="job3", author="test"),
-        branch="test_branch"
+        ref="test_branch"
     )
     job_list = MurdockJobList()
     job_list.add(*[job1, job2, job3])
-    assert job_list.search_by_branch("test_branch") == [job3]
-    assert job_list.search_by_branch("unknown_branch") == []
+    assert job_list.search_by_ref("test_branch") == [job3]
+    assert job_list.search_by_ref("unknown_branch") == []
 
 
 def test_pool_add_remove():

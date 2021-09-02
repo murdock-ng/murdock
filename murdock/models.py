@@ -73,9 +73,9 @@ class JobModel(BaseModel):
         None,
         title="Information of the commit to process",
     )
-    branch: Optional[str] = Field(
+    ref: Optional[str] = Field(
         None,
-        title="Branch name (if any)",
+        title="Reference (if any), can be branch name or tag name",
     )
     prinfo: Optional[PullRequestInfo] = Field(
         None,
