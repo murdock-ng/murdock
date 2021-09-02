@@ -12,7 +12,9 @@ from murdock.config import MURDOCK_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
-from murdock.models import CategorizedJobsModel, JobModel, PullRequestInfo
+from murdock.models import (
+    CategorizedJobsModel, FinishedJobModel, JobModel, PullRequestInfo
+)
 from murdock.github import (
     comment_on_pr, fetch_commit_info, set_commit_status
 )
@@ -438,14 +440,14 @@ class Murdock:
             ], reverse=True, key=lambda job: job.since
         )
 
-    async def remove_finished_jobs(self, before: str) -> int:
+    async def remove_finished_jobs(self, before: str) -> List[FinishedJobModel]:
         jobs_before = await self.db.count_jobs()
         jobs_count = await self.db.count_jobs(before=before)
         jobs_to_remove = await (
             self.db.find_jobs(limit=jobs_count, before=before)
         )
-        for job_data in jobs_to_remove:
-            work_dir = os.path.join(MURDOCK_CONFIG.work_dir, job_data["uid"])
+        for job in jobs_to_remove:
+            work_dir = os.path.join(MURDOCK_CONFIG.work_dir, job.uid)
             MurdockJob.remove_dir(work_dir)
         await self.db.delete_jobs(before=before)
         jobs_removed = jobs_before - await self.db.count_jobs()
@@ -453,7 +455,7 @@ class Murdock:
             f"{jobs_removed} jobs removed (before {before})"
         )
         await self.reload_jobs()
-        return [MurdockJob.from_db_entry(job) for job in jobs_to_remove]
+        return jobs_to_remove
 
 
     async def get_jobs(self, limit: int) -> CategorizedJobsModel:
