@@ -285,7 +285,7 @@ def test_stop_running_not_allowed(stop):
 
 
 @pytest.mark.parametrize("result", [[], [test_job_finished]])
-@mock.patch("murdock.murdock.Murdock.get_finished_jobs")
+@mock.patch("murdock.database.Database.find_jobs")
 def test_get_finished_jobs(jobs, result):
     jobs.return_value = result
     response = client.get("/jobs/finished")
