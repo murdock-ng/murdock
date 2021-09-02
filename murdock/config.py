@@ -4,89 +4,98 @@ from typing import List
 from pydantic import BaseSettings, Field, validator
 
 
-class Settings(BaseSettings):
-    murdock_base_url: str = Field(
-        env="MURDOCK_BASE_URL", default="https://ci.riot-os.org"
-    )
-    murdock_work_dir: str = Field(
-        env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data"
-    )
-    murdock_scripts_dir: str = Field(
-        env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
-    )
-    murdock_use_job_token: bool = Field(
-        env="MURDOCK_USE_JOB_TOKEN", default=False
-    )
-    murdock_accepted_events: List[str] = Field(
-        env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
-    )
-    murdock_accepted_refs: List[str] = Field(
-        env="MURDOCK_ACCEPTED_REFS", default=["master"]
-    )
-    murdock_enable_comments: bool = Field(
-        env="MURDOCK_ENABLE_COMMENTS", default=True
-    )
-    murdock_use_sticky_comment: bool = Field(
-        env="MURDOCK_USE_STICKY_COMMENT", default=False
-    )
-    murdock_num_workers: int = Field(
-        env="MURDOCK_NUM_WORKERS", default=1
-    )
-    murdock_log_level: str = Field(
-        env="MURDOCK_LOG_LEVEL", default="INFO"
-    )
-    murdock_db_host: str = Field(
+class DatabaseSettings(BaseSettings):
+    host: str = Field(
         env="MURDOCK_DB_HOST", default="localhost"
     )
-    murdock_db_port: int = Field(
+    port: int = Field(
         env="MURDOCK_DB_PORT", default=27017
     )
-    murdock_db_name: str = Field(
+    name: str = Field(
         env="MURDOCK_DB_NAME", default="murdock"
     )
-    murdock_max_finished_length_default: int = Field(
-        env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
-    )
-    murdock_github_app_client_id: str = Field(
+
+
+class GithubSettings(BaseSettings):
+    app_client_id: str = Field(
         env="MURDOCK_GITHUB_APP_CLIENT_ID"
     )
-    murdock_github_app_client_secret: str = Field(
+    app_client_secret: str = Field(
         env="MURDOCK_GITHUB_APP_CLIENT_SECRET"
     )
-    github_repo: str = Field(
+    repo: str = Field(
         env="GITHUB_REPO"
     )
-    github_webhook_secret: str = Field(
+    webhook_secret: str = Field(
         env="GITHUB_WEBHOOK_SECRET"
     )
-    github_api_token: str = Field(
+    api_token: str = Field(
         env="GITHUB_API_TOKEN"
     )
-    ci_cancel_on_update: bool = Field(
-        env="CI_CANCEL_ON_UPDATE", default=True
-    )
-    ci_ready_label: str = Field(
+
+
+class CISettings(BaseSettings):
+    ready_label: str = Field(
         env="CI_READY_LABEL", default="CI: ready for build"
     )
-    ci_fasttrack_labels: List[str] = Field(
+    fasttrack_labels: List[str] = Field(
         env="CI_FASTTRACK_LABELS",
         default=["CI: skip compile test", "Process: release backport"]
     )
-    ci_skip_keywords: List[str] = Field(
+    skip_keywords: List[str] = Field(
         env="CI_SKIP_KEYWORDS",
         default=["ci: skip", "ci: no", "ci: ignore"]
     )
 
-    @validator("murdock_work_dir")
-    def murdock_work_dir_exists(cls, path):
+
+class MurdockSettings(BaseSettings):
+    base_url: str = Field(
+        env="MURDOCK_BASE_URL", default="https://ci.riot-os.org"
+    )
+    work_dir: str = Field(
+        env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data"
+    )
+    scripts_dir: str = Field(
+        env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
+    )
+    use_job_token: bool = Field(
+        env="MURDOCK_USE_JOB_TOKEN", default=False
+    )
+    accepted_events: List[str] = Field(
+        env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
+    )
+    accepted_refs: List[str] = Field(
+        env="MURDOCK_ACCEPTED_REFS", default=["master"]
+    )
+    enable_comments: bool = Field(
+        env="MURDOCK_ENABLE_COMMENTS", default=True
+    )
+    use_sticky_comment: bool = Field(
+        env="MURDOCK_USE_STICKY_COMMENT", default=False
+    )
+    num_workers: int = Field(
+        env="MURDOCK_NUM_WORKERS", default=1
+    )
+    log_level: str = Field(
+        env="MURDOCK_LOG_LEVEL", default="INFO"
+    )
+    max_finished_length_default: int = Field(
+        env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
+    )
+    cancel_on_update: bool = Field(
+        env="MURCOCK_CANCEL_ON_UPDATE", default=True
+    )
+
+    @validator("work_dir")
+    def work_dir_exists(cls, path):
         if not os.path.exists(path):
             raise ValueError(
                 f"'MURDOCK_WORK_DIR' doesn't exist ({path})"
             )
         return path
 
-    @validator("murdock_scripts_dir")
-    def murdock_scripts_dir_exists(cls, path):
+    @validator("scripts_dir")
+    def scripts_dir_exists(cls, path):
         if not os.path.exists(path):
             raise ValueError(
                 f"'MURDOCK_SCRIPTS_DIR' doesn't exist ({path})"
@@ -94,9 +103,11 @@ class Settings(BaseSettings):
         return path
 
 
-CONFIG = Settings(
-    _env_file=os.getenv(
-        "ENV_FILE",
-        os.path.join(os.path.dirname(__file__), "..", ".env")
-    )
+_ENV_FILE = os.getenv(
+    "ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env")
 )
+
+DB_CONFIG = DatabaseSettings(_env_file=_ENV_FILE)
+GITHUB_CONFIG = GithubSettings(_env_file=_ENV_FILE)
+CI_CONFIG = CISettings(_env_file=_ENV_FILE)
+MURDOCK_CONFIG = MurdockSettings(_env_file=_ENV_FILE)

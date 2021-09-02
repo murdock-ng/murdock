@@ -5,7 +5,7 @@ import httpx
 
 from jinja2 import FileSystemLoader, Environment
 
-from murdock.config import CONFIG
+from murdock.config import MURDOCK_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel
@@ -24,20 +24,20 @@ async def comment_on_pr(job: MurdockJob):
     template = env.get_template("comment.md.j2")
     context = {
         "job": job,
-        "sticky_comment": CONFIG.murdock_use_sticky_comment
+        "sticky_comment": MURDOCK_CONFIG.use_sticky_comment
     }
     issues_comments_url = (
-        f"https://api.github.com/repos/{CONFIG.github_repo}"
+        f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
         f"/issues/{job.pr.number}/comments"
     )
     request_headers = {
         "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {CONFIG.github_api_token}"
+        "Authorization": f"token {GITHUB_CONFIG.api_token}"
     }
     request_data = json.dumps({"body": template.render(**context)})
 
     comment_id = None
-    if CONFIG.murdock_use_sticky_comment is True:
+    if MURDOCK_CONFIG.use_sticky_comment is True:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 issues_comments_url,
@@ -63,7 +63,7 @@ async def comment_on_pr(job: MurdockJob):
         async with httpx.AsyncClient() as client:
             response = await client.patch(
                 (
-                    f"https://api.github.com/repos/{CONFIG.github_repo}"
+                    f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
                     f"/issues/comments/{comment_id}"
                 ),
                 headers=request_headers,
@@ -78,7 +78,7 @@ async def comment_on_pr(job: MurdockJob):
 async def fetch_commit_info(commit: str) -> str:
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api.github.com/repos/{CONFIG.github_repo}"
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
             f"/commits/{commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json"
@@ -101,10 +101,10 @@ async def set_commit_status(commit: str, status: dict):
     )
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"https://api.github.com/repos/{CONFIG.github_repo}/statuses/{commit}",
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/statuses/{commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {CONFIG.github_api_token}"
+                "Authorization": f"token {GITHUB_CONFIG.api_token}"
             }
             , data=json.dumps(status)
         )

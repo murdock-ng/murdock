@@ -15,19 +15,22 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from murdock.config import CONFIG
+from murdock.config import MURDOCK_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG
 from murdock.models import FinishedJobModel, JobModel, CategorizedJobsModel
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
 
-LOGGER.debug(
-    f"CONFIG:\n{json.dumps(CONFIG.dict(), indent=4)}"
+LOGGER.debug("Configuration:\n"
+    f"\MURDOCK_CONFIG:\n{json.dumps(MURDOCK_CONFIG.dict(), indent=4)}\n"
+    f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
+    f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
+    f"\nCI_CONFIG:\n{json.dumps(CI_CONFIG.dict(), indent=4)}\n"
 )
 
 murdock = Murdock()
 app = FastAPI(
-    debug=CONFIG.murdock_log_level == "DEBUG",
+    debug=MURDOCK_CONFIG.log_level == "DEBUG",
     on_startup=[murdock.init],
     on_shutdown=[murdock.shutdown],
     title="Murdock API",
@@ -44,7 +47,7 @@ app.add_middleware(
 )
 app.mount(
     "/results",
-    StaticFiles(directory=CONFIG.murdock_work_dir, html=True, check_dir=False),
+    StaticFiles(directory=MURDOCK_CONFIG.work_dir, html=True, check_dir=False),
     name="results",
 )
 
@@ -53,7 +56,7 @@ app.mount(
 async def github_webhook_handler(request: Request):
     headers = request.headers
     expected_signature = hmac.new(
-        key=bytes(CONFIG.github_webhook_secret, "utf-8"),
+        key=bytes(GITHUB_CONFIG.webhook_secret, "utf-8"),
         msg=(body := await request.body()),
         digestmod=hashlib.sha256
     ).hexdigest()
@@ -65,7 +68,7 @@ async def github_webhook_handler(request: Request):
         raise HTTPException(status_code=400, detail=msg)
 
     event_type = headers.get("X-Github-Event")
-    if event_type not in CONFIG.murdock_accepted_events:
+    if event_type not in MURDOCK_CONFIG.accepted_events:
         raise HTTPException(status_code=400, detail="Unsupported event")
 
     event_data = json.loads(body.decode())
@@ -84,8 +87,8 @@ async def github_authenticate_handler(code: str):
         response = await client.post(
             "https://github.com/login/oauth/access_token",
             data={
-                "client_id": CONFIG.murdock_github_app_client_id,
-                "client_secret": CONFIG.murdock_github_app_client_secret,
+                "client_id": GITHUB_CONFIG.app_client_id,
+                "client_secret": GITHUB_CONFIG.app_client_secret,
                 "code": code,
             },
             headers={"Accept": "application/vnd.github.v3+json"}
@@ -102,7 +105,7 @@ async def _check_push_permissions(
 ):
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api.github.com/repos/{CONFIG.github_repo}",
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {token}"
@@ -165,7 +168,7 @@ async def building_jobs_handler():
     tags=["building jobs"]
 )
 async def building_commit_status_handler(request: Request, commit: str):
-    if CONFIG.murdock_use_job_token:
+    if MURDOCK_CONFIG.use_job_token:
         msg = ""
         if (job := murdock.active.search_by_commit_sha(commit)) is None:
             msg = f"No job running for commit {commit}"
@@ -217,7 +220,7 @@ async def building_commit_stop_handler(
     tags=["finished jobs"]
 )
 async def finished_jobs_handler(
-        limit: Optional[int] = CONFIG.murdock_max_finished_length_default,
+        limit: Optional[int] = MURDOCK_CONFIG.max_finished_length_default,
         uid: Optional[str] = None,
         prnum: Optional[int] = None,
         branch: Optional[str] = None,
@@ -275,7 +278,7 @@ async def finished_job_delete_handler(
     tags=["jobs"]
 )
 async def jobs_handler(
-    limit: Optional[int] = CONFIG.murdock_max_finished_length_default
+    limit: Optional[int] = MURDOCK_CONFIG.max_finished_length_default
 ):
     return await murdock.get_jobs(limit)
 

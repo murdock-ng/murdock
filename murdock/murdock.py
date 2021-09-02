@@ -8,7 +8,7 @@ from typing import List
 
 from fastapi import WebSocket
 
-from murdock.config import CONFIG
+from murdock.config import MURDOCK_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
@@ -29,7 +29,7 @@ class Murdock:
 
     def __init__(self):
         self.clients : List[WebSocket] = []
-        self.num_workers = CONFIG.murdock_num_workers
+        self.num_workers = MURDOCK_CONFIG.num_workers
         self.queued : MurdockJobList = MurdockJobList()
         self.active : MurdockJobPool = MurdockJobPool(self.num_workers)
         self.queue : asyncio.Queue = asyncio.Queue()
@@ -98,7 +98,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has started",
-                "target_url": CONFIG.murdock_base_url,
+                "target_url": MURDOCK_CONFIG.base_url,
             }
         )
         await self.reload_jobs()
@@ -125,7 +125,7 @@ class Murdock:
                     )
                 }
             )
-            if job.pr is not None and CONFIG.murdock_enable_comments:
+            if job.pr is not None and MURDOCK_CONFIG.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
             await self.db.insert_job(job)
@@ -173,7 +173,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has been queued",
-                "target_url": CONFIG.murdock_base_url,
+                "target_url": MURDOCK_CONFIG.base_url,
             }
         )
         if reload_jobs is True:
@@ -194,7 +194,7 @@ class Murdock:
         status = {
             "state":"pending",
             "context": "Murdock",
-            "target_url": CONFIG.murdock_base_url,
+            "target_url": MURDOCK_CONFIG.base_url,
             "description": "Canceled",
         }
         await set_commit_status(commit, status)
@@ -213,7 +213,7 @@ class Murdock:
                 status = {
                     "state":"pending",
                     "context": "Murdock",
-                    "target_url": CONFIG.murdock_base_url,
+                    "target_url": MURDOCK_CONFIG.base_url,
                 }
                 if description is not None:
                     status.update({
@@ -235,7 +235,7 @@ class Murdock:
         status = {
             "state":"pending",
             "context": "Murdock",
-            "target_url": CONFIG.murdock_base_url,
+            "target_url": MURDOCK_CONFIG.base_url,
             "description": "Stopped",
         }
         await set_commit_status(commit, status)
@@ -256,12 +256,12 @@ class Murdock:
             return
 
         LOGGER.info(f"Scheduling new job {job}")
-        if  CONFIG.ci_cancel_on_update and self.has_matching_jobs_queued(job):
+        if  MURDOCK_CONFIG.cancel_on_update and self.has_matching_jobs_queued(job):
             LOGGER.debug(f"Re-queue job {job}")
             # Similar job is already queued => cancel it and queue the new one
             self.cancel_queued_jobs_matching_pr(job.pr.number)
             await self.add_job_to_queue(job)
-        elif CONFIG.ci_cancel_on_update and self.has_matching_jobs_active(job):
+        elif MURDOCK_CONFIG.cancel_on_update and self.has_matching_jobs_active(job):
             # Similar job is already active => stop it and queue the new one
             LOGGER.debug(f"Stop jobs matching job {job}")
             await self.stop_active_jobs_matching_pr(job.pr.number)
@@ -304,7 +304,7 @@ class Murdock:
             return
 
         if any(
-            re.match(rf"^({'|'.join(CONFIG.ci_skip_keywords)})$", line)
+            re.match(rf"^({'|'.join(CI_CONFIG.skip_keywords)})$", line)
             for line in commit.message.split('\n')
         ):
             LOGGER.debug(
@@ -322,10 +322,10 @@ class Murdock:
 
         if action == "labeled":
             label = event["label"]["name"]
-            if CONFIG.ci_ready_label not in pull_request.labels:
+            if CI_CONFIG.ready_label not in pull_request.labels:
                 return
             elif (
-                label == CONFIG.ci_ready_label and
+                label == CI_CONFIG.ready_label and
                 self.sha_is_handled(job.commit.sha)
             ):
                 LOGGER.debug(
@@ -333,7 +333,7 @@ class Murdock:
                 )
                 return
             elif (
-                label != CONFIG.ci_ready_label and
+                label != CI_CONFIG.ready_label and
                 (queued_job := self.queued.search_by_commit_sha(job.commit.sha)) is not None
             ):
                 LOGGER.debug(
@@ -342,11 +342,11 @@ class Murdock:
                 queued_job.pr.labels.append(label)
                 return
 
-        if CONFIG.ci_ready_label not in pull_request.labels:
-            LOGGER.debug(f"'{CONFIG.ci_ready_label}' label not set")
+        if CI_CONFIG.ready_label not in pull_request.labels:
+            LOGGER.debug(f"'{CI_CONFIG.eady_label}' label not set")
             await self.disable_jobs_matching_pr(
                 job.pr.number,
-                description=f"\"{CONFIG.ci_ready_label}\" label not set",
+                description=f"\"{CI_CONFIG.ready_label}\" label not set",
             )
             return
 
@@ -367,7 +367,7 @@ class Murdock:
         commit = (
             await fetch_commit_info(event["after"])
         )
-        if ref not in CONFIG.murdock_accepted_refs:
+        if ref not in MURDOCK_CONFIG.accepted_refs:
             LOGGER.debug(f"Ref '{ref}' not accepted for push events")
             return
         job = MurdockJob(commit, branch=ref)
@@ -421,7 +421,7 @@ class Murdock:
             self.db.find_jobs(limit=jobs_count, before=before)
         )
         for job_data in jobs_to_remove:
-            work_dir = os.path.join(CONFIG.murdock_work_dir, job_data["uid"])
+            work_dir = os.path.join(MURDOCK_CONFIG.work_dir, job_data["uid"])
             MurdockJob.remove_dir(work_dir)
         await self.db.delete_jobs(before=before)
         jobs_removed = jobs_before - await self.db.count_jobs()

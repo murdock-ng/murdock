@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import motor.motor_asyncio as aiomotor
 
-from murdock.config import CONFIG
+from murdock.config import DB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel, FinishedJobModel, PullRequestInfo
@@ -20,11 +20,11 @@ class Database:
         LOGGER.info("Initializing database connection")
         loop = asyncio.get_event_loop()
         conn = aiomotor.AsyncIOMotorClient(
-            f"mongodb://{CONFIG.murdock_db_host}:{CONFIG.murdock_db_port}",
+            f"mongodb://{DB_CONFIG.host}:{DB_CONFIG.port}",
             maxPoolSize=5,
             io_loop=loop
         )
-        self.db = conn[CONFIG.murdock_db_name]
+        self.db = conn[DB_CONFIG.name]
     
     def close(self):
         LOGGER.info("Closing database connection")

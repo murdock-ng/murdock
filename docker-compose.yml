@@ -23,7 +23,7 @@ services:
         - GITHUB_REPO
         - GITHUB_WEBHOOK_SECRET
         - GITHUB_API_TOKEN
-        - CI_CANCEL_ON_UPDATE
+        - MURCOCK_CANCEL_ON_UPDATE
         - CI_READY_LABEL
         - CI_FASTTRACK_LABELS
     volumes:

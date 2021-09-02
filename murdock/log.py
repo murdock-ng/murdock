@@ -2,10 +2,10 @@ import logging
 
 from uvicorn.logging import ColourizedFormatter
 
-from murdock.config import CONFIG
+from murdock.config import MURDOCK_CONFIG
 
 LOGGER = logging.getLogger("murdock")
-LOGGER.setLevel(logging.getLevelName(CONFIG.murdock_log_level))
+LOGGER.setLevel(logging.getLevelName(MURDOCK_CONFIG.log_level))
 
 formatter = ColourizedFormatter(
     fmt=(
