@@ -218,15 +218,17 @@ async def building_commit_stop_handler(
 )
 async def finished_jobs_handler(
         limit: Optional[int] = CONFIG.murdock_max_finished_length_default,
-        job_id: Optional[str] = None,
+        uid: Optional[str] = None,
         prnum: Optional[int] = None,
-        user: Optional[str] = None,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+        author: Optional[str] = None,
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None,
 ):
     return JSONResponse(await murdock.db.find_jobs(
-        limit, job_id, prnum, user, result, after, before
+        limit, uid, prnum, branch, sha, author, result, after, before
     ))
 
 

@@ -2,9 +2,8 @@ import asyncio
 
 from datetime import datetime
 from datetime import time as dtime
-from typing import List, Optional
+from typing import Optional
 
-from bson.objectid import ObjectId
 import motor.motor_asyncio as aiomotor
 
 from murdock.config import CONFIG
@@ -40,31 +39,36 @@ class Database:
             LOGGER.warning(f"Cannot find job matching uid '{uid}'")
             return
 
-        commit = CommitModel(**entry[0]["commit"])
-        if entry[0]["prinfo"] is not None:
-            prinfo = PullRequestInfo(**entry[0]["prinfo"])
+        commit = CommitModel(**entry["commit"])
+        if entry["prinfo"] is not None:
+            prinfo = PullRequestInfo(**entry["prinfo"])
         else:
             prinfo = None
         
-        return MurdockJob(commit, pr=prinfo, branch=entry[0]["branch"])
+        return MurdockJob(commit, pr=prinfo, branch=entry["branch"])
 
     @staticmethod
     def query(
-        limit: int,
-        job_id: Optional[str] = None,
+        uid: Optional[str] = None,
         prnum: Optional[int] = None,
-        user: Optional[str] = None,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+        author: Optional[str] = None,
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None
     ):
         _query = {}
-        if job_id is not None:
-            _query.update({"_id": ObjectId(job_id)})
+        if uid is not None:
+            _query.update({"uid": uid})
         if prnum is not None:
-            _query.update({"prnum": str(prnum)})
-        if user is not None:
-            _query.update({"user": user})
+            _query.update({"prinfo.number": prnum})
+        if branch is not None:
+            _query.update({"branch": branch})
+        if sha is not None:
+            _query.update({"commit.sha": sha})
+        if author is not None:
+            _query.update({"commit.author": author})
         if result in ["errored", "passed"]:
             _query.update({"result": result})
         if after is not None:
@@ -84,14 +88,18 @@ class Database:
     async def find_jobs(
         self,
         limit: int,
-        job_id: Optional[str] = None,
+        uid: Optional[str] = None,
         prnum: Optional[int] = None,
-        user: Optional[str] = None,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+        author: Optional[str] = None,
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None
     ) -> list:
-        query = Database.query(limit, job_id, prnum, user, result, after, before)
+        query = Database.query(
+            uid, prnum, branch, sha, author, result, after, before
+        )
         jobs = await (
             self.db.job.find(query).sort("since", -1).to_list(length=limit)
         )
@@ -100,24 +108,32 @@ class Database:
 
     async def count_jobs(
         self,
-        job_id: Optional[str] = None,
+        uid: Optional[str] = None,
         prnum: Optional[int] = None,
-        user: Optional[str] = None,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+        author: Optional[str] = None,
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None
     ) -> list:
-        query = Database.query(-1, job_id, prnum, user, result, after, before)
+        query = Database.query(
+            uid, prnum, branch, sha, author, result, after, before
+        )
         return await self.db.job.count_documents(query)
 
     async def delete_jobs(
         self,
-        job_id: Optional[str] = None,
+        uid: Optional[str] = None,
         prnum: Optional[int] = None,
-        user: Optional[str] = None,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+        author: Optional[str] = None,
         result: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None
     ):
-        query = Database.query(-1, job_id, prnum, user, result, after, before)
+        query = Database.query(
+            uid, prnum, branch, sha, author, result, after, before
+        )
         await self.db.job.delete_many(query)
