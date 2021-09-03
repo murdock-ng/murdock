@@ -383,7 +383,7 @@ class Murdock:
             ref not in MURDOCK_CONFIG.accepted_branches and
             all(
                 re.match(expr.replace('\\\\', '\\'), ref) is None
-                for expr in MURDOCK_CONFIG.accepted_heads
+                for expr in MURDOCK_CONFIG.accepted_branches
             )
         ):
             LOGGER.debug(f"Branch '{ref}' not accepted for push events")
