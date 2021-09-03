@@ -50,7 +50,7 @@ class CISettings(BaseSettings):
 
 class MurdockSettings(BaseSettings):
     base_url: str = Field(
-        env="MURDOCK_BASE_URL", default="https://ci.riot-os.org"
+        env="MURDOCK_BASE_URL", default="http://localhost:8000"
     )
     work_dir: str = Field(
         env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data"
