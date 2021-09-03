@@ -75,6 +75,10 @@ def test_openapi_exists():
             400, {"detail": "Invalid event signature"}, None
         ),
         (
+            {"event": "test_data_invalid"}, "push",
+            400, {"detail": "Invalid event signature"}, None
+        ),
+        (
             {"event": "test_data"}, "unsupported_event",
             400, {"detail": "Unsupported event"}, None
         ),
@@ -83,15 +87,24 @@ def test_openapi_exists():
             400, {"detail": "Murdock msg"}, "Murdock msg"
         ),
         (
+            {"event": "test_data"}, "push",
+            400, {"detail": "Murdock msg"}, "Murdock msg"
+        ),
+        (
             {"event": "test_data"}, "pull_request", 200, None, None
+        ),
+        (
+            {"event": "test_data"}, "push", 200, None, None
         ),
     ]
 )
 @mock.patch("murdock.murdock.Murdock.handle_pull_request_event")
+@mock.patch("murdock.murdock.Murdock.handle_push_event")
 def test_github_webhook(
-    handle, event, event_type, code, msg, handle_msg
+    handle_push, handle_pr, event, event_type, code, msg, handle_msg
 ):
-    handle.return_value = handle_msg
+    handle_pr.return_value = handle_msg
+    handle_push.return_value = handle_msg
     response = client.post(
         "/github/webhook",
         data=json.dumps(event),
@@ -102,9 +115,12 @@ def test_github_webhook(
         }
     )
     if event == {'event': 'test_data'} and event_type == "pull_request":
-        handle.assert_called_with(event)
+        handle_pr.assert_called_with(event)
+    elif event == {'event': 'test_data'} and event_type == "push":
+        handle_push.assert_called_with(event)
     else:
-        handle.assert_not_called()
+        handle_pr.assert_not_called()
+        handle_push.assert_not_called()
     assert response.status_code == code
     if response.status_code != 200:
         assert response.json() == msg
