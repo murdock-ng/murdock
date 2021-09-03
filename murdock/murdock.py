@@ -146,8 +146,8 @@ class Murdock:
                 job.pr is not None and
                 self.queued.search_by_pr_number(job.pr.number)
             ) or (
-                job.branch is not None and
-                self.queued.search_by_ref(job.branch)
+                job.ref is not None and
+                self.queued.search_by_ref(job.ref)
             )
         )
 
@@ -157,8 +157,8 @@ class Murdock:
                 job.pr is not None and
                 self.active.search_by_pr_number(job.pr.number)
             ) or (
-                job.branch is not None and
-                self.active.search_by_ref(job.branch)
+                job.ref is not None and
+                self.active.search_by_ref(job.ref)
             )
         )
 
