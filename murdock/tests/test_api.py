@@ -352,7 +352,7 @@ def test_delete_job(remove, result, code):
     assert response.status_code == code
     remove.assert_called_with(JobQueryModel(before=before))
     if result:
-        assert response.json() == result
+        assert response.json() == [job.dict(exclude_none=True) for job in result]
     else:
         assert response.json() == {"detail": "Found no finished job to remove"}
 
