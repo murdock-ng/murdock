@@ -2,7 +2,7 @@ import hmac
 import hashlib
 import json
 
-from typing import Optional, List
+from typing import List
 
 import httpx
 
@@ -16,7 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from murdock.config import MURDOCK_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG
-from murdock.models import FinishedJobModel, JobModel, CategorizedJobsModel
+from murdock.models import (
+    FinishedJobModel, JobModel, CategorizedJobsModel, JobQueryModel
+)
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 
@@ -219,20 +221,8 @@ async def building_commit_stop_handler(
     summary="Return the list of finished jobs sorted by end time, reversed",
     tags=["finished jobs"]
 )
-async def finished_jobs_handler(
-        limit: Optional[int] = MURDOCK_CONFIG.max_finished_length_default,
-        uid: Optional[str] = None,
-        prnum: Optional[int] = None,
-        branch: Optional[str] = None,
-        sha: Optional[str] = None,
-        author: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-):
-    return await murdock.db.find_jobs(
-        limit, uid, prnum, branch, sha, author, result, after, before
-    )
+async def finished_jobs_handler(query: JobQueryModel = Depends()):
+    return await murdock.db.find_jobs(query)
 
 
 @app.post(
@@ -264,7 +254,8 @@ async def finished_job_delete_handler(
     before: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    if not (jobs := await murdock.remove_finished_jobs(before)):
+    query = JobQueryModel(before=before)
+    if not (jobs := await murdock.remove_finished_jobs(query)):
         raise HTTPException(
             status_code=404, detail=f"Found no finished job to remove"
         )
@@ -277,10 +268,8 @@ async def finished_job_delete_handler(
     summary="Return the list of all jobs (queued, building, finished)",
     tags=["jobs"]
 )
-async def jobs_handler(
-    limit: Optional[int] = MURDOCK_CONFIG.max_finished_length_default
-):
-    return await murdock.get_jobs(limit)
+async def jobs_handler(query: JobQueryModel = Depends()):
+    return await murdock.get_jobs(query)
 
 
 @app.websocket("/ws/status")

@@ -1,7 +1,5 @@
 import asyncio
 
-from datetime import datetime
-from datetime import time as dtime
 from typing import List, Optional
 
 import motor.motor_asyncio as aiomotor
@@ -9,7 +7,9 @@ import motor.motor_asyncio as aiomotor
 from murdock.config import DB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
-from murdock.models import CommitModel, FinishedJobModel, PullRequestInfo
+from murdock.models import (
+    CommitModel, FinishedJobModel, JobQueryModel, PullRequestInfo
+)
 
 
 class Database:
@@ -47,93 +47,18 @@ class Database:
         
         return MurdockJob(commit, pr=prinfo, branch=entry["branch"])
 
-    @staticmethod
-    def query(
-        uid: Optional[str] = None,
-        prnum: Optional[int] = None,
-        branch: Optional[str] = None,
-        sha: Optional[str] = None,
-        author: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None
-    ):
-        _query = {}
-        if uid is not None:
-            _query.update({"uid": uid})
-        if prnum is not None:
-            _query.update({"prinfo.number": prnum})
-        if branch is not None:
-            _query.update({"branch": branch})
-        if sha is not None:
-            _query.update({"commit.sha": sha})
-        if author is not None:
-            _query.update({"commit.author": author})
-        if result in ["errored", "passed"]:
-            _query.update({"result": result})
-        if after is not None:
-            date = datetime.strptime(after, "%Y-%m-%d")
-            _query.update({"since": {"$gte": date.timestamp()}})
-        if before is not None:
-            date = datetime.combine(
-                datetime.strptime(before, "%Y-%m-%d"),
-                dtime(hour=23, minute=59, second=59, microsecond=999)
-            )
-            if "since" in _query:
-                _query["since"].update({"$lte": date.timestamp()})
-            else:
-                _query.update({"since": {"$lte": date.timestamp()}})
-        return _query
-
-    async def find_jobs(
-        self,
-        limit: int,
-        uid: Optional[str] = None,
-        prnum: Optional[int] = None,
-        branch: Optional[str] = None,
-        sha: Optional[str] = None,
-        author: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None
-    ) -> List[FinishedJobModel]:
-        query = Database.query(
-            uid, prnum, branch, sha, author, result, after, before
-        )
+    async def find_jobs(self, query: JobQueryModel) -> List[FinishedJobModel]:
         jobs = await (
-            self.db.job.find(query).sort("since", -1).to_list(length=limit)
+            self.db.job
+                .find(query.to_mongodb_query())
+                .sort("since", -1)
+                .to_list(length=query.limit)
         )
 
         return [MurdockJob.from_db_entry(job) for job in jobs]
 
-    async def count_jobs(
-        self,
-        uid: Optional[str] = None,
-        prnum: Optional[int] = None,
-        branch: Optional[str] = None,
-        sha: Optional[str] = None,
-        author: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None
-    ) -> list:
-        query = Database.query(
-            uid, prnum, branch, sha, author, result, after, before
-        )
-        return await self.db.job.count_documents(query)
+    async def count_jobs(self, query: JobQueryModel) -> int:
+        return await self.db.job.count_documents(query.to_mongodb_query())
 
-    async def delete_jobs(
-        self,
-        uid: Optional[str] = None,
-        prnum: Optional[int] = None,
-        branch: Optional[str] = None,
-        sha: Optional[str] = None,
-        author: Optional[str] = None,
-        result: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None
-    ):
-        query = Database.query(
-            uid, prnum, branch, sha, author, result, after, before
-        )
-        await self.db.job.delete_many(query)
+    async def delete_jobs(self, query: JobQueryModel):
+        await self.db.job.delete_many(query.to_mongodb_query())

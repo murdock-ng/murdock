@@ -1,6 +1,10 @@
+from datetime import datetime
+from datetime import time as dtime
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
+
+from murdock.config import MURDOCK_CONFIG
 
 
 class PullRequestInfo(BaseModel):
@@ -123,3 +127,70 @@ class CategorizedJobsModel(BaseModel):
         None,
         title="List of all finished jobs",
     )
+
+
+class JobQueryModel(BaseModel):
+    limit: Optional[int] = Field(
+        MURDOCK_CONFIG.max_finished_length_default,
+        title="Limit length of items returned",
+    )
+    uid: Optional[str] = Field(
+        None,
+        title="uid of the job"
+    )
+    prnum: Optional[int] = Field(
+        None,
+        title="PR number",
+    )
+    branch: Optional[str] = Field(
+        None,
+        title="Name of the branch",
+    )
+    sha: Optional[str] =  Field(
+        None,
+        title="Commit SHA",
+    )
+    author: Optional[str] =  Field(
+        None,
+        title="Author of the commit",
+    )
+    result: Optional[str] =  Field(
+        None,
+        title="Result of the job",
+    )
+    after: Optional[str] =  Field(
+        None,
+        title="Date after which the job finished",
+    )
+    before: Optional[str] =  Field(
+        None,
+        title="Date before which the job finished (included)",
+    )
+
+    def to_mongodb_query(self):
+        _query = {}
+        if self.uid is not None:
+            _query.update({"uid": self.uid})
+        if self.prnum is not None:
+            _query.update({"prinfo.number": self.prnum})
+        if self.branch is not None:
+            _query.update({"branch": self.branch})
+        if self.sha is not None:
+            _query.update({"commit.sha": self.sha})
+        if self.author is not None:
+            _query.update({"commit.author": self.author})
+        if self.result in ["errored", "passed"]:
+            _query.update({"result": self.result})
+        if self.after is not None:
+            date = datetime.strptime(self.after, "%Y-%m-%d")
+            _query.update({"since": {"$gte": date.timestamp()}})
+        if self.before is not None:
+            date = datetime.combine(
+                datetime.strptime(self.before, "%Y-%m-%d"),
+                dtime(hour=23, minute=59, second=59, microsecond=999)
+            )
+            if "since" in _query:
+                _query["since"].update({"$lte": date.timestamp()})
+            else:
+                _query.update({"since": {"$lte": date.timestamp()}})
+        return _query

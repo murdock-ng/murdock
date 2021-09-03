@@ -15,7 +15,7 @@ from ..main import app, _check_push_permissions
 from ..job import MurdockJob
 from ..models import (
     CategorizedJobsModel, CommitModel,
-    FinishedJobModel, JobModel, PullRequestInfo
+    FinishedJobModel, JobModel, JobQueryModel, PullRequestInfo
 )
 
 
@@ -292,6 +292,27 @@ def test_get_finished_jobs(jobs, result):
     response = client.get("/jobs/finished")
     assert response.status_code == 200
     assert response.json() == result
+    jobs.assert_called_with(JobQueryModel())
+
+
+@pytest.mark.parametrize("query,call_arg", [
+    ("", JobQueryModel()),
+    ("?limit=30", JobQueryModel(limit=30)),
+    ("?limit=30&uid=12345", JobQueryModel(limit=30, uid="12345")),
+    ("?prnum=42", JobQueryModel(prnum=42)),
+    ("?branch=test", JobQueryModel(branch="test")),
+    ("?sha=abcdef", JobQueryModel(sha="abcdef")),
+    ("?author=me", JobQueryModel(author="me")),
+    ("?result=passed", JobQueryModel(result="passed")),
+    ("?after=after", JobQueryModel(after="after")),
+    ("?before=before", JobQueryModel(before="before")),
+    ("?invalid=invalid", JobQueryModel()),
+])
+@mock.patch("murdock.database.Database.find_jobs")
+def test_get_finished_jobs_with_query(jobs, query, call_arg):
+    jobs.return_value = [test_job_finished]
+    client.get(f"/jobs/finished/{query}")
+    jobs.assert_called_with(call_arg)
 
 
 @pytest.mark.usefixtures("push_allowed")
@@ -329,7 +350,7 @@ def test_delete_job(remove, result, code):
     before = "2021-08-16"
     response = client.delete(f"/jobs/finished?before={before}")
     assert response.status_code == code
-    remove.assert_called_with(before)
+    remove.assert_called_with(JobQueryModel(before=before))
     if result:
         assert response.json() == result
     else:
