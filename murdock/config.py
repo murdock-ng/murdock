@@ -64,11 +64,11 @@ class MurdockSettings(BaseSettings):
     accepted_events: List[str] = Field(
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
-    accepted_heads: List[str] = Field(
-        env="MURDOCK_ACCEPTED_HEADS", default=["master"]
+    accepted_branches: List[str] = Field(
+        env="MURDOCK_ACCEPTED_BRANCHES", default=["*"]
     )
     accepted_tags: List[str] = Field(
-        env="MURDOCK_ACCEPTED_TAGS", default=["v(\d+\.)?(\d+\.)?(\*|\d+)"]
+        env="MURDOCK_ACCEPTED_TAGS", default=["*"]
     )
     enable_comments: bool = Field(
         env="MURDOCK_ENABLE_COMMENTS", default=True

@@ -379,19 +379,21 @@ class Murdock:
         commit = await fetch_commit_info(event["after"])
         if (
             ref_type == "heads" and
-            ref not in MURDOCK_CONFIG.accepted_heads and
+            "*" not in MURDOCK_CONFIG.accepted_branches and
+            ref not in MURDOCK_CONFIG.accepted_branches and
             all(
-                re.match(expr, ref) is None
+                re.match(expr.replace('\\\\', '\\'), ref) is None
                 for expr in MURDOCK_CONFIG.accepted_heads
             )
         ):
-            LOGGER.debug(f"Head '{ref}' not accepted for push events")
+            LOGGER.debug(f"Branch '{ref}' not accepted for push events")
             return
         if (
             ref_type == "tags" and
+            "*" not in MURDOCK_CONFIG.accepted_tags and
             ref not in MURDOCK_CONFIG.accepted_tags and
             all(
-                re.match(expr, ref) is None
+                re.match(expr.replace('\\\\', '\\'), ref) is None
                 for expr in MURDOCK_CONFIG.accepted_tags
             )
         ):
