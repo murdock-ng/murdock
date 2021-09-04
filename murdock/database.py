@@ -40,12 +40,16 @@ class Database:
             return
 
         commit = CommitModel(**entry["commit"])
-        if entry["prinfo"] is not None:
+        if "prinfo" in entry:
             prinfo = PullRequestInfo(**entry["prinfo"])
         else:
             prinfo = None
+        if "ref" in entry:
+            ref = entry["ref"]
+        else:
+            ref = None
         
-        return MurdockJob(commit, pr=prinfo, branch=entry["branch"])
+        return MurdockJob(commit, pr=prinfo, ref=ref)
 
     async def find_jobs(self, query: JobQueryModel) -> List[FinishedJobModel]:
         jobs = await (
