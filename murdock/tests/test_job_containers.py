@@ -1,5 +1,3 @@
-import pytest
-
 from murdock.models import CommitModel, PullRequestInfo
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
@@ -132,6 +130,53 @@ def test_list_search_by_ref():
     job_list.add(*[job1, job2, job3])
     assert job_list.search_by_ref("test_branch") == [job3]
     assert job_list.search_by_ref("unknown_branch") == []
+
+
+def test_list_search_matching():
+    job1 = MurdockJob(
+        CommitModel(sha="1", message="job1", author="test"),
+        pr=PullRequestInfo(
+            title="test",
+            number=123,
+            merge_commit="test_merge_commit",
+            user="test_user",
+            url="test_url",
+            base_repo="test_base_repo",
+            base_branch="test_base_branch",
+            base_commit="test_base_commit",
+            base_full_name="test_base_full_name",
+            mergeable=True,
+            labels=["test"]
+        )
+    )
+    job2 = MurdockJob(
+        CommitModel(sha="2", message="job2", author="test"),
+        pr=PullRequestInfo(
+            title="test",
+            number=123,
+            merge_commit="test_merge_commit",
+            user="test_user",
+            url="test_url",
+            base_repo="test_base_repo",
+            base_branch="test_base_branch",
+            base_commit="test_base_commit",
+            base_full_name="test_base_full_name",
+            mergeable=True,
+            labels=["test"]
+        )
+    )
+    job3 = MurdockJob(
+        CommitModel(sha="3", message="job3", author="test"),
+        ref="test_branch"
+    )
+    job4 = MurdockJob(
+        CommitModel(sha="4", message="job3", author="test"),
+        ref="test_branch"
+    )
+    job_list = MurdockJobList()
+    job_list.add(*[job1, job2, job3, job4])
+    assert job_list.search_matching(job1) == [job1, job2]
+    assert job_list.search_matching(job3) == [job3, job4]
 
 
 def test_pool_add_remove():

@@ -140,26 +140,10 @@ class Murdock:
             self.active.search_by_commit_sha(sha) is not None
         )
 
-    def has_matching_jobs_queued(self, job: MurdockJob) -> bool:
+    def has_matching_jobs(self, job: MurdockJob) -> bool:
         return (
-            (
-                job.pr is not None and
-                self.queued.search_by_pr_number(job.pr.number)
-            ) or (
-                job.ref is not None and
-                self.queued.search_by_ref(job.ref)
-            )
-        )
-
-    def has_matching_jobs_active(self, job: MurdockJob) -> bool:
-        return (
-            (
-                job.pr is not None and
-                self.active.search_by_pr_number(job.pr.number)
-            ) or (
-                job.ref is not None and
-                self.active.search_by_ref(job.ref)
-            )
+            self.queued.search_matching(job) or
+            self.active.search_matching(job)
         )
 
     async def add_job_to_queue(self, job: MurdockJob, reload_jobs=True):
@@ -182,57 +166,53 @@ class Murdock:
         if reload_jobs is True:
             await self.reload_jobs()
 
-    def cancel_queued_jobs_matching_pr(self, prnum: int) -> List[MurdockJob]:
-        for job in (jobs := self.queued.search_by_pr_number(prnum)):
-            LOGGER.debug(f"Canceling job {job}")
-            job.canceled = True
-            self.queued.remove(job)
-        return jobs
+    async def cancel_queued_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
+        jobs_to_cancel = []
+        if job.pr is not None:
+            jobs_to_cancel += self.queued.search_by_pr_number(job.pr.number)
+        if job.ref is not None:
+            jobs_to_cancel += self.queued.search_by_ref(job.ref)
+        for job in jobs_to_cancel:
+            await self.cancel_queued_job(job)
+        return jobs_to_cancel
 
     async def cancel_queued_job_with_commit(self, commit: str):
         if (job := self.queued.search_by_commit_sha(commit)) is None:
             return
+        await self.cancel_queued_job(job)
+        await self.reload_jobs()
+        return job
+
+    async def cancel_queued_job(self, job: MurdockJob):
         LOGGER.debug(f"Canceling job {job}")
         job.canceled = True
+        self.queued.remove(job)
         status = {
             "state":"pending",
             "context": "Murdock",
             "target_url": MURDOCK_CONFIG.base_url,
             "description": "Canceled",
         }
-        await set_commit_status(commit, status)
+        await set_commit_status(job.commit.sha, status)
+
+    async def stop_active_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
+        jobs_to_stop = []
+        if job.pr is not None:
+            jobs_to_stop += self.active.search_by_pr_number(job.pr.number)
+        if job.ref is not None:
+            jobs_to_stop += self.active.search_by_ref(job.ref)
+        for job in jobs_to_stop:
+            await self.stop_active_job(job)
+        return jobs_to_stop
+
+    async def stop_active_job_with_commit(self, commit: str):
+        if (job := self.active.search_by_commit_sha(commit)) is None:
+            return
+        await self.stop_active_job(job)
         await self.reload_jobs()
         return job
 
-    async def disable_jobs_matching_pr(self, prnum: int, description=None):
-        disabled_jobs = []
-        disabled_jobs += (await self.stop_active_jobs_matching_pr(prnum))
-        disabled_jobs += (await self.cancel_queued_jobs_matching_pr(prnum))
-        if disabled_jobs:
-            LOGGER.debug(
-                f"Jobs matching #PR {prnum} disabled ({len(disabled_jobs)})"
-            )
-            for job in disabled_jobs:
-                status = {
-                    "state":"pending",
-                    "context": "Murdock",
-                    "target_url": MURDOCK_CONFIG.base_url,
-                }
-                if description is not None:
-                    status.update({
-                        "description": description,
-                    })
-                await set_commit_status(job.commit.sha, status)
-            await self.reload_jobs()
-
-    async def stop_active_jobs_matching_pr(self, prnum: int) -> List[MurdockJob]:
-        for job in (jobs := self.active.search_by_pr_number(prnum)):
-            await self.stop_active_job(job.commit.sha)
-        return jobs
-
-    async def stop_active_job(self, commit: str):
-        if (job := self.active.search_by_commit_sha(commit)) is None:
-            return
+    async def stop_active_job(self, job: MurdockJob) -> MurdockJob:
         LOGGER.debug(f"Stopping job {job}")
         await job.stop()
         status = {
@@ -241,36 +221,38 @@ class Murdock:
             "target_url": MURDOCK_CONFIG.base_url,
             "description": "Stopped",
         }
-        await set_commit_status(commit, status)
+        await set_commit_status(job.commit.sha, status)
         return job
+
+    async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
+        LOGGER.debug(f"Disable jobs matching job {job}")
+        disabled_jobs = []
+        disabled_jobs += (await self.cancel_queued_jobs_matching(job))
+        disabled_jobs += (await self.stop_active_jobs_matching(job))
+        if disabled_jobs:
+            await self.reload_jobs()
+        return disabled_jobs
 
     async def restart_job(self, uid: str) -> MurdockJob:
         if (job := await self.db.find_job(uid)) is None:
             return
         LOGGER.info(f"Restarting job {job}")
-        await self.schedule_job(job)
-        return job
+        new_job = MurdockJob(job.commit, pr=job.pr, ref=job.ref)
+        await self.schedule_job(new_job)
+        return new_job
 
     async def schedule_job(self, job: MurdockJob) -> MurdockJob:
         if self.sha_is_handled(job.commit.sha):
-            LOGGER.debug(
-                f"Commit {job.commit.sha} is already handled, ignoring"
-            )
-            return
-
+             LOGGER.debug(
+                 f"Commit {job.commit.sha} is already handled, ignoring"
+             )
+             return
         LOGGER.info(f"Scheduling new job {job}")
-        if  MURDOCK_CONFIG.cancel_on_update and self.has_matching_jobs_queued(job):
-            LOGGER.debug(f"Re-queue job {job}")
-            # Similar job is already queued => cancel it and queue the new one
-            self.cancel_queued_jobs_matching_pr(job.pr.number)
-            await self.add_job_to_queue(job)
-        elif MURDOCK_CONFIG.cancel_on_update and self.has_matching_jobs_active(job):
-            # Similar job is already active => stop it and queue the new one
-            LOGGER.debug(f"Stop jobs matching job {job}")
-            await self.stop_active_jobs_matching_pr(job.pr.number)
-            await self.add_job_to_queue(job, reload_jobs=False)
-        else:
-            await self.add_job_to_queue(job)
+        if MURDOCK_CONFIG.cancel_on_update is True:
+            # Similar jobs are already queued or active => cancel/stop them
+            await self.disable_jobs_matching(job)
+
+        await self.add_job_to_queue(job)
         return job
 
     async def handle_pull_request_event(self, event: dict):
@@ -281,9 +263,10 @@ class Murdock:
             return f"Unsupported action '{action}'"
         LOGGER.info(f"Handle pull request event '{action}'")
         pr_data = event["pull_request"]
-        commit = (
-            await fetch_commit_info(pr_data["head"]["sha"])
-        )
+        commit = await fetch_commit_info(pr_data["head"]["sha"])
+        if commit is None:
+            LOGGER.error("Cannot fetch commit information, aborting")
+            return
         pull_request = PullRequestInfo(
             title=pr_data["title"],
             number=pr_data["number"],
@@ -303,7 +286,7 @@ class Murdock:
         job = MurdockJob(commit, pr=pull_request)
         action = event["action"]
         if action == "closed":
-            await self.disable_jobs_matching_pr(job.pr.number)
+            await self.disable_jobs_matching(job)
             return
 
         if any(
@@ -347,10 +330,14 @@ class Murdock:
 
         if CI_CONFIG.ready_label not in pull_request.labels:
             LOGGER.debug(f"'{CI_CONFIG.eady_label}' label not set")
-            await self.disable_jobs_matching_pr(
-                job.pr.number,
-                description=f"\"{CI_CONFIG.ready_label}\" label not set",
-            )
+            await self.disable_jobs_matching(job)
+            status = {
+                "state":"pending",
+                "context": "Murdock",
+                "target_url": MURDOCK_CONFIG.base_url,
+                "description": f"\"{CI_CONFIG.ready_label}\" label not set",
+            }
+            await set_commit_status(job.commit.sha, status)
             return
 
         if (
@@ -366,47 +353,50 @@ class Murdock:
         await self.schedule_job(job)
 
     async def handle_push_event(self, event: dict):
-        ref_type, ref = event["ref"].split("/")[-2:]
+        ref_type, ref_name = event["ref"].split("/")[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
             LOGGER.debug(
                 f"Ref was removed upstream, aborting all related jobs"
             )
             previous_ref = event["before"]
             await self.cancel_queued_job_with_commit(previous_ref)
-            await self.stop_active_job(previous_ref)
+            await self.stop_active_job_with_commit(previous_ref)
             return
 
         commit = await fetch_commit_info(event["after"])
+        if commit is None:
+            LOGGER.error("Cannot fetch commit information, aborting")
+            return
         if (
             ref_type == "heads" and
             "*" not in MURDOCK_CONFIG.accepted_branches and
-            ref not in MURDOCK_CONFIG.accepted_branches and
+            ref_name not in MURDOCK_CONFIG.accepted_branches and
             all(
-                re.match(expr.replace('\\\\', '\\'), ref) is None
+                re.match(expr.replace('\\\\', '\\'), ref_name) is None
                 for expr in MURDOCK_CONFIG.accepted_branches
             )
         ):
-            LOGGER.debug(f"Branch '{ref}' not accepted for push events")
+            LOGGER.debug(f"Branch '{ref_name}' not accepted for push events")
             return
         if (
             ref_type == "tags" and
             "*" not in MURDOCK_CONFIG.accepted_tags and
-            ref not in MURDOCK_CONFIG.accepted_tags and
+            ref_name not in MURDOCK_CONFIG.accepted_tags and
             all(
-                re.match(expr.replace('\\\\', '\\'), ref) is None
+                re.match(expr.replace('\\\\', '\\'), ref_name) is None
                 for expr in MURDOCK_CONFIG.accepted_tags
             )
         ):
-            LOGGER.debug(f"Tag '{ref}' not accepted for push events")
+            LOGGER.debug(f"Tag '{ref_name}' not accepted for push events")
             return
-        job = MurdockJob(commit, ref=ref)
+        job = MurdockJob(commit, ref=event["ref"])
         if self.sha_is_handled(job.commit.sha):
             LOGGER.debug(
                 f"Commit {job.commit.sha} is already handled, ignoring"
             )
             return
 
-        LOGGER.info(f"Handle push event on ref '{ref}'")
+        LOGGER.info(f"Handle push event on ref '{ref_name}'")
         await self.schedule_job(job)
 
     def add_ws_client(self, ws: WebSocket):

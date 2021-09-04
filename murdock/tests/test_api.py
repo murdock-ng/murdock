@@ -278,7 +278,7 @@ def test_update_running_job_status(
 @pytest.mark.parametrize(
     "result,code", [(None, 404), (MurdockJob(commit, pr=prinfo), 200)]
 )
-@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.murdock.Murdock.stop_active_job_with_commit")
 def test_stop_running_job(stop, result, code):
     stop.return_value = result
     response = client.delete(f"/jobs/building/abcdef")
@@ -293,7 +293,7 @@ def test_stop_running_job(stop, result, code):
 
 
 @pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.murdock.Murdock.stop_active_job_with_commit")
 def test_stop_running_not_allowed(stop):
     stop.return_value = MurdockJob(commit, pr=prinfo)
     response = client.delete(f"/jobs/building/abcdef")

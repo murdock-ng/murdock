@@ -75,7 +75,7 @@ async def comment_on_pr(job: MurdockJob):
             LOGGER.info(f"Comment posted on PR #{job.pr.number}")
 
 
-async def fetch_commit_info(commit: str) -> str:
+async def fetch_commit_info(commit: str) -> CommitModel:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
@@ -85,7 +85,7 @@ async def fetch_commit_info(commit: str) -> str:
             }
         )
         if response.status_code != 200:
-            return ""
+            return
 
         commit_data = response.json()
         return CommitModel(

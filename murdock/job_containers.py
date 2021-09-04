@@ -41,6 +41,12 @@ class MurdockJobListBase(ABC):
                 job.pr.number == prnum
             )
         ]
+    
+    def search_matching(self, job: MurdockJob) -> List[MurdockJob]:
+        return (
+            job.pr is not None and self.search_by_pr_number(job.pr.number) or
+            job.ref is not None and self.search_by_ref(job.ref)
+        )
 
     def search_by_ref(self, ref : str) -> List[MurdockJob]:
         return [
@@ -66,7 +72,8 @@ class MurdockJobList(MurdockJobListBase):
         self._jobs += jobs
 
     def remove(self, job: MurdockJob):
-        self._jobs.remove(job)
+        if job in self._jobs:
+            self._jobs.remove(job)
 
 
 class MurdockJobPool(MurdockJobListBase):

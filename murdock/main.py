@@ -24,7 +24,7 @@ from murdock.log import LOGGER
 
 
 LOGGER.debug("Configuration:\n"
-    f"\MURDOCK_CONFIG:\n{json.dumps(MURDOCK_CONFIG.dict(), indent=4)}\n"
+    f"\nMURDOCK_CONFIG:\n{json.dumps(MURDOCK_CONFIG.dict(), indent=4)}\n"
     f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
     f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
     f"\nCI_CONFIG:\n{json.dumps(CI_CONFIG.dict(), indent=4)}\n"
@@ -206,7 +206,7 @@ async def building_commit_stop_handler(
     commit: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.stop_active_job(commit)) is None:
+    if (job := await murdock.stop_active_job_with_commit(commit)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job matching commit '{commit}' found"
         )
