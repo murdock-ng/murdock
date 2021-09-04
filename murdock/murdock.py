@@ -8,7 +8,7 @@ from typing import List
 
 from fastapi import WebSocket
 
-from murdock.config import MURDOCK_CONFIG, CI_CONFIG
+from murdock.config import GLOBAL_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
@@ -32,7 +32,7 @@ class Murdock:
 
     def __init__(self):
         self.clients : List[WebSocket] = []
-        self.num_workers = MURDOCK_CONFIG.num_workers
+        self.num_workers = GLOBAL_CONFIG.num_workers
         self.queued : MurdockJobList = MurdockJobList()
         self.active : MurdockJobPool = MurdockJobPool(self.num_workers)
         self.queue : asyncio.Queue = asyncio.Queue()
@@ -101,7 +101,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has started",
-                "target_url": MURDOCK_CONFIG.base_url,
+                "target_url": GLOBAL_CONFIG.base_url,
             }
         )
         await self.reload_jobs()
@@ -128,7 +128,7 @@ class Murdock:
                     )
                 }
             )
-            if job.pr is not None and MURDOCK_CONFIG.enable_comments:
+            if job.pr is not None and GLOBAL_CONFIG.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
             await self.db.insert_job(job)
@@ -160,7 +160,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The build has been queued",
-                "target_url": MURDOCK_CONFIG.base_url,
+                "target_url": GLOBAL_CONFIG.base_url,
             }
         )
         if reload_jobs is True:
@@ -190,7 +190,7 @@ class Murdock:
         status = {
             "state":"pending",
             "context": "Murdock",
-            "target_url": MURDOCK_CONFIG.base_url,
+            "target_url": GLOBAL_CONFIG.base_url,
             "description": "Canceled",
         }
         await set_commit_status(job.commit.sha, status)
@@ -218,7 +218,7 @@ class Murdock:
         status = {
             "state":"pending",
             "context": "Murdock",
-            "target_url": MURDOCK_CONFIG.base_url,
+            "target_url": GLOBAL_CONFIG.base_url,
             "description": "Stopped",
         }
         await set_commit_status(job.commit.sha, status)
@@ -248,7 +248,7 @@ class Murdock:
              )
              return
         LOGGER.info(f"Scheduling new job {job}")
-        if MURDOCK_CONFIG.cancel_on_update is True:
+        if GLOBAL_CONFIG.cancel_on_update is True:
             # Similar jobs are already queued or active => cancel/stop them
             await self.disable_jobs_matching(job)
 
@@ -334,7 +334,7 @@ class Murdock:
             status = {
                 "state":"pending",
                 "context": "Murdock",
-                "target_url": MURDOCK_CONFIG.base_url,
+                "target_url": GLOBAL_CONFIG.base_url,
                 "description": f"\"{CI_CONFIG.ready_label}\" label not set",
             }
             await set_commit_status(job.commit.sha, status)
@@ -369,22 +369,22 @@ class Murdock:
             return
         if (
             ref_type == "heads" and
-            "*" not in MURDOCK_CONFIG.accepted_branches and
-            ref_name not in MURDOCK_CONFIG.accepted_branches and
+            "*" not in GLOBAL_CONFIG.accepted_branches and
+            ref_name not in GLOBAL_CONFIG.accepted_branches and
             all(
                 re.match(expr.replace('\\\\', '\\'), ref_name) is None
-                for expr in MURDOCK_CONFIG.accepted_branches
+                for expr in GLOBAL_CONFIG.accepted_branches
             )
         ):
             LOGGER.debug(f"Branch '{ref_name}' not accepted for push events")
             return
         if (
             ref_type == "tags" and
-            "*" not in MURDOCK_CONFIG.accepted_tags and
-            ref_name not in MURDOCK_CONFIG.accepted_tags and
+            "*" not in GLOBAL_CONFIG.accepted_tags and
+            ref_name not in GLOBAL_CONFIG.accepted_tags and
             all(
                 re.match(expr.replace('\\\\', '\\'), ref_name) is None
-                for expr in MURDOCK_CONFIG.accepted_tags
+                for expr in GLOBAL_CONFIG.accepted_tags
             )
         ):
             LOGGER.debug(f"Tag '{ref_name}' not accepted for push events")
@@ -440,7 +440,7 @@ class Murdock:
         query.limit = jobs_count
         jobs_to_remove = await (self.db.find_jobs(query))
         for job in jobs_to_remove:
-            work_dir = os.path.join(MURDOCK_CONFIG.work_dir, job.uid)
+            work_dir = os.path.join(GLOBAL_CONFIG.work_dir, job.uid)
             MurdockJob.remove_dir(work_dir)
         await self.db.delete_jobs(query)
         jobs_removed = jobs_before - await self.db.count_jobs()

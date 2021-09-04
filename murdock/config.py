@@ -48,7 +48,7 @@ class CISettings(BaseSettings):
     )
 
 
-class MurdockSettings(BaseSettings):
+class GlobalSettings(BaseSettings):
     base_url: str = Field(
         env="MURDOCK_BASE_URL", default="http://localhost:8000"
     )
@@ -64,18 +64,6 @@ class MurdockSettings(BaseSettings):
     accepted_events: List[str] = Field(
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
-    accepted_branches: List[str] = Field(
-        env="MURDOCK_ACCEPTED_BRANCHES", default=["*"]
-    )
-    accepted_tags: List[str] = Field(
-        env="MURDOCK_ACCEPTED_TAGS", default=["*"]
-    )
-    enable_comments: bool = Field(
-        env="MURDOCK_ENABLE_COMMENTS", default=True
-    )
-    use_sticky_comment: bool = Field(
-        env="MURDOCK_USE_STICKY_COMMENT", default=False
-    )
     num_workers: int = Field(
         env="MURDOCK_NUM_WORKERS", default=1
     )
@@ -87,6 +75,18 @@ class MurdockSettings(BaseSettings):
     )
     cancel_on_update: bool = Field(
         env="MURCOCK_CANCEL_ON_UPDATE", default=True
+    )
+    accepted_branches: List[str] = Field(
+        env="MURDOCK_ACCEPTED_BRANCHES", default=["*"]
+    )
+    accepted_tags: List[str] = Field(
+        env="MURDOCK_ACCEPTED_TAGS", default=["*"]
+    )
+    enable_comments: bool = Field(
+        env="MURDOCK_ENABLE_COMMENTS", default=True
+    )
+    sticky_comment: bool = Field(
+        env="MURDOCK_STICKY_COMMENT", default=False
     )
 
     @validator("work_dir")
@@ -113,4 +113,4 @@ _ENV_FILE = os.getenv(
 DB_CONFIG = DatabaseSettings(_env_file=_ENV_FILE)
 GITHUB_CONFIG = GithubSettings(_env_file=_ENV_FILE)
 CI_CONFIG = CISettings(_env_file=_ENV_FILE)
-MURDOCK_CONFIG = MurdockSettings(_env_file=_ENV_FILE)
+GLOBAL_CONFIG = GlobalSettings(_env_file=_ENV_FILE)

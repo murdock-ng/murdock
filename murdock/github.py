@@ -5,7 +5,7 @@ import httpx
 
 from jinja2 import FileSystemLoader, Environment
 
-from murdock.config import MURDOCK_CONFIG, GITHUB_CONFIG
+from murdock.config import GLOBAL_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel
@@ -24,7 +24,7 @@ async def comment_on_pr(job: MurdockJob):
     template = env.get_template("comment.md.j2")
     context = {
         "job": job,
-        "sticky_comment": MURDOCK_CONFIG.use_sticky_comment
+        "sticky_comment": GLOBAL_CONFIG.sticky_comment
     }
     issues_comments_url = (
         f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
@@ -37,7 +37,7 @@ async def comment_on_pr(job: MurdockJob):
     request_data = json.dumps({"body": template.render(**context)})
 
     comment_id = None
-    if MURDOCK_CONFIG.use_sticky_comment is True:
+    if GLOBAL_CONFIG.sticky_comment is True:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 issues_comments_url,

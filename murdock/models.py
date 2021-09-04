@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
-from murdock.config import MURDOCK_CONFIG
+from murdock.config import GLOBAL_CONFIG
 
 
 class PullRequestInfo(BaseModel):
@@ -131,7 +131,7 @@ class CategorizedJobsModel(BaseModel):
 
 class JobQueryModel(BaseModel):
     limit: Optional[int] = Field(
-        MURDOCK_CONFIG.max_finished_length_default,
+        GLOBAL_CONFIG.max_finished_length_default,
         title="Limit length of items returned",
     )
     uid: Optional[str] = Field(

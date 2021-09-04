@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from murdock.config import MURDOCK_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG
+from murdock.config import GLOBAL_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG
 from murdock.models import (
     FinishedJobModel, JobModel, CategorizedJobsModel, JobQueryModel
 )
@@ -24,7 +24,7 @@ from murdock.log import LOGGER
 
 
 LOGGER.debug("Configuration:\n"
-    f"\nMURDOCK_CONFIG:\n{json.dumps(MURDOCK_CONFIG.dict(), indent=4)}\n"
+    f"\nGLOBAL_CONFIG:\n{json.dumps(GLOBAL_CONFIG.dict(), indent=4)}\n"
     f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
     f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
     f"\nCI_CONFIG:\n{json.dumps(CI_CONFIG.dict(), indent=4)}\n"
@@ -32,7 +32,7 @@ LOGGER.debug("Configuration:\n"
 
 murdock = Murdock()
 app = FastAPI(
-    debug=MURDOCK_CONFIG.log_level == "DEBUG",
+    debug=GLOBAL_CONFIG.log_level == "DEBUG",
     on_startup=[murdock.init],
     on_shutdown=[murdock.shutdown],
     title="Murdock API",
@@ -49,7 +49,7 @@ app.add_middleware(
 )
 app.mount(
     "/results",
-    StaticFiles(directory=MURDOCK_CONFIG.work_dir, html=True, check_dir=False),
+    StaticFiles(directory=GLOBAL_CONFIG.work_dir, html=True, check_dir=False),
     name="results",
 )
 
@@ -70,7 +70,7 @@ async def github_webhook_handler(request: Request):
         raise HTTPException(status_code=400, detail=msg)
 
     event_type = headers.get("X-Github-Event")
-    if event_type not in MURDOCK_CONFIG.accepted_events:
+    if event_type not in GLOBAL_CONFIG.accepted_events:
         raise HTTPException(status_code=400, detail="Unsupported event")
 
     event_data = json.loads(body.decode())
@@ -170,7 +170,7 @@ async def building_jobs_handler():
     tags=["building jobs"]
 )
 async def building_commit_status_handler(request: Request, commit: str):
-    if MURDOCK_CONFIG.use_job_token:
+    if GLOBAL_CONFIG.use_job_token:
         msg = ""
         if (job := murdock.active.search_by_commit_sha(commit)) is None:
             msg = f"No job running for commit {commit}"

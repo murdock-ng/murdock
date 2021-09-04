@@ -9,7 +9,7 @@ import uuid
 from typing import Optional
 from asyncio.subprocess import Process
 
-from murdock.config import MURDOCK_CONFIG, CI_CONFIG, GITHUB_CONFIG
+from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
 from murdock.models import (
     PullRequestInfo, CommitModel, JobModel, FinishedJobModel
@@ -41,10 +41,10 @@ class MurdockJob:
         else:
             self.fasttracked : bool = False
         self.token : str = secrets.token_urlsafe(32)
-        self.work_dir : str = os.path.join(MURDOCK_CONFIG.work_dir, self.uid)
+        self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
         self.output_url : str = os.path.join(
-            MURDOCK_CONFIG.base_url, self.http_dir, "output.html"
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
         )
 
     @staticmethod
@@ -124,9 +124,9 @@ class MurdockJob:
     @property
     def env(self):
         _env = { 
-            "CI_SCRIPTS_DIR" : MURDOCK_CONFIG.scripts_dir,
+            "CI_SCRIPTS_DIR" : GLOBAL_CONFIG.scripts_dir,
             "CI_BUILD_HTTP_ROOT" : self.http_dir,
-            "CI_BASE_URL": MURDOCK_CONFIG.base_url,
+            "CI_BASE_URL": GLOBAL_CONFIG.base_url,
         }
 
         if self.pr is not None:
@@ -150,7 +150,7 @@ class MurdockJob:
                 "CI_BUILD_REF" : self.ref,
             })
 
-        if MURDOCK_CONFIG.use_job_token:
+        if GLOBAL_CONFIG.use_job_token:
             _env.update({
                 "CI_API_TOKEN": self.token,
             })
@@ -172,7 +172,7 @@ class MurdockJob:
         MurdockJob.create_dir(self.work_dir)
         LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(MURDOCK_CONFIG.scripts_dir, "build.sh"), "build",
+            os.path.join(GLOBAL_CONFIG.scripts_dir, "build.sh"), "build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
@@ -216,7 +216,7 @@ class MurdockJob:
 
         LOGGER.debug(f"Launch post_build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(MURDOCK_CONFIG.scripts_dir, "build.sh"), "post_build",
+            os.path.join(GLOBAL_CONFIG.scripts_dir, "build.sh"), "post_build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
