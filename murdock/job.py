@@ -197,7 +197,7 @@ class MurdockJob:
             f"Job {self} {self.result} (ret: {self.proc.returncode})"
         )
 
-        # If the job was stopeed, just return now and skip the post_build action
+        # If the job was stopped, just return now and skip the post_build action
         if self.result == "stopped":
             LOGGER.debug(f"Job {self} stopped before post_build action")
             self.proc = None

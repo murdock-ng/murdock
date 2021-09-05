@@ -44,31 +44,45 @@ prinfo_other = PullRequestInfo(
 test_job = MurdockJob(commit, pr=prinfo)
 
 
-def test_basic(capsys):
-    job = MurdockJob(commit, pr=prinfo)
+@pytest.mark.parametrize(
+    "pr,ref,out,env", [
+        (
+            prinfo ,None, "sha:test_co (PR #123)\n", {
+                "CI_PULL_COMMIT": "test_commit",
+                "CI_PULL_REPO": "test/repo",
+                "CI_PULL_NR": "123",
+                "CI_PULL_URL": "test_url",
+                "CI_PULL_TITLE": "test",
+                "CI_PULL_USER": "test_user",
+                "CI_BASE_REPO": "test_base_repo",
+                "CI_BASE_BRANCH": "test_base_branch",
+                "CI_BASE_COMMIT": "test_base_commit",
+                "CI_PULL_LABELS": "test",
+                "CI_MERGE_COMMIT": "test_merge_commit"
+            },
+        ),
+        (
+            None, "test_branch", "sha:test_co (test_branch)\n", {
+                "CI_BUILD_COMMIT": "test_commit",
+                "CI_BUILD_REF": "test_branch",
+            }
+        ),
+    ]
+)
+def test_basic(capsys, pr, ref, out, env):
+    job = MurdockJob(commit, pr=pr, ref=ref)
     print(job)
     output = capsys.readouterr()
-    assert output.out == "sha:test_co (PR #123)\n"
+    assert output.out == out
 
-    expected_env = {
-        "CI_PULL_COMMIT" : "test_commit",
-        "CI_PULL_REPO" : "test/repo",
-        "CI_PULL_NR" : "123",
-        "CI_PULL_URL" : "test_url",
-        "CI_PULL_TITLE" : "test",
-        "CI_PULL_USER" : "test_user",
-        "CI_BASE_REPO" : "test_base_repo",
-        "CI_BASE_BRANCH" : "test_base_branch",
-        "CI_BASE_COMMIT" : "test_base_commit",
+    env.update({
         "CI_SCRIPTS_DIR" : "/tmp",
-        "CI_PULL_LABELS" : "test",
         "CI_BUILD_HTTP_ROOT" : f"results/{job.uid}",
         "CI_BASE_URL": "http://localhost:8000",
         "CI_API_TOKEN": job.token,
-        "CI_MERGE_COMMIT": "test_merge_commit"
-    }
+    })
 
-    assert job.env == expected_env
+    assert job.env == env
 
 
 def test_create_dir(tmpdir, caplog):
