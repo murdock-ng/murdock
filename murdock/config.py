@@ -42,10 +42,6 @@ class CISettings(BaseSettings):
         env="CI_FASTTRACK_LABELS",
         default=["CI: skip compile test", "Process: release backport"]
     )
-    skip_keywords: List[str] = Field(
-        env="CI_SKIP_KEYWORDS",
-        default=["ci: skip", "ci: no", "ci: ignore"]
-    )
 
 
 class GlobalSettings(BaseSettings):
@@ -76,12 +72,6 @@ class GlobalSettings(BaseSettings):
     cancel_on_update: bool = Field(
         env="MURCOCK_CANCEL_ON_UPDATE", default=True
     )
-    accepted_branches: List[str] = Field(
-        env="MURDOCK_ACCEPTED_BRANCHES", default=["*"]
-    )
-    accepted_tags: List[str] = Field(
-        env="MURDOCK_ACCEPTED_TAGS", default=["*"]
-    )
     enable_comments: bool = Field(
         env="MURDOCK_ENABLE_COMMENTS", default=True
     )
@@ -104,6 +94,26 @@ class GlobalSettings(BaseSettings):
                 f"'MURDOCK_SCRIPTS_DIR' doesn't exist ({path})"
             )
         return path
+
+
+class PushSettings(BaseSettings):
+    branches: List[str] = Field(default=[])
+    tags: List[str] = Field(default=[])
+
+
+class PRSettings(BaseSettings):
+    enable_comments: bool = Field(default=False)
+    sticky_comment: bool = Field(default=False)
+
+
+class CommitSettings(BaseSettings):
+    skip_keywords: List[str] = Field(default=[])
+
+
+class MurdockSettings(BaseSettings):
+    push: PushSettings = Field(default=PushSettings())
+    pr: PRSettings = Field(default=PRSettings())
+    commit: CommitSettings = Field(default=CommitSettings())
 
 
 _ENV_FILE = os.getenv(

@@ -14,6 +14,7 @@ from murdock.log import LOGGER
 from murdock.models import (
     PullRequestInfo, CommitModel, JobModel, FinishedJobModel
 )
+from murdock.config import MurdockSettings
 
 
 class MurdockJob:
@@ -21,9 +22,11 @@ class MurdockJob:
     def __init__(
         self, commit: CommitModel,
         ref: Optional[str] = None,
-        pr: Optional[PullRequestInfo] = None
+        pr: Optional[PullRequestInfo] = None,
+        config: Optional[MurdockSettings] = MurdockSettings()
     ):
         self.uid : str = uuid.uuid4().hex
+        self.config = config
         self.result : Optional[str] = None
         self.proc : Optional[Process] = None
         self.output : str = ""

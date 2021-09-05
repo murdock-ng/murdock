@@ -17,7 +17,7 @@ from murdock.models import (
     JobQueryModel
 )
 from murdock.github import (
-    comment_on_pr, fetch_commit_info, set_commit_status
+    comment_on_pr, fetch_commit_info, set_commit_status, fetch_murdock_config
 )
 from murdock.database import Database
 
@@ -128,7 +128,7 @@ class Murdock:
                     )
                 }
             )
-            if job.pr is not None and GLOBAL_CONFIG.enable_comments:
+            if job.pr is not None and job.config.pr.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
             await self.db.insert_job(job)
@@ -237,7 +237,8 @@ class Murdock:
         if (job := await self.db.find_job(uid)) is None:
             return
         LOGGER.info(f"Restarting job {job}")
-        new_job = MurdockJob(job.commit, pr=job.pr, ref=job.ref)
+        config = await fetch_murdock_config(job.commit.sha)
+        new_job = MurdockJob(job.commit, pr=job.pr, ref=job.ref, config=config)
         await self.schedule_job(new_job)
         return new_job
 
@@ -267,6 +268,7 @@ class Murdock:
         if commit is None:
             LOGGER.error("Cannot fetch commit information, aborting")
             return
+        config = await fetch_murdock_config(commit.sha)
         pull_request = PullRequestInfo(
             title=pr_data["title"],
             number=pr_data["number"],
@@ -283,14 +285,14 @@ class Murdock:
             )
         )
 
-        job = MurdockJob(commit, pr=pull_request)
+        job = MurdockJob(commit, pr=pull_request, config=config)
         action = event["action"]
         if action == "closed":
             await self.disable_jobs_matching(job)
             return
 
         if any(
-            re.match(rf"^({'|'.join(CI_CONFIG.skip_keywords)})$", line)
+            line and re.match(rf"^({'|'.join(config.commit.skip_keywords)})$", line)
             for line in commit.message.split('\n')
         ):
             LOGGER.debug(
@@ -308,7 +310,10 @@ class Murdock:
 
         if action == "labeled":
             label = event["label"]["name"]
-            if CI_CONFIG.ready_label not in pull_request.labels:
+            if (
+                CI_CONFIG.ready_label is not None and
+                CI_CONFIG.ready_label not in pull_request.labels
+            ):
                 return
             elif (
                 label == CI_CONFIG.ready_label and
@@ -329,7 +334,7 @@ class Murdock:
                 return
 
         if CI_CONFIG.ready_label not in pull_request.labels:
-            LOGGER.debug(f"'{CI_CONFIG.eady_label}' label not set")
+            LOGGER.debug(f"'{CI_CONFIG.ready_label}' label not set")
             await self.disable_jobs_matching(job)
             status = {
                 "state":"pending",
@@ -352,6 +357,13 @@ class Murdock:
 
         await self.schedule_job(job)
 
+    @staticmethod
+    def handle_ref(ref: str, rules: List[str]) -> bool:
+        return (
+            "*" in rules or ref in rules or
+            any(re.match(expr, ref) is not None for expr in rules)
+        )
+
     async def handle_push_event(self, event: dict):
         ref_type, ref_name = event["ref"].split("/")[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
@@ -362,37 +374,37 @@ class Murdock:
             await self.cancel_queued_job_with_commit(previous_ref)
             await self.stop_active_job_with_commit(previous_ref)
             return
-
         commit = await fetch_commit_info(event["after"])
         if commit is None:
             LOGGER.error("Cannot fetch commit information, aborting")
             return
-        if (
+        config = await fetch_murdock_config(commit.sha)
+        if ((
             ref_type == "heads" and
-            "*" not in GLOBAL_CONFIG.accepted_branches and
-            ref_name not in GLOBAL_CONFIG.accepted_branches and
-            all(
-                re.match(expr.replace('\\\\', '\\'), ref_name) is None
-                for expr in GLOBAL_CONFIG.accepted_branches
-            )
-        ):
-            LOGGER.debug(f"Branch '{ref_name}' not accepted for push events")
-            return
-        if (
+            not Murdock.handle_ref(ref_name, config.push.branches)
+        ) or (
             ref_type == "tags" and
-            "*" not in GLOBAL_CONFIG.accepted_tags and
-            ref_name not in GLOBAL_CONFIG.accepted_tags and
-            all(
-                re.match(expr.replace('\\\\', '\\'), ref_name) is None
-                for expr in GLOBAL_CONFIG.accepted_tags
-            )
-        ):
-            LOGGER.debug(f"Tag '{ref_name}' not accepted for push events")
+            not Murdock.handle_ref(ref_name, config.push.tags)
+        )):
+            LOGGER.debug(f"Ref '{ref_name}' not accepted for push events")
             return
-        job = MurdockJob(commit, ref=event["ref"])
-        if self.sha_is_handled(job.commit.sha):
+
+        job = MurdockJob(commit, ref=event["ref"], config=config)
+
+        if any(
+            re.match(rf"^({'|'.join(config.commit.skip_keywords)})$", line)
+            for line in commit.message.split('\n')
+        ):
             LOGGER.debug(
-                f"Commit {job.commit.sha} is already handled, ignoring"
+                f"Commit message contains skip keywords, skipping job {job}"
+            )
+            await set_commit_status(
+                job.commit.sha,
+                {
+                    "state": "pending",
+                    "context": "Murdock",
+                    "description": "The build was skipped."
+                }
             )
             return
 

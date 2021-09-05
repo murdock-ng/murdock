@@ -15,7 +15,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from murdock.config import GLOBAL_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG
+from murdock.config import (
+    GLOBAL_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG, MurdockSettings
+)
 from murdock.models import (
     FinishedJobModel, JobModel, CategorizedJobsModel, JobQueryModel
 )
@@ -28,6 +30,7 @@ LOGGER.debug("Configuration:\n"
     f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
     f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
     f"\nCI_CONFIG:\n{json.dumps(CI_CONFIG.dict(), indent=4)}\n"
+    f"\nMurdock default:\n{json.dumps(MurdockSettings().dict(), indent=4)}\n"
 )
 
 murdock = Murdock()
