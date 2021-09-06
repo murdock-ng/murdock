@@ -5,6 +5,9 @@ import json
 import httpx
 import yaml
 
+from fastapi import HTTPException, Security
+from fastapi.security.api_key import APIKeyHeader
+
 from jinja2 import FileSystemLoader, Environment
 
 from murdock.config import GLOBAL_CONFIG, GITHUB_CONFIG
@@ -15,6 +18,32 @@ from murdock.config import MurdockSettings
 
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
+
+async def check_permissions(
+    level: str,
+    token: str = Security(APIKeyHeader(
+        name="authorization",
+        scheme_name="Github OAuth Token",
+        auto_error=False)
+    ),
+) -> str:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {token}"
+            }
+        )
+
+    if response.status_code != 200:
+        LOGGER.warning(f"Cannot fetch push permissions ({response})")
+
+    if response.status_code == 200 and response.json()["permissions"][level]:
+        return token
+
+    raise HTTPException(status_code=401, detail=f"Missing {level} permissions")
 
 
 async def comment_on_pr(job: MurdockJob):
@@ -140,6 +169,9 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
             )
         except yaml.YAMLError as exc:
             LOGGER.warning(f"Cannot parse config file: {exc}")
+            return MurdockSettings()
+
+        if not content:
             return MurdockSettings()
 
         return MurdockSettings(**content)

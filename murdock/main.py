@@ -23,6 +23,7 @@ from murdock.models import (
 )
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
+from murdock.github import check_permissions
 
 
 LOGGER.debug("Configuration:\n"
@@ -108,21 +109,17 @@ async def _check_push_permissions(
         auto_error=False)
     )
 ):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}",
-            headers={
-                "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {token}"
-            }
-        )
-    if response.status_code != 200:
-        LOGGER.warning(f"Cannot fetch push permissions ({response})")
+    await check_permissions("push", token)
 
-    if response.status_code == 200 and response.json()["permissions"]["push"]:
-        return token
 
-    raise HTTPException(status_code=401, detail="Missing push permissions")
+async def _check_admin_permissions(
+    token: str = Security(APIKeyHeader(
+        name="authorization",
+        scheme_name="Github OAuth Token",
+        auto_error=False)
+    )
+):
+    await check_permissions("admin", token)
 
 
 @app.get(
@@ -254,7 +251,7 @@ async def finished_job_restart_handler(
 )
 async def finished_job_delete_handler(
     before: str,
-    _: APIKey = Depends(_check_push_permissions)
+    _: APIKey = Depends(_check_admin_permissions)
 ):
     query = JobQueryModel(before=before)
     if not (jobs := await murdock.remove_finished_jobs(query)):

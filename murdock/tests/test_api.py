@@ -11,7 +11,7 @@ from httpx import Response
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from ..main import app, _check_push_permissions
+from ..main import app, _check_push_permissions, _check_admin_permissions
 from ..job import MurdockJob
 from ..models import (
     CategorizedJobsModel, CommitModel,
@@ -61,6 +61,20 @@ def push_not_allowed():
     async def without_push(token: str = "token"):
         raise HTTPException(status_code=401, detail="Missing push permissions")
     app.dependency_overrides[_check_push_permissions] = without_push
+
+
+@pytest.fixture
+def admin_allowed():
+    async def with_admin(token: str = "token"):
+        return token
+    app.dependency_overrides[_check_admin_permissions] = with_admin
+
+
+@pytest.fixture
+def admin_not_allowed():
+    async def without_admin(token: str = "token"):
+        raise HTTPException(status_code=401, detail="Missing admin permissions")
+    app.dependency_overrides[_check_admin_permissions] = without_admin
 
 
 def test_openapi_exists():
@@ -169,6 +183,40 @@ async def test_check_push_permissions(get, text, code, valid):
         assert exc_info.value.detail == "Missing push permissions"
     else:
         await _check_push_permissions("token")
+    get.assert_called_with(
+        f"https://api.github.com/repos/{os.getenv('GITHUB_REPO')}",
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": "token token"
+        }
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,code,valid", [
+        (
+            "error", 403, False
+        ),
+        (
+            json.dumps({"permissions": {"admin": False}}), 200, False
+        ),
+        (
+            json.dumps({"permissions": {"admin": True}}), 200, True
+        ),
+    ]
+)
+@mock.patch("httpx.AsyncClient.get")
+async def test_check_admin_permissions(get, text, code, valid):
+    response = Response(code, text=text)
+    get.return_value = response
+    if valid is False:
+        with pytest.raises(HTTPException) as exc_info:
+            await _check_admin_permissions("token")
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Missing admin permissions"
+    else:
+        await _check_admin_permissions("token")
     get.assert_called_with(
         f"https://api.github.com/repos/{os.getenv('GITHUB_REPO')}",
         headers={
@@ -356,7 +404,7 @@ def test_restart_job_not_allowed(restart):
     assert response.status_code == 401
 
 
-@pytest.mark.usefixtures("push_allowed")
+@pytest.mark.usefixtures("admin_allowed")
 @pytest.mark.parametrize(
     "result,code", [([], 404), ([test_job_finished], 200)]
 )
@@ -373,7 +421,7 @@ def test_delete_job(remove, result, code):
         assert response.json() == {"detail": "Found no finished job to remove"}
 
 
-@pytest.mark.usefixtures("push_not_allowed")
+@pytest.mark.usefixtures("admin_not_allowed")
 @mock.patch("murdock.murdock.Murdock.remove_finished_jobs")
 def test_delete_job_not_allowed(remove):
     remove.return_value = [test_job_finished]
