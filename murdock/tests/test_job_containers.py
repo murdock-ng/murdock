@@ -8,10 +8,15 @@ def test_list_add_remove():
     job2 = MurdockJob(CommitModel(sha="2", message="job2", author="test"))
     job3 = MurdockJob(CommitModel(sha="3", message="job3", author="test"))
     job_list = MurdockJobList()
+    job_list.add(*[])
+    assert len(job_list.jobs) == 0
     job_list.add(job1)
     assert len(job_list.jobs) == 1
     job_list.add(*[job2, job3])
     assert len(job_list.jobs) == 3
+    job_list.remove(job2)
+    assert len(job_list.jobs) == 2
+    assert job2 not in job_list.jobs
     job_list.remove(job2)
     assert len(job_list.jobs) == 2
     assert job2 not in job_list.jobs
@@ -183,14 +188,28 @@ def test_pool_add_remove():
     job1 = MurdockJob(CommitModel(sha="1", message="job1", author="test"))
     job2 = MurdockJob(CommitModel(sha="2", message="job2", author="test"))
     job3 = MurdockJob(CommitModel(sha="3", message="job3", author="test"))
+    job4 = MurdockJob(CommitModel(sha="4", message="job4", author="test"))
     job_pool = MurdockJobPool(3)
+    job_pool.add(*[])
+    assert len(job_pool.jobs) == 3
+    assert all(job is None for job in job_pool.jobs)
     job_pool.add(job1)
+    assert job1 in job_pool.jobs
     assert len(job_pool.jobs) == 3
     job_pool.add(*[job2, job3])
+    assert len(job_pool.jobs) == 3
+    assert job2 in job_pool.jobs
+    assert job3 in job_pool.jobs
+    job_pool.add(job4)
+    assert job4 not in job_pool.jobs
     assert len(job_pool.jobs) == 3
     job_pool.remove(job2)
     assert len(job_pool.jobs) == 3
     assert job2 not in job_pool.jobs
+    job_pool.remove(job2)
+    assert len(job_pool.jobs) == 3
+    assert job2 not in job_pool.jobs
+
 
 
 def test_pool_search_by_uid():
