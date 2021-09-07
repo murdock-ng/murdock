@@ -47,6 +47,8 @@ async def check_permissions(
 
 
 async def comment_on_pr(job: MurdockJob):
+    if job.pr is None or job.config.pr.enable_comments is False:
+        return
     loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
     env = Environment(
         loader=loader, trim_blocks=True, lstrip_blocks=True,
@@ -54,10 +56,7 @@ async def comment_on_pr(job: MurdockJob):
     )
     env.globals.update(zip=zip)
     template = env.get_template("comment.md.j2")
-    context = {
-        "job": job,
-        "sticky_comment": GLOBAL_CONFIG.sticky_comment
-    }
+    context = {"job": job}
     issues_comments_url = (
         f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
         f"/issues/{job.pr.number}/comments"
