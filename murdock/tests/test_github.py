@@ -34,7 +34,10 @@ prinfo = PullRequestInfo(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "job", [MurdockJob(commit, pr=prinfo), MurdockJob(commit, ref="test")]
+    "job", [
+        pytest.param(MurdockJob(commit, pr=prinfo), id="pr"),
+        pytest.param(MurdockJob(commit, ref="test"), id="ref"),
+    ]
 )
 @mock.patch("httpx.AsyncClient.get")
 @mock.patch("httpx.AsyncClient.patch")
@@ -50,19 +53,21 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
 @pytest.mark.parametrize(
     "sticky,get_return,post_return,patch_return,get_called,post_called,patch_called,error",
     [
-        (
+        pytest.param(
             False,
             None, Response(201), None,
             False, True, False,
-            None
+            None,
+            id="not_sticky_comment_created"
         ),
-        (
+        pytest.param(
             False,
             None, Response(401, text=json.dumps({"details": "error"})), None,
             False, True, False,
-            {"details": "error"}
+            {"details": "error"},
+            id="not_sticky_comment_error"
         ),
-        (
+        pytest.param(
             True,
             Response(
                 200,
@@ -73,8 +78,9 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             ), Response(201), None,
             True, True, False,
             None,
+            id="sticky_comment_created"
         ),
-        (
+        pytest.param(
             True,
             Response(
                 200,
@@ -84,9 +90,10 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
                 ])
             ), Response(401, text=json.dumps({"details": "error"})), None,
             True, True, False,
-            {"details": "error"}
+            {"details": "error"},
+            id="sticky_comment_creation_error"
         ),
-        (
+        pytest.param(
             True,
             Response(
                 200,
@@ -96,9 +103,10 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
                 ])
             ), None, Response(200),
             True, False, True,
-            None
+            None,
+            id="sticky_comment_updated"
         ),
-        (
+        pytest.param(
             True,
             Response(
                 200,
@@ -108,7 +116,8 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
                 ])
             ), None, Response(401, text=json.dumps({"details": "error"})),
             True, False, True,
-            {"details": "error"}
+            {"details": "error"},
+            id="sticky_comment_update_error"
         ),
     ]
 )
@@ -184,16 +193,18 @@ async def test_comment_on_pr(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "text,code,result", [
-        (
-            json.dumps({"details": "error"}), 403, None
+        pytest.param(
+            json.dumps({"details": "error"}), 403, None,
+            id="error"
         ),
-        (
+        pytest.param(
             json.dumps({
                 "commit": {"message": "test_message"},
                 "author": {"login": "me"}
             }),
             200,
-            CommitModel(sha="123", message="test_message", author="me")
+            CommitModel(sha="123", message="test_message", author="me"),
+            id="success"
         ),
     ]
 )
@@ -215,15 +226,17 @@ async def test_fetch_commit_info(get, text, code, result):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "code,text,status", [
-        (
+        pytest.param(
             403,
             json.dumps({"details": "error"}),
-            {"description": "test", "status": "test"}
+            {"description": "test", "status": "test"},
+            id="success"
         ),
-        (
+        pytest.param(
             201,
             json.dumps({"details": "ok"}),
-            {"description": "test", "status": "test"}
+            {"description": "test", "status": "test"},
+            id="error"
         ),
     ]
 )
@@ -246,16 +259,19 @@ async def test_set_commit_status(post, caplog, code, text, status):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "text,code,result", [
-        (
-            json.dumps({"details": "error"}), 404, {}
+        pytest.param(
+            json.dumps({"details": "error"}), 404, {},
+            id="config_not_found"
         ),
-        (
-            json.dumps({"content": ""}), 200, {}
+        pytest.param(
+            json.dumps({"content": ""}), 200, {},
+            id="config_found_content_empty"
         ),
-        (
-            json.dumps({"content": "YnJhbmNoZXM6IF1b"}), 200, {}
+        pytest.param(
+            json.dumps({"content": "YnJhbmNoZXM6IF1b"}), 200, {},
+            id="config_found_invalid_content"
         ),
-        (
+        pytest.param(
             json.dumps({
                 "content": (
                     "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
@@ -274,6 +290,7 @@ async def test_set_commit_status(post, caplog, code, text, status):
                     'skip_keywords': ['ci: skip', 'ci: no', 'ci: ignore']
                 }
             },
+            id="config_found_valid_content"
         ),
     ]
 )
