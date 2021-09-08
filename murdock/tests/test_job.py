@@ -26,7 +26,19 @@ prinfo = PullRequestInfo(
     mergeable=True,
     labels=["test"]
 )
-
+prinfo_not_mergeable = PullRequestInfo(
+    title="test",
+    number=123,
+    merge_commit="test_merge_commit",
+    user="test_user",
+    url="test_url",
+    base_repo="test_base_repo",
+    base_branch="test_base_branch",
+    base_commit="test_base_commit",
+    base_full_name="test_base_full_name",
+    mergeable=False,
+    labels=["test"]
+)
 prinfo_other = PullRequestInfo(
     title="test2",
     number=124,
@@ -62,10 +74,27 @@ test_job = MurdockJob(commit, pr=prinfo)
             },
         ),
         (
+            prinfo_not_mergeable ,None, "sha:test_co (PR #123)\n", {
+                "CI_PULL_COMMIT": "test_commit",
+                "CI_PULL_REPO": "test/repo",
+                "CI_PULL_NR": "123",
+                "CI_PULL_URL": "test_url",
+                "CI_PULL_TITLE": "test",
+                "CI_PULL_USER": "test_user",
+                "CI_BASE_REPO": "test_base_repo",
+                "CI_BASE_BRANCH": "test_base_branch",
+                "CI_BASE_COMMIT": "test_base_commit",
+                "CI_PULL_LABELS": "test",
+            },
+        ),
+        (
             None, "test_branch", "sha:test_co (test_branch)\n", {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "test_branch",
             }
+        ),
+        (
+            None, None, "sha:test_co\n", {}
         ),
     ]
 )
