@@ -161,7 +161,7 @@ async def test_comment_on_pr(
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}"
             },
-            data=json.dumps({"body": comment})
+            content=json.dumps({"body": comment})
         )
     else:
         post.assert_not_called()
@@ -172,7 +172,7 @@ async def test_comment_on_pr(
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}"
             },
-            data=json.dumps({"body": comment})
+            content=json.dumps({"body": comment})
         )
     else:
         patch.assert_not_called()
@@ -237,7 +237,7 @@ async def test_set_commit_status(post, caplog, code, text, status):
             "Accept": "application/vnd.github.v3+json",
             "Authorization": f"token {GITHUB_CONFIG.api_token}"
         },
-        data=json.dumps(status)
+        content=json.dumps(status)
     )
     if code == 403:
         assert f"<Response [403 Forbidden]>: {json.loads(text)}" in caplog.text

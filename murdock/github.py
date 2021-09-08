@@ -84,7 +84,7 @@ async def comment_on_pr(job: MurdockJob):
             response = await client.post(
                 issues_comments_url,
                 headers=request_headers,
-                data=request_data
+                content=request_data
             )
         if response.status_code != 201:
             LOGGER.warning(f"{response}: {response.json()}")
@@ -98,7 +98,7 @@ async def comment_on_pr(job: MurdockJob):
                     f"/issues/comments/{comment_id}"
                 ),
                 headers=request_headers,
-                data=request_data
+                content=request_data
             )
         if response.status_code != 200:
             LOGGER.warning(f"{response}: {response.json()}")
@@ -140,8 +140,8 @@ async def set_commit_status(commit: str, status: dict):
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}"
-            }
-            , data=json.dumps(status)
+            },
+            content=json.dumps(status)
         )
         if response.status_code != 201:
             LOGGER.warning(f"{response}: {response.json()}")
