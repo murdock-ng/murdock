@@ -237,24 +237,27 @@ def test_get_queued_jobs(jobs, result):
 
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
-    "result,code", [(None, 404), (MurdockJob(commit, pr=prinfo), 200)]
+    "job_queued,code", [
+        pytest.param(None, 404, id="no_job_queued"),
+        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="one_job_queued"),
+    ]
 )
-@mock.patch("murdock.murdock.Murdock.cancel_queued_job_with_commit")
-def test_cancel_queued_job(cancel, result, code):
-    cancel.return_value = result
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
+@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
+def test_cancel_queued_job(cancel, search, job_queued, code):
+    search.return_value = job_queued
     response = client.delete(f"/jobs/queued/abcdef")
     assert response.status_code == code
-    cancel.assert_called_with("abcdef")
-    if result:
-        assert response.json() == result.queued_model().dict(exclude={"status"})
+    if job_queued:
+        cancel.assert_called_with(job_queued, reload_jobs=True)
+        assert response.json() == job_queued.queued_model().dict(exclude={"status"})
     else:
-        assert response.json() == {
-            "detail": "No job matching commit 'abcdef' found"
-        }
+        cancel.assert_not_called()
+        assert response.json() == {"detail": "No job with uid 'abcdef' found"}
 
 
 @pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.cancel_queued_job_with_commit")
+@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
 def test_cancel_queued_not_allowed(cancel):
     cancel.return_value = MurdockJob(commit, pr=prinfo)
     response = client.delete(f"/jobs/queued/abcdef")
@@ -279,30 +282,35 @@ def test_get_building_jobs(jobs, result):
 
 @pytest.mark.parametrize(
     "job_running,job_found,headers,code,expected_response", [
-        (
+        pytest.param(
             None, None, {},
-            400, {"detail": "No job running for commit abcdef"}
+            400, {"detail": "No job running with uid abcdef"},
+            id="job_not_found"
         ),
-        (
+        pytest.param(
             test_job, None, {},
-            400, {"detail": "Job token is missing"}
+            400, {"detail": "Job token is missing"},
+            id="missing_job_token"
         ),
-        (
+        pytest.param(
             test_job, None, {"Authorization": "invalid"},
-            400, {"detail": "Invalid Job token"}
+            400, {"detail": "Invalid Job token"},
+            id="invalid_job_token"
         ),
-        (
+        pytest.param(
             test_job, None, {"Authorization": test_job.token},
-            404, {"detail": "No job matching commit 'abcdef' found"}
+            404, {"detail": "No job with uid 'abcdef' found"},
+            id="update_job_not_found"
         ),
-        (
+        pytest.param(
             test_job, test_job, {"Authorization": test_job.token},
-            200, test_job.running_model().dict(exclude={"fasttracked"})
+            200, test_job.running_model().dict(exclude={"fasttracked"}),
+            id="update_job_found"
         ),
     ]
 )
-@mock.patch("murdock.murdock.Murdock.handle_commit_status_data")
-@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_commit_sha")
+@mock.patch("murdock.murdock.Murdock.handle_job_status_data")
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 def test_update_running_job_status(
     running, commit_status,
     job_running, job_found, headers, code, expected_response
@@ -324,24 +332,27 @@ def test_update_running_job_status(
 
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
-    "result,code", [(None, 404), (MurdockJob(commit, pr=prinfo), 200)]
+    "result,code", [
+        pytest.param(None, 404, id="job_not_found"),
+        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="job_found")
+    ]
 )
-@mock.patch("murdock.murdock.Murdock.stop_active_job_with_commit")
-def test_stop_running_job(stop, result, code):
-    stop.return_value = result
+@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
+def test_stop_running_job(search, stop, result, code):
+    search.return_value = result
     response = client.delete(f"/jobs/building/abcdef")
     assert response.status_code == code
-    stop.assert_called_with("abcdef")
-    if result:
+    if result is not None:
+        stop.assert_called_with(result, reload_jobs=True)
         assert response.json() == result.running_model().dict(exclude={"fasttracked"})
     else:
-        assert response.json() == {
-            "detail": "No job matching commit 'abcdef' found"
-        }
+        stop.assert_not_called()
+        assert response.json() == {"detail": "No job with uid 'abcdef' found"}
 
 
 @pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.stop_active_job_with_commit")
+@mock.patch("murdock.murdock.Murdock.stop_active_job")
 def test_stop_running_not_allowed(stop):
     stop.return_value = MurdockJob(commit, pr=prinfo)
     response = client.delete(f"/jobs/building/abcdef")
@@ -458,7 +469,6 @@ def test_get_jobs(jobs, result):
     assert CategorizedJobsModel(**response.json()) == result
 
 
-# @pytest.mark.usefixtures("log_level_debug")
 @mock.patch("murdock.murdock.Murdock.remove_ws_client")
 @mock.patch("murdock.murdock.Murdock.add_ws_client")
 def test_ws_client(add_ws_client, remove_ws_client, caplog):

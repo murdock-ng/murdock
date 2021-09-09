@@ -134,20 +134,21 @@ async def queued_jobs_handler():
 
 
 @app.delete(
-    path="/jobs/queued/{commit}",
+    path="/jobs/queued/{uid}",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Remove a job from the queue",
     tags=["queued jobs"]
 )
 async def queued_commit_cancel_handler(
-    commit: str, _: APIKey = Depends(_check_push_permissions)
+    uid: str, _: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.cancel_queued_job_with_commit(commit)) is None:
+    if (job := murdock.queued.search_by_uid(uid)) is None:
         raise HTTPException(
-            status_code=404, detail=f"No job matching commit '{commit}' found"
+            status_code=404, detail=f"No job with uid '{uid}' found"
         )
 
+    await murdock.cancel_queued_job(job, reload_jobs=True)
     return job.queued_model()
 
 
@@ -163,17 +164,17 @@ async def building_jobs_handler():
 
 
 @app.put(
-    path="/jobs/building/{commit}/status",
+    path="/jobs/building/{uid}/status",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Update the status of a building job",
     tags=["building jobs"]
 )
-async def building_commit_status_handler(request: Request, commit: str):
+async def building_commit_status_handler(request: Request, uid: str):
     if GLOBAL_CONFIG.use_job_token:
         msg = ""
-        if (job := murdock.active.search_by_commit_sha(commit)) is None:
-            msg = f"No job running for commit {commit}"
+        if (job := murdock.active.search_by_uid(uid)) is None:
+            msg = f"No job running with uid {uid}"
         elif "Authorization" not in request.headers:
             msg = "Job token is missing"
         elif (
@@ -187,30 +188,30 @@ async def building_commit_status_handler(request: Request, commit: str):
             raise HTTPException(status_code=400, detail=msg)
 
     data = await request.json()
-    if (job := await murdock.handle_commit_status_data(commit, data)) is None:
+    if (job := await murdock.handle_job_status_data(uid, data)) is None:
         raise HTTPException(
-            status_code=404, detail=f"No job matching commit '{commit}' found"
+            status_code=404, detail=f"No job with uid '{uid}' found"
         )
 
     return job.running_model()
 
 
 @app.delete(
-    path="/jobs/building/{commit}",
+    path="/jobs/building/{uid}",
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Stop a building job",
     tags=["building jobs"]
 )
 async def building_commit_stop_handler(
-    commit: str,
+    uid: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.stop_active_job_with_commit(commit)) is None:
+    if (job := murdock.active.search_by_uid(uid)) is None:
         raise HTTPException(
-            status_code=404, detail=f"No job matching commit '{commit}' found"
+            status_code=404, detail=f"No job with uid '{uid}' found"
         )
-
+    await murdock.stop_active_job(job, reload_jobs=True)
     return job.running_model()
 
 

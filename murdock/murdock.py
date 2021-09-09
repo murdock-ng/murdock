@@ -134,12 +134,6 @@ class Murdock:
             await self.db.insert_job(job)
         await self.reload_jobs()
 
-    def sha_is_handled(self, sha : str) -> bool:
-        return (
-            self.queued.search_by_commit_sha(sha) is not None or
-            self.active.search_by_commit_sha(sha) is not None
-        )
-
     def has_matching_jobs(self, job: MurdockJob) -> bool:
         return (
             self.queued.search_matching(job) or
@@ -176,14 +170,7 @@ class Murdock:
             await self.cancel_queued_job(job)
         return jobs_to_cancel
 
-    async def cancel_queued_job_with_commit(self, commit: str):
-        if (job := self.queued.search_by_commit_sha(commit)) is None:
-            return
-        await self.cancel_queued_job(job)
-        await self.reload_jobs()
-        return job
-
-    async def cancel_queued_job(self, job: MurdockJob):
+    async def cancel_queued_job(self, job: MurdockJob, reload_jobs=False):
         LOGGER.debug(f"Canceling job {job}")
         job.canceled = True
         self.queued.remove(job)
@@ -194,6 +181,8 @@ class Murdock:
             "description": "Canceled",
         }
         await set_commit_status(job.commit.sha, status)
+        if reload_jobs is True:
+            await self.reload_jobs()
 
     async def stop_active_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
         jobs_to_stop = []
@@ -205,14 +194,7 @@ class Murdock:
             await self.stop_active_job(job)
         return jobs_to_stop
 
-    async def stop_active_job_with_commit(self, commit: str):
-        if (job := self.active.search_by_commit_sha(commit)) is None:
-            return
-        await self.stop_active_job(job)
-        await self.reload_jobs()
-        return job
-
-    async def stop_active_job(self, job: MurdockJob) -> MurdockJob:
+    async def stop_active_job(self, job: MurdockJob, reload_jobs=False) -> MurdockJob:
         LOGGER.debug(f"Stopping job {job}")
         await job.stop()
         status = {
@@ -222,6 +204,8 @@ class Murdock:
             "description": "Stopped",
         }
         await set_commit_status(job.commit.sha, status)
+        if reload_jobs is True:
+            await self.reload_jobs()
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
@@ -243,11 +227,6 @@ class Murdock:
         return new_job
 
     async def schedule_job(self, job: MurdockJob) -> MurdockJob:
-        if self.sha_is_handled(job.commit.sha):
-             LOGGER.debug(
-                 f"Commit {job.commit.sha} is already handled, ignoring"
-             )
-             return
         LOGGER.info(f"Scheduling new job {job}")
         if GLOBAL_CONFIG.cancel_on_update is True:
             # Similar jobs are already queued or active => cancel/stop them
@@ -255,6 +234,28 @@ class Murdock:
 
         await self.add_job_to_queue(job)
         return job
+
+    async def handle_skip_job(self, job: MurdockJob) -> bool:
+        if any(
+            (
+                line and
+                re.match(rf"^({'|'.join(job.config.commit.skip_keywords)})$", line)
+            )
+            for line in job.commit.message.split('\n')
+        ):
+            LOGGER.debug(
+                f"Commit message contains skip keywords, skipping job {job}"
+            )
+            await set_commit_status(
+                job.commit.sha,
+                {
+                    "state": "pending",
+                    "context": "Murdock",
+                    "description": "The build was skipped."
+                }
+            )
+            return True
+        return False
 
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
@@ -288,24 +289,13 @@ class Murdock:
         job = MurdockJob(commit, pr=pull_request, config=config)
         action = event["action"]
         if action == "closed":
+            LOGGER.info(
+                f"PR #{pull_request.number} closed, disabling matching jobs"
+            )
             await self.disable_jobs_matching(job)
             return
 
-        if any(
-            line and re.match(rf"^({'|'.join(config.commit.skip_keywords)})$", line)
-            for line in commit.message.split('\n')
-        ):
-            LOGGER.debug(
-                f"Commit message contains skip keywords, skipping job {job}"
-            )
-            await set_commit_status(
-                job.commit.sha,
-                {
-                    "state": "pending",
-                    "context": "Murdock",
-                    "description": "The build was skipped."
-                }
-            )
+        if await self.handle_skip_job(job):
             return
 
         if action == "labeled":
@@ -315,22 +305,12 @@ class Murdock:
                 CI_CONFIG.ready_label not in pull_request.labels
             ):
                 return
-            elif (
-                label == CI_CONFIG.ready_label and
-                self.sha_is_handled(job.commit.sha)
-            ):
-                LOGGER.debug(
-                    f"Commit {job.commit.sha} is already handled, ignoring"
-                )
-                return
-            elif (
-                label != CI_CONFIG.ready_label and
-                (queued_job := self.queued.search_by_commit_sha(job.commit.sha)) is not None
-            ):
-                LOGGER.debug(
-                    f"Updating queued job {queued_job} with new label '{label}'"
-                )
-                queued_job.pr.labels.append(label)
+            elif label != CI_CONFIG.ready_label:
+                for queued_job in self.queued.search_by_pr_number(job.pr.number):
+                    LOGGER.debug(
+                        f"Updating queued job {queued_job} with new label '{label}'"
+                    )
+                    queued_job.pr.labels.append(label)
                 return
 
         if CI_CONFIG.ready_label not in pull_request.labels:
@@ -345,15 +325,13 @@ class Murdock:
             await set_commit_status(job.commit.sha, status)
             return
 
-        if (
-            action == "unlabeled" and
-            (queued_job := self.queued.search_by_commit_sha(job.commit.sha)) is not None
-        ):
-            label = event["label"]["name"]
-            LOGGER.debug(
-                f"Removing '{label}' from queued job {queued_job}"
-            )
-            queued_job.pr.labels.remove(label)
+        if action == "unlabeled":
+            for queued_job in self.queued.search_by_pr_number(job.pr.number):
+                label = event["label"]["name"]
+                LOGGER.debug(
+                    f"Removing '{label}' from queued job {queued_job}"
+                )
+                queued_job.pr.labels.remove(label)
 
         await self.schedule_job(job)
 
@@ -365,14 +343,17 @@ class Murdock:
         )
 
     async def handle_push_event(self, event: dict):
-        ref_type, ref_name = event["ref"].split("/")[-2:]
+        ref = event["ref"]
+        ref_type, ref_name = ref.split("/")[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
             LOGGER.debug(
-                f"Ref was removed upstream, aborting all related jobs"
+                "Ref was removed upstream, "
+                f"aborting all jobs related to ref '{ref}'"
             )
-            previous_ref = event["before"]
-            await self.cancel_queued_job_with_commit(previous_ref)
-            await self.stop_active_job_with_commit(previous_ref)
+            for job in self.active.search_by_ref(ref):
+                await self.cancel_queued_job(job, reload_jobs=True)
+            for job in self.queued.search_by_ref(ref):
+                await self.stop_active_job(job, reload_jobs=True)
             return
         commit = await fetch_commit_info(event["after"])
         if commit is None:
@@ -389,23 +370,8 @@ class Murdock:
             LOGGER.debug(f"Ref '{ref_name}' not accepted for push events")
             return
 
-        job = MurdockJob(commit, ref=event["ref"], config=config)
-
-        if any(
-            re.match(rf"^({'|'.join(config.commit.skip_keywords)})$", line)
-            for line in commit.message.split('\n')
-        ):
-            LOGGER.debug(
-                f"Commit message contains skip keywords, skipping job {job}"
-            )
-            await set_commit_status(
-                job.commit.sha,
-                {
-                    "state": "pending",
-                    "context": "Murdock",
-                    "description": "The build was skipped."
-                }
-            )
+        job = MurdockJob(commit, ref=ref, config=config)
+        if await self.handle_skip_job(job):
             return
 
         LOGGER.info(f"Handle push event on ref '{ref_name}'")
@@ -468,12 +434,10 @@ class Murdock:
             finished=await self.db.find_jobs(limit)
         )
 
-    async def handle_commit_status_data(
-        self, commit: str, data: dict
-    ) -> MurdockJob:
-        job = self.active.search_by_commit_sha(commit)
+    async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
+        job = self.active.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
-            data.update({"cmd": "status", "commit": commit})
+            data.update({"cmd": "status", "uid": uid})
             await self._broadcast_message(json.dumps(data))
         return job
