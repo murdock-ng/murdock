@@ -133,6 +133,9 @@ class MurdockJob:
             "CI_JOB_UID": self.uid,
         }
 
+        if self.config.env is not None:
+            _env.update(self.config.env)
+
         if self.pr is not None:
             _env.update({
                 "CI_PULL_COMMIT" : self.commit.sha,

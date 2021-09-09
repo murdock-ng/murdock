@@ -292,6 +292,30 @@ async def test_set_commit_status(post, caplog, code, text, status):
             },
             id="config_found_valid_content"
         ),
+        pytest.param(
+            json.dumps({
+                "content": (
+                    "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
+                    "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
+                    "ogIGVuYWJsZV9jb21tZW50czogVHJ1ZQoKY29tbWl0OgogIHNraXBfa2V"
+                    "5d29yZHM6IFsiY2k6IHNraXAiLCAiY2k6IG5vIiwgImNpOiBpZ25vcmUi"
+                    "XQoKZW52OgogIFRFU1RfRU5WOiA0Mgo="
+                ),
+            }),
+            200,
+            {
+                'push': {'tags': ['v(\\d+\\.)?(\\d+\\.)?(\\*|\\d+)'],
+                'branches': ['webhook_pushes']},
+                'pr': {'enable_comments': True},
+                'commit': {
+                    'skip_keywords': ['ci: skip', 'ci: no', 'ci: ignore']
+                },
+                'env': {
+                    'TEST_ENV': 42
+                }
+            },
+            id="config_with_env"
+        ),
     ]
 )
 @mock.patch("httpx.AsyncClient.get")

@@ -1,6 +1,6 @@
 import os
 
-from typing import List
+from typing import List, Optional
 from pydantic import BaseSettings, Field, validator
 
 
@@ -114,6 +114,7 @@ class MurdockSettings(BaseSettings):
     push: PushSettings = Field(default=PushSettings())
     pr: PRSettings = Field(default=PRSettings())
     commit: CommitSettings = Field(default=CommitSettings())
+    env: Optional[dict] = Field(default=None)
 
 
 _ENV_FILE = os.getenv(
