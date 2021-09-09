@@ -130,6 +130,7 @@ class MurdockJob:
             "CI_SCRIPTS_DIR" : GLOBAL_CONFIG.scripts_dir,
             "CI_BUILD_HTTP_ROOT" : self.http_dir,
             "CI_BASE_URL": GLOBAL_CONFIG.base_url,
+            "CI_JOB_UID": self.uid,
         }
 
         if self.pr is not None:
