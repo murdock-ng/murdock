@@ -1,11 +1,12 @@
 import logging
+from murdock.job import MurdockJob
 from unittest import mock
 
 import pytest
 
 from murdock.murdock import Murdock
-from murdock.models import CommitModel
-from murdock.config import GLOBAL_CONFIG, MurdockSettings
+from murdock.models import CommitModel, PullRequestInfo
+from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
 
 
 @pytest.mark.asyncio
@@ -83,7 +84,7 @@ async def test_handle_pr_event_action_missing(
     "action,allowed,queued_called", [
         ("invalid", False, False),
         ("synchronize", True, True),
-        ("labeled", True, True),
+        ("labeled", True, False),
         ("unlabeled", True, True),
         ("opened", True, True),
         ("reopened", True, True),
@@ -93,9 +94,11 @@ async def test_handle_pr_event_action_missing(
 )
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
+@mock.patch("murdock.murdock.Murdock.disable_jobs_matching")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_pr_event_action(
-    queued, fetch_commit, fetch_config, action, allowed, queued_called, caplog
+    queued, disable, fetch_commit, fetch_config,
+    action, allowed, queued_called, caplog
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -123,6 +126,13 @@ async def test_handle_pr_event_action(
     else:
         queued.assert_not_called()
 
+    if action == "closed":
+        assert f"PR #123 closed, disabling matching jobs" in caplog.text
+        disable.assert_called_once()
+    else:
+        assert f"PR #123 closed, disabling matching jobs" not in caplog.text
+
+
 @pytest.mark.asyncio
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
@@ -142,7 +152,6 @@ async def test_handle_pr_event_missing_commit_info(
     fetch_commit.assert_called_once()
     assert f"Handle pull request event" in caplog.text
     assert "Cannot fetch commit information, aborting" in caplog.text
-
 
 
 @pytest.mark.asyncio
@@ -201,6 +210,121 @@ async def test_handle_pr_event_skip_commit(
         commit_status.assert_not_called()
         assert "Commit message contains skip keywords, skipping job" not in caplog.text
         assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.murdock.fetch_commit_info")
+@mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+async def test_handle_pr_event_missing_ready_label(
+    queued, fetch_commit, fetch_config, caplog
+):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    commit = "abcdef"
+    event = pr_event.copy()
+    event["pull_request"]["labels"] = []
+    event.update({"action": "synchronize"})
+    fetch_config.return_value = MurdockSettings()
+    fetch_commit.return_value = CommitModel(
+        sha=commit,
+        message="test message",
+        author="me"
+    )
+    murdock = Murdock()
+    await murdock.handle_pull_request_event(event)
+    queued.assert_not_called()
+    fetch_config.assert_called_once()
+    fetch_commit.assert_called_once()
+    assert f"Handle pull request event" in caplog.text
+    assert f"'{CI_CONFIG.ready_label}' label not set" in caplog.text
+    assert f"Scheduling new job sha:{commit} (PR #123)" not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "label,labels,param_queued,scheduled", [
+        pytest.param(
+            "random label", [], [], False,
+            id="ready_label_not_set"
+        ),
+        pytest.param(
+            "random label", [{"name": CI_CONFIG.ready_label}],
+            [
+                MurdockJob(
+                    CommitModel(
+                        sha="abcdef",
+                        message="test",
+                        author="me"
+                    ),
+                    pr=PullRequestInfo(
+                        title="test",
+                        number=123,
+                        merge_commit="test",
+                        user="test",
+                        url="test",
+                        base_repo="test",
+                        base_branch="test",
+                        base_commit="test",
+                        base_full_name="test",
+                        mergeable=True,
+                        labels=["test"]
+                    )
+                )
+            ], False,
+            id="random_label_set_already_queued"
+        ),
+        pytest.param(
+            CI_CONFIG.ready_label, [{"name": CI_CONFIG.ready_label}],
+            [
+                MurdockJob(
+                    CommitModel(
+                        sha="abcdef",
+                        message="test",
+                        author="me"
+                    ),
+                ),
+            ], True,
+            id="ready_label_set"
+        ),
+        pytest.param(
+            CI_CONFIG.ready_label, [{"name": CI_CONFIG.ready_label}], [], True,
+            id="ready_label_set_already_not_queued"
+        ),
+    ]
+)
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_pr_number")
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.murdock.fetch_commit_info")
+@mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+async def test_handle_pr_event_labeled_action(
+    queued, fetch_commit, fetch_config, pr_queued,
+    label, labels, param_queued, scheduled,
+    caplog
+):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    commit = "abcdef"
+    event = pr_event.copy()
+    event.update({"action": "labeled"})
+    event.update({"label": {"name": label}})
+    event["pull_request"]["labels"] = labels
+    fetch_config.return_value = MurdockSettings()
+    fetch_commit.return_value = CommitModel(
+        sha=commit,
+        message="test message",
+        author="me"
+    )
+    pr_queued.return_value = param_queued
+    murdock = Murdock()
+    await murdock.handle_pull_request_event(event)
+    assert f"Handle pull request event" in caplog.text
+    fetch_config.assert_called_once()
+    fetch_commit.assert_called_once()
+    if scheduled:
+        queued.assert_called_once()
+        assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
+    else:
+        queued.assert_not_called()
+        assert f"Scheduling new job sha:{commit} (PR #123)" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -370,28 +494,33 @@ async def test_handle_push_event_skip_commit(
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
-@mock.patch("murdock.murdock.Murdock.cancel_queued_job_with_commit")
-@mock.patch("murdock.murdock.Murdock.stop_active_job_with_commit")
+@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
+@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_ref")
 async def test_handle_push_event_ref_removed(
-    stop, cancel, queued, fetch_commit, fetch_config, caplog
+    search, stop, cancel, queued, fetch_commit, fetch_config, caplog
 ):
     branch = "test_branch"
     commit = "abcdef"
-    fetch_config.return_value = MurdockSettings()
-    fetch_commit.return_value = CommitModel(
+    ref = f"refs/heads/{branch}"
+    commit_model = CommitModel(
         sha=commit,
         message="test",
         author="me"
     )
+    job = MurdockJob(commit=commit_model, ref=ref)
+    search.return_value = [job]
+    fetch_config.return_value = MurdockSettings()
+    fetch_commit.return_value = commit_model
     murdock = Murdock()
     event = {
-        "ref": f"refs/heads/{branch}",
+        "ref": ref,
         "before": commit,
         "after": "0000000000000000000000000000000000000000"
     }
     await murdock.handle_push_event(event)
-    cancel.assert_called_with(commit)
-    stop.assert_called_with(commit)
+    cancel.assert_called_with(job, reload_jobs=True)
+    stop.assert_called_with(job, reload_jobs=True)
     fetch_config.assert_not_called()
     fetch_commit.assert_not_called()
     queued.assert_not_called()
