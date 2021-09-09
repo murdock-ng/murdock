@@ -27,11 +27,6 @@ class MurdockJobListBase(ABC):
             if job is not None and job.uid == uid:
                 return job
 
-    def search_by_commit_sha(self, sha) -> MurdockJob:
-        for job in self._jobs:
-            if job is not None and job.commit.sha == sha:
-                return job
-
     def search_by_pr_number(self, prnum : int) -> List[MurdockJob]:
         return [
             job for job in self._jobs

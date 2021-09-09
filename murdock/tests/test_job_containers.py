@@ -39,17 +39,6 @@ def test_list_search_by_uid():
     assert job_list.search_by_uid("invalid") is None
 
 
-def test_list_search_by_commit_sha():
-    job1 = MurdockJob(CommitModel(sha="1", message="job1", author="test"))
-    job2 = MurdockJob(CommitModel(sha="2", message="job2", author="test"))
-    job3 = MurdockJob(CommitModel(sha="3", message="job3", author="test"))
-    job_list = MurdockJobList()
-    job_list.add(*[job1, job2, job3])
-    assert job_list.search_by_commit_sha(job1.commit.sha) is job1
-    assert job_list.search_by_commit_sha(job2.commit.sha) is job2
-    assert job_list.search_by_commit_sha("invalid") is None
-
-
 def test_list_search_by_pr_number():
     job1 = MurdockJob(
         CommitModel(sha="1", message="job1", author="test"),
