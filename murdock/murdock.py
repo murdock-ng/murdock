@@ -140,7 +140,7 @@ class Murdock:
             self.active.search_matching(job)
         )
 
-    async def add_job_to_queue(self, job: MurdockJob, reload_jobs=True):
+    async def add_job_to_queue(self, job: MurdockJob):
         all_busy = all(active is not None for active in self.active.jobs)
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
@@ -157,8 +157,7 @@ class Murdock:
                 "target_url": GLOBAL_CONFIG.base_url,
             }
         )
-        if reload_jobs is True:
-            await self.reload_jobs()
+        await self.reload_jobs()
 
     async def cancel_queued_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
         jobs_to_cancel = []
