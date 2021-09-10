@@ -30,11 +30,16 @@ ALLOWED_ACTIONS = [
 
 class Murdock:
 
-    def __init__(self):
+    def __init__(
+        self,
+        num_workers: int=GLOBAL_CONFIG.num_workers,
+        cancel_on_update: bool=GLOBAL_CONFIG.cancel_on_update
+    ):
+        self.cancel_on_update = cancel_on_update
         self.clients : List[WebSocket] = []
-        self.num_workers = GLOBAL_CONFIG.num_workers
+        self.num_workers = num_workers
         self.queued : MurdockJobList = MurdockJobList()
-        self.active : MurdockJobPool = MurdockJobPool(self.num_workers)
+        self.active : MurdockJobPool = MurdockJobPool(num_workers)
         self.queue : asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue : asyncio.Queue = asyncio.Queue()
         self.db = Database()
@@ -95,8 +100,7 @@ class Murdock:
                     break
 
     async def job_prepare(self, job: MurdockJob):
-        if job in self.queued.jobs:
-            self.queued.remove(job)
+        self.queued.remove(job)
         self.active.add(job)
         LOGGER.debug(f"{job} added to the active jobs")
         job.start_time = time.time()
@@ -139,19 +143,13 @@ class Murdock:
             await self.db.insert_job(job)
         await self.reload_jobs()
 
-    def has_matching_jobs(self, job: MurdockJob) -> bool:
-        return (
-            self.queued.search_matching(job) or
-            self.active.search_matching(job)
-        )
-
     async def add_job_to_queue(self, job: MurdockJob):
         all_busy = all(active is not None for active in self.active.jobs)
+        self.queued.add(job)
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
         else:
             self.queue.put_nowait(job)
-        self.queued.add(job)
         LOGGER.info(f"Job {job} added to queued jobs")
         await set_commit_status(
             job.commit.sha,
@@ -232,7 +230,7 @@ class Murdock:
 
     async def schedule_job(self, job: MurdockJob) -> MurdockJob:
         LOGGER.info(f"Scheduling new job {job}")
-        if GLOBAL_CONFIG.cancel_on_update is True:
+        if self.cancel_on_update is True:
             # Similar jobs are already queued or active => cancel/stop them
             await self.disable_jobs_matching(job)
 
@@ -442,6 +440,6 @@ class Murdock:
         job = self.active.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
-            data.update({"cmd": "status", "uid": uid})
+            data.update({"cmd": "status", "uid": job.uid})
             await self._broadcast_message(json.dumps(data))
         return job

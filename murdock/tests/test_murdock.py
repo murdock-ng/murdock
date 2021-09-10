@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from murdock.job import MurdockJob
@@ -12,13 +13,22 @@ from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "params,expected", [
+        ({"num_workers": 1}, 1),
+        ({"num_workers": 2}, 2),
+        ({"num_workers": 3}, 3),
+        ({"num_workers": 4}, 4),
+        ({}, GLOBAL_CONFIG.num_workers),
+    ]
+)
 @mock.patch("murdock.database.Database.init")
 @mock.patch("murdock.murdock.Murdock.job_processing_task")
-async def test_init(task, db_init):
-    murdock = Murdock()
+async def test_init(task, db_init, params, expected):
+    murdock = Murdock(**params)
     await murdock.init()
     db_init.assert_called_once()
-    assert task.call_count == GLOBAL_CONFIG.num_workers
+    assert task.call_count == expected
 
 
 @pytest.mark.asyncio
@@ -28,24 +38,6 @@ async def test_shutdown(db_close, caplog):
     await murdock.shutdown()
     assert "Shutting down Murdock" in caplog.text
     db_close.assert_called_once()
-
-
-commit = CommitModel(
-    sha="test_commit", message="test message", author="test_user"
-)
-prinfo = PullRequestInfo(
-    title="test",
-    number=123,
-    merge_commit="test_merge_commit",
-    user="test_user",
-    url="test_url",
-    base_repo="test_base_repo",
-    base_branch="test_base_branch",
-    base_commit="test_base_commit",
-    base_full_name="test_base_full_name",
-    mergeable=True,
-    labels=["test"]
-)
 
 
 TEST_SCRIPT = """#!/bin/bash
@@ -71,34 +63,52 @@ esac
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "ret,job_result,post_build_stop", [
+    "ret,job_result,post_build_stop,comment_on_pr", [
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0}, "passed", False,
+            {"build_ret": 0, "post_build_ret": 0}, "passed", False, True,
             id="job_succeeded"
         ),
         pytest.param(
-           {"build_ret": 1, "post_build_ret": 0}, "errored", False,
+           {"build_ret": 1, "post_build_ret": 0}, "errored", False, True,
            id="job_failed"
         ),
         pytest.param(
-           {"build_ret": 0, "post_build_ret": 1}, "errored", False,
+           {"build_ret": 0, "post_build_ret": 1}, "errored", False, False,
            id="job_post_build_failed"
         ),
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0}, "stopped", False,
+            {"build_ret": 0, "post_build_ret": 0}, "stopped", False, False,
             id="job_stopped"
         ),
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0}, "stopped", True,
+            {"build_ret": 0, "post_build_ret": 0}, "stopped", True, False,
             id="job_post_build_stopped"
         ),
     ]
 )
+@mock.patch("murdock.murdock.comment_on_pr")
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
-async def test_schedule_jobs(
-    insert, status, ret, job_result, post_build_stop, tmpdir
+async def test_schedule_single_job(
+    insert, status, comment, ret, job_result, post_build_stop, comment_on_pr,
+    tmpdir
 ):
+    commit = CommitModel(
+        sha="test_commit", message="test message", author="test_user"
+    )
+    prinfo = PullRequestInfo(
+        title="test",
+        number=123,
+        merge_commit="test_merge_commit",
+        user="test_user",
+        url="test_url",
+        base_repo="test_base_repo",
+        base_branch="test_base_branch",
+        base_commit="test_base_commit",
+        base_full_name="test_base_full_name",
+        mergeable=True,
+        labels=["test"]
+    )
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "build.sh")
@@ -106,17 +116,21 @@ async def test_schedule_jobs(
         f.write(TEST_SCRIPT.format(**ret))
     os.chmod(script_file, 0o744)
     work_dir = tmpdir.join("result").realpath()
-    murdock = Murdock()
-    await murdock.init()
-    job = MurdockJob(commit, pr=prinfo)
+    job = MurdockJob(
+        commit, pr=prinfo,
+        config=MurdockSettings(pr={"enable_comments": comment_on_pr})
+    )
     job.scripts_dir = scripts_dir
     job.work_dir = work_dir
+    murdock = Murdock()
+    await murdock.init()
     await murdock.schedule_job(job)
     assert job in murdock.queued.jobs
     assert job not in murdock.active.jobs
     await asyncio.sleep(1)
     assert job not in murdock.queued.jobs
     assert job in murdock.active.jobs
+    job.status = {"status": "working"}
     if job_result == "stopped":
         if post_build_stop is True:
             await asyncio.sleep(1)
@@ -127,8 +141,157 @@ async def test_schedule_jobs(
         await asyncio.sleep(2)
         insert.assert_called_with(job)
         assert "BUILD" in job.output
+    if comment_on_pr is True:
+        comment.assert_called_once()
+    else:
+        comment.assert_not_called()
+    assert job.status == {"status": "finished"}
     assert job.result == job_result
     assert status.call_count == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "prnums,num_queued,free_slots", [
+        pytest.param([1, 2, 3, 4], 4, 0, id="queued_all_different"),
+        pytest.param([1, 2, 1, 2], 2, 2, id="queued_some_matching"),
+    ]
+)
+@mock.patch("murdock.murdock.set_commit_status")
+@mock.patch("murdock.database.Database.insert_job")
+async def test_schedule_multiple_jobs(
+    _, __, prnums, num_queued, free_slots, tmpdir, caplog
+):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    scripts_dir = tmpdir.join("scripts").realpath()
+    os.makedirs(scripts_dir)
+    script_file = os.path.join(scripts_dir, "build.sh")
+    with open(script_file, "w") as f:
+        f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
+    os.chmod(script_file, 0o744)
+
+    jobs = []
+    for prnum in prnums:
+        commit = CommitModel(
+            sha="test_commit", message="test message", author="test_user"
+        )
+        prinfo = PullRequestInfo(
+            title="test",
+            number=prnum,
+            merge_commit="test_merge_commit",
+            user="test_user",
+            url="test_url",
+            base_repo="test_base_repo",
+            base_branch="test_base_branch",
+            base_commit="test_base_commit",
+            base_full_name="test_base_full_name",
+            mergeable=True,
+            labels=["test"]
+        )
+        job = MurdockJob(commit, pr=prinfo)
+        job.scripts_dir = scripts_dir
+        work_dir = tmpdir.join("result", job.uid).realpath()
+        job.work_dir = work_dir
+        jobs.append(job)
+
+    murdock = Murdock()
+    await murdock.init()
+    for job in jobs:
+        await murdock.schedule_job(job)
+
+    assert len(murdock.queued.jobs) == num_queued
+    await asyncio.sleep(1)
+    assert len(murdock.active.jobs) == 2
+    await asyncio.sleep(2.5)
+    assert murdock.active.jobs.count(None) == free_slots
+    await asyncio.sleep(1)
+    assert murdock.active.jobs.count(None) == 2
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.murdock.set_commit_status")
+@mock.patch("murdock.database.Database.insert_job")
+async def test_schedule_multiple_jobs_with_fasttracked(_, __, tmpdir, caplog):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    scripts_dir = tmpdir.join("scripts").realpath()
+    os.makedirs(scripts_dir)
+    script_file = os.path.join(scripts_dir, "build.sh")
+    with open(script_file, "w") as f:
+        f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
+    os.chmod(script_file, 0o744)
+
+    jobs = []
+    num_jobs = 3
+    for prnum in range(1, num_jobs + 1):
+        commit = CommitModel(
+            sha="test_commit", message="test message", author="test_user"
+        )
+        prinfo = PullRequestInfo(
+            title="test",
+            number=prnum,
+            merge_commit="test_merge_commit",
+            user="test_user",
+            url="test_url",
+            base_repo="test_base_repo",
+            base_branch="test_base_branch",
+            base_commit="test_base_commit",
+            base_full_name="test_base_full_name",
+            mergeable=True,
+            labels=["test"]
+        )
+        job = MurdockJob(commit, pr=prinfo)
+        if prnum == num_jobs:
+            job.fasttracked = True
+        job.scripts_dir = scripts_dir
+        work_dir = tmpdir.join("result", job.uid).realpath()
+        job.work_dir = work_dir
+        jobs.append(job)
+
+    murdock = Murdock(num_workers=1)
+    await murdock.init()
+    for job in jobs[:num_jobs - 1]:
+        await murdock.schedule_job(job)
+
+    import json
+    await asyncio.sleep(1)
+    assert len(murdock.queued.jobs) == num_jobs - 2
+    assert murdock.active.jobs[0] in jobs[:num_jobs - 1]
+    await asyncio.sleep(0.1)
+    await murdock.schedule_job(jobs[-1])
+    assert murdock.get_queued_jobs()[-1].uid == jobs[-1].uid
+    await asyncio.sleep(1.5)
+    assert murdock.active.jobs[0] == jobs[-1]
+    assert murdock.get_active_jobs()[-1].uid == jobs[-1].uid
+    await asyncio.sleep(2)
+    assert jobs[-1].result == "passed"
+    assert murdock.active.jobs[0] in jobs[:num_jobs - 1]
+    await asyncio.sleep(2.1)
+    assert len(murdock.queued.jobs) == 0
+    assert murdock.active.jobs[0] == None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "job_found", [
+        None, MurdockJob(CommitModel(
+            sha="test_commit", message="test message", author="test_user"
+        ))
+    ]
+)
+@mock.patch("murdock.murdock.Murdock.schedule_job")
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.database.Database.find_job")
+async def test_restart_job(find, fetch_config, schedule, job_found, caplog):
+    murdock = Murdock()
+    find.return_value = job_found
+    await murdock.restart_job("1234")
+    if job_found is None:
+        schedule.assert_not_called()
+    else:
+        fetch_config.assert_called_once()
+        schedule.assert_called_once()
+        schedule.call_args[0][0].commit == job_found.commit
+        assert f"Restarting job {job_found}" in caplog.text
 
 
 pr_event = {
@@ -629,3 +792,45 @@ async def test_handle_push_event_ref_removed(
     queued.assert_not_called()
     assert f"Handle push event on ref '{branch}'" not in caplog.text
     assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "job_found,data,called", [
+        pytest.param(
+            None, {}, False,
+            id="job_not_found"
+        ),
+        pytest.param(
+            MurdockJob(CommitModel(
+                sha="test_commit", message="test message", author="test_user"
+            )), {}, False,
+            id="job_found_no_status"
+        ),
+        pytest.param(
+            MurdockJob(CommitModel(
+                sha="test_commit", message="test message", author="test_user"
+            )), {"status": ""}, False,
+            id="job_found_empty_status"
+        ),
+        pytest.param(
+            MurdockJob(CommitModel(
+                sha="test_commit", message="test message", author="test_user"
+            )), {"status": "test"}, True,
+            id="job_found_valid_status"
+        ),
+    ]
+)
+@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
+@mock.patch("murdock.murdock.Murdock._broadcast_message")
+async def test_handle_job_status_data(
+    broadcast, search, job_found, data, called
+):
+    search.return_value = job_found
+    murdock = Murdock()
+    await murdock.handle_job_status_data("1234", data)
+    if called is True:
+        data.update({"cmd": "status", "uid": job_found.uid})
+        broadcast.assert_called_with(json.dumps(data))
+    else:
+        broadcast.assert_not_called()
