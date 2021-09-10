@@ -70,7 +70,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
     )
     cancel_on_update: bool = Field(
-        env="MURCOCK_CANCEL_ON_UPDATE", default=True
+        env="MURDOCK_CANCEL_ON_UPDATE", default=True
     )
     enable_comments: bool = Field(
         env="MURDOCK_ENABLE_COMMENTS", default=True
