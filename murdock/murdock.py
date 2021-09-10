@@ -79,15 +79,20 @@ class Murdock:
             LOGGER.info(f"Job {job} completed")
 
     async def job_processing_task(self):
+        current_task = asyncio.current_task().get_name()
         while True:
             if self.fasttrack_queue.qsize():
                 job = self.fasttrack_queue.get_nowait()
                 await self._process_job(job)
                 self.fasttrack_queue.task_done()
             else:
-                job = await self.queue.get()
-                await self._process_job(job)
-                self.queue.task_done()
+                try:
+                    job = await self.queue.get()
+                    await self._process_job(job)
+                    self.queue.task_done()
+                except RuntimeError as exc:
+                    LOGGER.info(f"Exiting worker {current_task}: {exc}")
+                    break
 
     async def job_prepare(self, job: MurdockJob):
         if job in self.queued.jobs:

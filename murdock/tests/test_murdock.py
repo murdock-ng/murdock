@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import os
 from murdock.job import MurdockJob
 from unittest import mock
 
@@ -26,6 +28,107 @@ async def test_shutdown(db_close, caplog):
     await murdock.shutdown()
     assert "Shutting down Murdock" in caplog.text
     db_close.assert_called_once()
+
+
+commit = CommitModel(
+    sha="test_commit", message="test message", author="test_user"
+)
+prinfo = PullRequestInfo(
+    title="test",
+    number=123,
+    merge_commit="test_merge_commit",
+    user="test_user",
+    url="test_url",
+    base_repo="test_base_repo",
+    base_branch="test_base_branch",
+    base_commit="test_base_commit",
+    base_full_name="test_base_full_name",
+    mergeable=True,
+    labels=["test"]
+)
+
+
+TEST_SCRIPT = """#!/bin/bash
+ACTION="$1"
+
+case "$ACTION" in
+    build)
+        echo "BUILD"
+        sleep 1
+        exit {build_ret}
+        ;;
+    post_build)
+        sleep 1
+        exit {post_build_ret}
+        ;;
+    *)
+        echo "$0: unhandled action $ACTION"
+        exit 1
+        ;;
+esac
+"""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "ret,job_result,post_build_stop", [
+        pytest.param(
+            {"build_ret": 0, "post_build_ret": 0}, "passed", False,
+            id="job_succeeded"
+        ),
+        pytest.param(
+           {"build_ret": 1, "post_build_ret": 0}, "errored", False,
+           id="job_failed"
+        ),
+        pytest.param(
+           {"build_ret": 0, "post_build_ret": 1}, "errored", False,
+           id="job_post_build_failed"
+        ),
+        pytest.param(
+            {"build_ret": 0, "post_build_ret": 0}, "stopped", False,
+            id="job_stopped"
+        ),
+        pytest.param(
+            {"build_ret": 0, "post_build_ret": 0}, "stopped", True,
+            id="job_post_build_stopped"
+        ),
+    ]
+)
+@mock.patch("murdock.murdock.set_commit_status")
+@mock.patch("murdock.database.Database.insert_job")
+async def test_schedule_jobs(
+    insert, status, ret, job_result, post_build_stop, tmpdir
+):
+    scripts_dir = tmpdir.join("scripts").realpath()
+    os.makedirs(scripts_dir)
+    script_file = os.path.join(scripts_dir, "build.sh")
+    with open(script_file, "w") as f:
+        f.write(TEST_SCRIPT.format(**ret))
+    os.chmod(script_file, 0o744)
+    work_dir = tmpdir.join("result").realpath()
+    murdock = Murdock()
+    await murdock.init()
+    job = MurdockJob(commit, pr=prinfo)
+    job.scripts_dir = scripts_dir
+    job.work_dir = work_dir
+    await murdock.schedule_job(job)
+    assert job in murdock.queued.jobs
+    assert job not in murdock.active.jobs
+    await asyncio.sleep(1)
+    assert job not in murdock.queued.jobs
+    assert job in murdock.active.jobs
+    if job_result == "stopped":
+        if post_build_stop is True:
+            await asyncio.sleep(1)
+        await murdock.stop_active_job(job)
+        await asyncio.sleep(0.1)
+        assert job not in murdock.active.jobs
+    else:
+        await asyncio.sleep(2)
+        insert.assert_called_with(job)
+        assert "BUILD" in job.output
+    assert job.result == job_result
+    assert status.call_count == 3
 
 
 pr_event = {

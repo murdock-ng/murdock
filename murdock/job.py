@@ -44,6 +44,7 @@ class MurdockJob:
         else:
             self.fasttracked : bool = False
         self.token : str = secrets.token_urlsafe(32)
+        self.scripts_dir : str = GLOBAL_CONFIG.scripts_dir
         self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
         self.output_url : str = os.path.join(
@@ -179,7 +180,7 @@ class MurdockJob:
         MurdockJob.create_dir(self.work_dir)
         LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(GLOBAL_CONFIG.scripts_dir, "build.sh"), "build",
+            os.path.join(self.scripts_dir, "build.sh"), "build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
@@ -209,10 +210,8 @@ class MurdockJob:
 
         # Store build output in text file
         try:
-            with open(os.path.join(
-                self.work_dir, "output.txt"), "w"
-            ) as output:
-                output.write(self.output)
+            with open(os.path.join(self.work_dir, "output.txt"), "w") as out:
+                out.write(self.output)
         except Exception as exc:
             LOGGER.warning(
                 f"Job error for {self}: cannot write output.txt: {exc}"
@@ -223,7 +222,7 @@ class MurdockJob:
 
         LOGGER.debug(f"Launch post_build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(GLOBAL_CONFIG.scripts_dir, "build.sh"), "post_build",
+            os.path.join(self.scripts_dir, "build.sh"), "post_build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
@@ -241,6 +240,7 @@ class MurdockJob:
                 f"out: {out.decode()}"
                 f"err: {err.decode()}"
             )
+            self.result = "errored"
         if self.proc.returncode in [
             int(signal.SIGINT) * -1,
             int(signal.SIGKILL) * -1,
