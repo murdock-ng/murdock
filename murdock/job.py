@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import secrets
 import shutil
@@ -115,6 +116,7 @@ class MurdockJob:
             since= job.start_time,
             runtime=job.runtime,
             result=job.result,
+            output=job.output,
             output_url=job.output_url,
             status=job.status,
             prinfo=job.pr if job.pr is not None else None,
@@ -176,7 +178,7 @@ class MurdockJob:
     def __eq__(self, other) -> bool:
         return other is not None and self.uid == other.uid
 
-    async def execute(self):
+    async def execute(self, notify=None):
         MurdockJob.create_dir(self.work_dir)
         LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
@@ -184,10 +186,20 @@ class MurdockJob:
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.STDOUT
         )
-        out, _ = await self.proc.communicate()
-        self.output = out.decode()
+        while True:
+            data = await self.proc.stdout.readline()
+            if not data:
+                break
+            self.output += data.decode()
+            if notify is not None:
+                await notify(json.dumps({
+                    "cmd": "output",
+                    "uid": self.uid,
+                    "output": self.output
+                }))
+        await self.proc.wait()
         if self.proc.returncode == 0:
             self.result = "passed"
         elif self.proc.returncode in [
@@ -226,9 +238,9 @@ class MurdockJob:
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.STDOUT
         )
-        out, err = await self.proc.communicate()
+        out, _ = await self.proc.communicate()
         if self.proc.returncode not in [
             0,
             int(signal.SIGINT) * -1,
@@ -238,7 +250,6 @@ class MurdockJob:
             LOGGER.warning(
                 f"Job error for {self}: Post build action failed:\n"
                 f"out: {out.decode()}"
-                f"err: {err.decode()}"
             )
             self.result = "errored"
         if self.proc.returncode in [

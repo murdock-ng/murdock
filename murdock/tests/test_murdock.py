@@ -822,15 +822,15 @@ async def test_handle_push_event_ref_removed(
     ]
 )
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
-@mock.patch("murdock.murdock.Murdock._broadcast_message")
+@mock.patch("murdock.murdock.Murdock.notify_message_to_clients")
 async def test_handle_job_status_data(
-    broadcast, search, job_found, data, called
+    notify, search, job_found, data, called
 ):
     search.return_value = job_found
     murdock = Murdock()
     await murdock.handle_job_status_data("1234", data)
     if called is True:
         data.update({"cmd": "status", "uid": job_found.uid})
-        broadcast.assert_called_with(json.dumps(data))
+        notify.assert_called_with(json.dumps(data))
     else:
-        broadcast.assert_not_called()
+        notify.assert_not_called()

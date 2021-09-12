@@ -250,7 +250,7 @@ def test_cancel_queued_job(cancel, search, job_queued, code):
     assert response.status_code == code
     if job_queued:
         cancel.assert_called_with(job_queued, reload_jobs=True)
-        assert response.json() == job_queued.queued_model().dict(exclude={"status"})
+        assert response.json() == job_queued.queued_model().dict(exclude={"status", "output"})
     else:
         cancel.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
@@ -304,7 +304,7 @@ def test_get_building_jobs(jobs, result):
         ),
         pytest.param(
             test_job, test_job, {"Authorization": test_job.token},
-            200, test_job.running_model().dict(exclude={"fasttracked"}),
+            200, test_job.running_model().dict(exclude={"fasttracked", "output"}),
             id="update_job_found"
         ),
     ]
@@ -345,7 +345,7 @@ def test_stop_running_job(search, stop, result, code):
     assert response.status_code == code
     if result is not None:
         stop.assert_called_with(result, reload_jobs=True)
-        assert response.json() == result.running_model().dict(exclude={"fasttracked"})
+        assert response.json() == result.running_model().dict(exclude={"fasttracked", "output"})
     else:
         stop.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
@@ -401,7 +401,7 @@ def test_restart_job(restart, result, code):
     assert response.status_code == code
     restart.assert_called_with("123")
     if result is not None:
-        assert response.json() == result.queued_model().dict(exclude={"status"})
+        assert response.json() == result.queued_model().dict(exclude={"status", "output"})
     else:
         assert response.json() == {"detail": f"Cannot restart job '123'"}
 

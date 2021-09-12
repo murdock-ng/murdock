@@ -76,7 +76,7 @@ class Murdock:
             )
             await self.job_prepare(job)
             try:
-                await job.execute()
+                await job.execute(notify=self.notify_message_to_clients)
             except Exception as exc:
                 LOGGER.warning(f"Build job failed:\n{exc}")
                 job.result = "errored"
@@ -387,13 +387,13 @@ class Murdock:
         if ws in self.clients:
             self.clients.remove(ws)
 
-    async def _broadcast_message(self, msg: str):
+    async def notify_message_to_clients(self, msg: str):
         await asyncio.gather(
             *[client.send_text(msg) for client in self.clients]
         )
 
     async def reload_jobs(self):
-        await self._broadcast_message(json.dumps({"cmd": "reload"}))
+        await self.notify_message_to_clients(json.dumps({"cmd": "reload"}))
 
     def get_queued_jobs(self) -> List[JobModel]:
         queued = sorted(
@@ -441,5 +441,5 @@ class Murdock:
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
             data.update({"cmd": "status", "uid": job.uid})
-            await self._broadcast_message(json.dumps(data))
+            await self.notify_message_to_clients(json.dumps(data))
         return job

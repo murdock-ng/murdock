@@ -97,6 +97,10 @@ class JobModel(BaseModel):
         None,
         title="Status of the job",
     )
+    output: str = Field(
+        None,
+        title="Output of the job",
+    )
 
 
 class FinishedJobModel(JobModel):

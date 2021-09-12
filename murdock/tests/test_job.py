@@ -230,11 +230,13 @@ def test_running_model():
 def test_to_db_entry():
     job = MurdockJob(commit, pr=prinfo)
     job.result = "passed"
+    job.output = "test output"
     expected_model = FinishedJobModel(
         uid=job.uid,
         since= job.start_time,
         runtime=job.runtime,
         result="passed",
+        output="test output",
         output_url=job.output_url,
         work_dir=job.work_dir,
         status=job.status,
@@ -250,6 +252,7 @@ def test_from_db_entry():
         "since": 12345,
         "runtime": 1234.5,
         "result": "passed",
+        "output": "job output",
         "output_url": "output.html",
         "work_dir": "/tmp",
         "status": {"status": "test"},
@@ -262,6 +265,7 @@ def test_from_db_entry():
         since=12345,
         runtime=1234.5,
         result="passed",
+        output="job output",
         output_url="output.html",
         status={"status": "test"},
         prinfo=prinfo.dict(),
