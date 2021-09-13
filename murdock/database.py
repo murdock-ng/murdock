@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import List, Optional
+from typing import List
 
 import motor.motor_asyncio as aiomotor
 
@@ -18,11 +18,10 @@ class Database:
 
     async def init(self):
         LOGGER.info("Initializing database connection")
-        loop = asyncio.get_event_loop()
         conn = aiomotor.AsyncIOMotorClient(
             f"mongodb://{DB_CONFIG.host}:{DB_CONFIG.port}",
             maxPoolSize=5,
-            io_loop=loop
+            io_loop=asyncio.get_event_loop()
         )
         self.db = conn[DB_CONFIG.name]
     
