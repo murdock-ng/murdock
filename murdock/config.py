@@ -72,11 +72,8 @@ class GlobalSettings(BaseSettings):
     cancel_on_update: bool = Field(
         env="MURDOCK_CANCEL_ON_UPDATE", default=True
     )
-    enable_comments: bool = Field(
-        env="MURDOCK_ENABLE_COMMENTS", default=True
-    )
-    sticky_comment: bool = Field(
-        env="MURDOCK_STICKY_COMMENT", default=False
+    max_job_output_length: int = Field(
+        env="MURDOCK_MAX_JOB_OUTPUT_LENGTH", default=2**15  # 32K
     )
 
     @validator("work_dir")

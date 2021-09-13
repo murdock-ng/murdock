@@ -48,8 +48,11 @@ class MurdockJob:
         self.scripts_dir : str = GLOBAL_CONFIG.scripts_dir
         self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
+        self.output_url_base: str = os.path.join(
+            GLOBAL_CONFIG.base_url, self.http_dir
+        )
         self.output_url : str = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
+            self.output_url_base, "output.html"
         )
 
     @staticmethod
@@ -193,6 +196,8 @@ class MurdockJob:
             if not data:
                 break
             self.output += data.decode()
+            if len(self.output) > GLOBAL_CONFIG.max_job_output_length:
+                self.output = self.output[-GLOBAL_CONFIG.max_job_output_length:]
             if notify is not None:
                 await notify(json.dumps({
                     "cmd": "output",
