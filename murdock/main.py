@@ -153,27 +153,27 @@ async def queued_commit_cancel_handler(
 
 
 @app.get(
-    path="/jobs/building",
+    path="/jobs/running",
     response_model=List[JobModel],
     response_model_exclude_unset=True,
-    summary="Return the list of building jobs",
-    tags=["building jobs"]
+    summary="Return the list of running jobs",
+    tags=["running jobs"]
 )
-async def building_jobs_handler():
-    return murdock.get_active_jobs()
+async def running_jobs_handler():
+    return murdock.get_running_jobs()
 
 
 @app.put(
-    path="/jobs/building/{uid}/status",
+    path="/jobs/running/{uid}/status",
     response_model=JobModel,
     response_model_exclude_unset=True,
-    summary="Update the status of a building job",
-    tags=["building jobs"]
+    summary="Update the status of a running job",
+    tags=["running jobs"]
 )
-async def building_commit_status_handler(request: Request, uid: str):
+async def running_job_status_handler(request: Request, uid: str):
     if GLOBAL_CONFIG.use_job_token:
         msg = ""
-        if (job := murdock.active.search_by_uid(uid)) is None:
+        if (job := murdock.running.search_by_uid(uid)) is None:
             msg = f"No job running with uid {uid}"
         elif "Authorization" not in request.headers:
             msg = "Job token is missing"
@@ -197,21 +197,21 @@ async def building_commit_status_handler(request: Request, uid: str):
 
 
 @app.delete(
-    path="/jobs/building/{uid}",
+    path="/jobs/running/{uid}",
     response_model=JobModel,
     response_model_exclude_unset=True,
-    summary="Stop a building job",
-    tags=["building jobs"]
+    summary="Stop a running job",
+    tags=["running jobs"]
 )
-async def building_commit_stop_handler(
+async def running_job_stop_handler(
     uid: str,
     _: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := murdock.active.search_by_uid(uid)) is None:
+    if (job := murdock.running.search_by_uid(uid)) is None:
         raise HTTPException(
             status_code=404, detail=f"No job with uid '{uid}' found"
         )
-    await murdock.stop_active_job(job, reload_jobs=True)
+    await murdock.stop_running_job(job, reload_jobs=True)
     return job.running_model()
 
 
@@ -266,7 +266,7 @@ async def finished_job_delete_handler(
     path="/jobs",
     response_model=CategorizedJobsModel,
     response_model_exclude_unset=True,
-    summary="Return the list of all jobs (queued, building, finished)",
+    summary="Return the list of all jobs (queued, running, finished)",
     tags=["jobs"]
 )
 async def jobs_handler(query: JobQueryModel = Depends()):

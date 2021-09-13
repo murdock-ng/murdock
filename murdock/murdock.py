@@ -39,7 +39,7 @@ class Murdock:
         self.clients : List[WebSocket] = []
         self.num_workers = num_workers
         self.queued : MurdockJobList = MurdockJobList()
-        self.active : MurdockJobPool = MurdockJobPool(num_workers)
+        self.running : MurdockJobPool = MurdockJobPool(num_workers)
         self.queue : asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue : asyncio.Queue = asyncio.Queue()
         self.db = Database()
@@ -61,7 +61,7 @@ class Murdock:
         for job in self.queued.jobs:
             LOGGER.debug(f"Canceling job {job}")
             job.cancelled = True
-        for job in self.active.jobs:
+        for job in self.running.jobs:
             if job is not None:
                 LOGGER.debug(f"Stopping job {job}")
                 await job.stop()
@@ -101,8 +101,8 @@ class Murdock:
 
     async def job_prepare(self, job: MurdockJob):
         self.queued.remove(job)
-        self.active.add(job)
-        LOGGER.debug(f"{job} added to the active jobs")
+        self.running.add(job)
+        LOGGER.debug(f"{job} added to the running jobs")
         job.start_time = time.time()
         await set_commit_status(
             job.commit.sha,
@@ -119,8 +119,8 @@ class Murdock:
         job.stop_time = time.time()
         if job.status["status"] == "working":
             job.status["status"] = "finished"
-        self.active.remove(job)
-        LOGGER.debug(f"{job} removed from active jobs")
+        self.running.remove(job)
+        LOGGER.debug(f"{job} removed from running jobs")
         if job.result != "stopped":
             job_state = "success" if job.result == "passed" else "failure"
             job_status_desc = (
@@ -144,7 +144,7 @@ class Murdock:
         await self.reload_jobs()
 
     async def add_job_to_queue(self, job: MurdockJob):
-        all_busy = all(active is not None for active in self.active.jobs)
+        all_busy = all(running is not None for running in self.running.jobs)
         self.queued.add(job)
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
@@ -186,17 +186,17 @@ class Murdock:
         if reload_jobs is True:
             await self.reload_jobs()
 
-    async def stop_active_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
+    async def stop_running_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
         jobs_to_stop = []
         if job.pr is not None:
-            jobs_to_stop += self.active.search_by_pr_number(job.pr.number)
+            jobs_to_stop += self.running.search_by_pr_number(job.pr.number)
         if job.ref is not None:
-            jobs_to_stop += self.active.search_by_ref(job.ref)
+            jobs_to_stop += self.running.search_by_ref(job.ref)
         for job in jobs_to_stop:
-            await self.stop_active_job(job)
+            await self.stop_running_job(job)
         return jobs_to_stop
 
-    async def stop_active_job(self, job: MurdockJob, reload_jobs=False) -> MurdockJob:
+    async def stop_running_job(self, job: MurdockJob, reload_jobs=False) -> MurdockJob:
         LOGGER.debug(f"Stopping job {job}")
         await job.stop()
         status = {
@@ -214,7 +214,7 @@ class Murdock:
         LOGGER.debug(f"Disable jobs matching job {job}")
         disabled_jobs = []
         disabled_jobs += (await self.cancel_queued_jobs_matching(job))
-        disabled_jobs += (await self.stop_active_jobs_matching(job))
+        disabled_jobs += (await self.stop_running_jobs_matching(job))
         if disabled_jobs:
             await self.reload_jobs()
         return disabled_jobs
@@ -231,7 +231,7 @@ class Murdock:
     async def schedule_job(self, job: MurdockJob) -> MurdockJob:
         LOGGER.info(f"Scheduling new job {job}")
         if self.cancel_on_update is True:
-            # Similar jobs are already queued or active => cancel/stop them
+            # Similar jobs are already queued or running => cancel/stop them
             await self.disable_jobs_matching(job)
 
         await self.add_job_to_queue(job)
@@ -352,10 +352,10 @@ class Murdock:
                 "Ref was removed upstream, "
                 f"aborting all jobs related to ref '{ref}'"
             )
-            for job in self.active.search_by_ref(ref):
+            for job in self.running.search_by_ref(ref):
                 await self.cancel_queued_job(job, reload_jobs=True)
             for job in self.queued.search_by_ref(ref):
-                await self.stop_active_job(job, reload_jobs=True)
+                await self.stop_running_job(job, reload_jobs=True)
             return
         commit = await fetch_commit_info(event["after"])
         if commit is None:
@@ -405,11 +405,11 @@ class Murdock:
         )
         return sorted(queued, key=lambda job: job.fasttracked)
 
-    def get_active_jobs(self) -> List[JobModel]:
+    def get_running_jobs(self) -> List[JobModel]:
         return sorted(
             [
                 job.running_model()
-                for job in self.active.jobs if job is not None
+                for job in self.running.jobs if job is not None
             ], reverse=True, key=lambda job: job.since
         )
 
@@ -432,12 +432,12 @@ class Murdock:
     async def get_jobs(self, limit: int) -> CategorizedJobsModel:
         return CategorizedJobsModel(
             queued=self.get_queued_jobs(),
-            building=self.get_active_jobs(),
+            running=self.get_running_jobs(),
             finished=await self.db.find_jobs(limit)
         )
 
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
-        job = self.active.search_by_uid(uid)
+        job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
             data.update({"cmd": "status", "uid": job.uid})

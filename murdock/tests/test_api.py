@@ -37,7 +37,7 @@ prinfo = PullRequestInfo(
 test_job_queued = JobModel(
     uid="1234", commit=commit, prinfo=prinfo, since=12345.6, fasttracked=True
 )
-test_job_building = JobModel(
+test_job_running = JobModel(
     uid="1234", commit=commit, prinfo=prinfo,
     since=12345.6, status={"status": "test"}
 )
@@ -269,13 +269,13 @@ def test_cancel_queued_not_allowed(cancel):
     "result",
     [
         [],
-        [test_job_building.dict(exclude={"fasttracked"})]
+        [test_job_running.dict(exclude={"fasttracked"})]
     ]
 )
-@mock.patch("murdock.murdock.Murdock.get_active_jobs")
-def test_get_building_jobs(jobs, result):
+@mock.patch("murdock.murdock.Murdock.get_running_jobs")
+def test_get_running_jobs(jobs, result):
     jobs.return_value = result
-    response = client.get("/jobs/building")
+    response = client.get("/jobs/running")
     assert response.status_code == 200
     assert response.json() == result
 
@@ -319,7 +319,7 @@ def test_update_running_job_status(
     commit_status.return_value = job_found
     status = {"status": "test"}
     response = client.put(
-        f"/jobs/building/abcdef/status",
+        f"/jobs/running/abcdef/status",
         json.dumps(status),
         headers=headers
     )
@@ -337,11 +337,11 @@ def test_update_running_job_status(
         pytest.param(MurdockJob(commit, pr=prinfo), 200, id="job_found")
     ]
 )
-@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 def test_stop_running_job(search, stop, result, code):
     search.return_value = result
-    response = client.delete(f"/jobs/building/abcdef")
+    response = client.delete(f"/jobs/running/abcdef")
     assert response.status_code == code
     if result is not None:
         stop.assert_called_with(result, reload_jobs=True)
@@ -352,10 +352,10 @@ def test_stop_running_job(search, stop, result, code):
 
 
 @pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.murdock.Murdock.stop_running_job")
 def test_stop_running_not_allowed(stop):
     stop.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.delete(f"/jobs/building/abcdef")
+    response = client.delete(f"/jobs/running/abcdef")
     stop.assert_not_called()
     assert response.status_code == 401
 
@@ -445,18 +445,18 @@ def test_delete_job_not_allowed(remove):
 @pytest.mark.parametrize(
     "result",
     [
-        CategorizedJobsModel(queued=[], building=[], finished=[]),
+        CategorizedJobsModel(queued=[], running=[], finished=[]),
         CategorizedJobsModel(
-            queued=[test_job_queued], building=[], finished=[]
+            queued=[test_job_queued], running=[], finished=[]
         ),
         CategorizedJobsModel(
             queued=[test_job_queued],
-            building=[test_job_building],
+            running=[test_job_running],
             finished=[]
         ),
         CategorizedJobsModel(
             queued=[test_job_queued],
-            building=[test_job_building],
+            running=[test_job_running],
             finished=[test_job_finished]
         ),
     ]

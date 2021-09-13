@@ -126,17 +126,17 @@ async def test_schedule_single_job(
     await murdock.init()
     await murdock.schedule_job(job)
     assert job in murdock.queued.jobs
-    assert job not in murdock.active.jobs
+    assert job not in murdock.running.jobs
     await asyncio.sleep(1)
     assert job not in murdock.queued.jobs
-    assert job in murdock.active.jobs
+    assert job in murdock.running.jobs
     job.status = {"status": "working"}
     if job_result == "stopped":
         if post_build_stop is True:
             await asyncio.sleep(1)
-        await murdock.stop_active_job(job)
+        await murdock.stop_running_job(job)
         await asyncio.sleep(0.1)
-        assert job not in murdock.active.jobs
+        assert job not in murdock.running.jobs
     else:
         await asyncio.sleep(2)
         insert.assert_called_with(job)
@@ -201,11 +201,11 @@ async def test_schedule_multiple_jobs(
 
     assert len(murdock.queued.jobs) == num_queued
     await asyncio.sleep(1)
-    assert len(murdock.active.jobs) == 2
+    assert len(murdock.running.jobs) == 2
     await asyncio.sleep(2.5)
-    assert murdock.active.jobs.count(None) == free_slots
+    assert murdock.running.jobs.count(None) == free_slots
     await asyncio.sleep(1)
-    assert murdock.active.jobs.count(None) == 2
+    assert murdock.running.jobs.count(None) == 2
 
 
 @pytest.mark.asyncio
@@ -255,19 +255,19 @@ async def test_schedule_multiple_jobs_with_fasttracked(_, __, tmpdir, caplog):
     import json
     await asyncio.sleep(1)
     assert len(murdock.queued.jobs) == num_jobs - 2
-    assert murdock.active.jobs[0] in jobs[:num_jobs - 1]
+    assert murdock.running.jobs[0] in jobs[:num_jobs - 1]
     await asyncio.sleep(0.1)
     await murdock.schedule_job(jobs[-1])
     assert murdock.get_queued_jobs()[-1].uid == jobs[-1].uid
     await asyncio.sleep(1.5)
-    assert murdock.active.jobs[0] == jobs[-1]
-    assert murdock.get_active_jobs()[-1].uid == jobs[-1].uid
+    assert murdock.running.jobs[0] == jobs[-1]
+    assert murdock.get_running_jobs()[-1].uid == jobs[-1].uid
     await asyncio.sleep(2)
     assert jobs[-1].result == "passed"
-    assert murdock.active.jobs[0] in jobs[:num_jobs - 1]
+    assert murdock.running.jobs[0] in jobs[:num_jobs - 1]
     await asyncio.sleep(2.1)
     assert len(murdock.queued.jobs) == 0
-    assert murdock.active.jobs[0] == None
+    assert murdock.running.jobs[0] == None
 
 
 @pytest.mark.asyncio
@@ -761,7 +761,7 @@ async def test_handle_push_event_skip_commit(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 @mock.patch("murdock.murdock.Murdock.cancel_queued_job")
-@mock.patch("murdock.murdock.Murdock.stop_active_job")
+@mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_ref")
 async def test_handle_push_event_ref_removed(
     search, stop, cancel, queued, fetch_commit, fetch_config, caplog

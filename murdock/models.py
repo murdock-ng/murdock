@@ -123,9 +123,9 @@ class CategorizedJobsModel(BaseModel):
         None,
         title="List of all queued jobs",
     )
-    building: List[JobModel] = Field(
+    running: List[JobModel] = Field(
         None,
-        title="List of all building jobs",
+        title="List of all running jobs",
     )
     finished: List[FinishedJobModel] = Field(
         None,
