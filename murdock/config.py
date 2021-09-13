@@ -73,7 +73,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_CANCEL_ON_UPDATE", default=True
     )
     max_job_output_length: int = Field(
-        env="MURDOCK_MAX_JOB_OUTPUT_LENGTH", default=2**15  # 32K
+        env="MURDOCK_MAX_JOB_OUTPUT_LENGTH", default=2**16  # 64K
     )
 
     @validator("work_dir")

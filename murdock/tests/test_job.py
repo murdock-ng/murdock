@@ -236,7 +236,6 @@ def test_to_db_entry():
         since= job.start_time,
         runtime=job.runtime,
         result="passed",
-        output="test output",
         output_url=job.output_url,
         work_dir=job.work_dir,
         status=job.status,

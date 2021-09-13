@@ -48,11 +48,8 @@ class MurdockJob:
         self.scripts_dir : str = GLOBAL_CONFIG.scripts_dir
         self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
-        self.output_url_base: str = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir
-        )
         self.output_url : str = os.path.join(
-            self.output_url_base, "output.html"
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
         )
 
     @staticmethod
@@ -119,7 +116,6 @@ class MurdockJob:
             since= job.start_time,
             runtime=job.runtime,
             result=job.result,
-            output=job.output,
             output_url=job.output_url,
             status=job.status,
             prinfo=job.pr if job.pr is not None else None,
