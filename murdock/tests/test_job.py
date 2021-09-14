@@ -222,7 +222,7 @@ def test_running_model():
     job = MurdockJob(commit, pr=prinfo)
     expected_model = JobModel(
         uid=job.uid, commit=commit, prinfo=prinfo,
-        since=job.start_time, status=job.status
+        since=job.start_time, status=job.status, output="",
     )
     assert job.running_model() == expected_model
 
@@ -237,6 +237,7 @@ def test_to_db_entry():
         runtime=job.runtime,
         result="passed",
         output_url=job.output_url,
+        output_text_url=job.output_text_url,
         work_dir=job.work_dir,
         status=job.status,
         prinfo=job.pr.dict(),
@@ -253,6 +254,7 @@ def test_from_db_entry():
         "result": "passed",
         "output": "job output",
         "output_url": "output.html",
+        'output_text_url': 'output.txt',
         "work_dir": "/tmp",
         "status": {"status": "test"},
         "prinfo": prinfo.dict(),
@@ -266,6 +268,7 @@ def test_from_db_entry():
         result="passed",
         output="job output",
         output_url="output.html",
+        output_text_url="output.txt",
         status={"status": "test"},
         prinfo=prinfo.dict(),
         commit=commit.dict(),

@@ -48,8 +48,9 @@ class MurdockJob:
         self.scripts_dir : str = GLOBAL_CONFIG.scripts_dir
         self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir : str = os.path.join("results", self.uid)
-        self.output_url : str = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
+        self.output_url : Optional[str] = None
+        self.output_text_url : str = os.path.join(
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
         )
 
     @staticmethod
@@ -105,7 +106,8 @@ class MurdockJob:
             ref=self.ref,
             prinfo=self.pr,
             since=self.start_time,
-            status=self.status
+            status=self.status,
+            output=self.output
         )
 
     @staticmethod
@@ -117,6 +119,7 @@ class MurdockJob:
             runtime=job.runtime,
             result=job.result,
             output_url=job.output_url,
+            output_text_url=job.output_text_url,
             status=job.status,
             prinfo=job.pr if job.pr is not None else None,
             ref=job.ref,
@@ -191,14 +194,13 @@ class MurdockJob:
             data = await self.proc.stdout.readline()
             if not data:
                 break
-            self.output += data.decode()
-            if len(self.output) > GLOBAL_CONFIG.max_job_output_length:
-                self.output = self.output[-GLOBAL_CONFIG.max_job_output_length:]
+            line = data.decode()
+            self.output += line
             if notify is not None:
                 await notify(json.dumps({
                     "cmd": "output",
                     "uid": self.uid,
-                    "output": self.output
+                    "line": line
                 }))
         await self.proc.wait()
         if self.proc.returncode == 0:
@@ -260,6 +262,17 @@ class MurdockJob:
         ]:
             self.result = "stopped"
         self.proc = None
+
+        output_text_url = os.path.join(
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
+        )
+        if os.path.exists(output_text_url):
+            self.output_text_url = output_text_url
+        output_html_url = os.path.join(
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
+        )
+        if os.path.exists(output_html_url):
+            self.output_url = output_html_url
 
     async def stop(self):
         LOGGER.debug(f"Job {self} immediate stop requested")

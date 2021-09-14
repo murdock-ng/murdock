@@ -108,9 +108,13 @@ class FinishedJobModel(JobModel):
         None,
         title="Final result of a job (passed or errored)",
     )
-    output_url: str = Field(
+    output_url: Optional[str] = Field(
         None,
         title="URL where html output of the job is available",
+    )
+    output_text_url: Optional[str] = Field(
+        None,
+        title="URL where text output of the job is available",
     )
     runtime: float = Field(
         None,

@@ -138,6 +138,7 @@ async def test_comment_on_pr(
             "sticky_comment": sticky,
         })
     )
+    job.output_url = f"http://localhost:8000/results/{job.uid}/output.html"
     job.result = "passed"
     comment = (
         "### Murdock results\n"

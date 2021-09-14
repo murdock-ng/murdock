@@ -72,9 +72,6 @@ class GlobalSettings(BaseSettings):
     cancel_on_update: bool = Field(
         env="MURDOCK_CANCEL_ON_UPDATE", default=True
     )
-    max_job_output_length: int = Field(
-        env="MURDOCK_MAX_JOB_OUTPUT_LENGTH", default=2**16  # 64K
-    )
 
     @validator("work_dir")
     def work_dir_exists(cls, path):

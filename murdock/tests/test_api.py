@@ -304,7 +304,7 @@ def test_get_running_jobs(jobs, result):
         ),
         pytest.param(
             test_job, test_job, {"Authorization": test_job.token},
-            200, test_job.running_model().dict(exclude={"fasttracked", "output"}),
+            200, test_job.running_model().dict(exclude={"fasttracked"}),
             id="update_job_found"
         ),
     ]
@@ -345,7 +345,7 @@ def test_stop_running_job(search, stop, result, code):
     assert response.status_code == code
     if result is not None:
         stop.assert_called_with(result, reload_jobs=True)
-        assert response.json() == result.running_model().dict(exclude={"fasttracked", "output"})
+        assert response.json() == result.running_model().dict(exclude={"fasttracked"})
     else:
         stop.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
