@@ -1,4 +1,6 @@
-from murdock.models import CommitModel, PullRequestInfo
+import pytest
+
+from murdock.models import CommitModel, JobQueryModel, PullRequestInfo
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
 
@@ -39,138 +41,174 @@ def test_list_search_by_uid():
     assert job_list.search_by_uid("invalid") is None
 
 
-def test_list_search_by_pr_number():
-    job1 = MurdockJob(
-        CommitModel(sha="1", message="job1", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=123,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
+test_job1 = MurdockJob(
+    CommitModel(sha="1", message="job1", author="test"),
+    pr=PullRequestInfo(
+        title="test",
+        number=123,
+        merge_commit="test_merge_commit",
+        user="test_user",
+        url="test_url",
+        base_repo="test_base_repo",
+        base_branch="test_base_branch",
+        base_commit="test_base_commit",
+        base_full_name="test_base_full_name",
+        mergeable=True,
+        labels=["test"]
     )
-    job2 = MurdockJob(
-        CommitModel(sha="2", message="job2", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=1234,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
+)
+test_job1.result = "passed"
+test_job2 = MurdockJob(
+    CommitModel(sha="2", message="job2", author="test"),
+    pr=PullRequestInfo(
+        title="test",
+        number=123,
+        merge_commit="test_merge_commit",
+        user="test_user",
+        url="test_url",
+        base_repo="test_base_repo",
+        base_branch="test_base_branch",
+        base_commit="test_base_commit",
+        base_full_name="test_base_full_name",
+        mergeable=True,
+        labels=["test"]
     )
-    job3 = MurdockJob(
-        CommitModel(sha="3", message="job3", author="test"),
-        ref="test_branch"
+)
+test_job2.result = "errored"
+test_job3 = MurdockJob(
+    CommitModel(sha="2", message="job3", author="test"),
+    pr=PullRequestInfo(
+        title="test",
+        number=1234,
+        merge_commit="test_merge_commit",
+        user="test_user",
+        url="test_url",
+        base_repo="test_base_repo",
+        base_branch="test_base_branch",
+        base_commit="test_base_commit",
+        base_full_name="test_base_full_name",
+        mergeable=True,
+        labels=["test"]
     )
+)
+test_job3.result = "passed"
+test_job4 = MurdockJob(
+    CommitModel(sha="3", message="job4", author="other_test"),
+    ref="test_ref"
+)
+test_job5 = MurdockJob(
+    CommitModel(sha="4", message="job5", author="other_test"),
+    ref="test_ref"
+)
+test_job6 = MurdockJob(
+    CommitModel(sha="3", message="job6", author="other_test"),
+    ref="refs/heads/test_branch"
+)
+test_job7 = MurdockJob(
+    CommitModel(sha="4", message="job7", author="test"),
+    ref="refs/tags/test_tag"
+)
+
+
+@pytest.mark.parametrize(
+    "prnum,result", [
+        (123, [test_job2, test_job1]),
+        (1234, [test_job3]),
+        (12, []),
+    ]
+)
+def test_list_search_by_pr_number(prnum, result):
     job_list = MurdockJobList()
-    job_list.add(*[job1, job2, job3])
-    assert job_list.search_by_pr_number(123) == [job1]
-    assert job_list.search_by_pr_number(1234) == [job2]
-    assert job_list.search_by_pr_number(12) == []
+    job_list.add(*[test_job1, test_job2, test_job3])
+    assert job_list.search_by_pr_number(prnum) == result
 
 
-def test_list_search_by_ref():
-    job1 = MurdockJob(
-        CommitModel(sha="1", message="job1", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=123,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
-    )
-    job2 = MurdockJob(
-        CommitModel(sha="2", message="job2", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=1234,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
-    )
-    job3 = MurdockJob(
-        CommitModel(sha="3", message="job3", author="test"),
-        ref="test_branch"
-    )
+@pytest.mark.parametrize(
+    "ref,result", [
+        ("test_ref", [test_job5, test_job4]),
+        ("unknown_ref", []),
+    ]
+)
+def test_list_search_by_ref(ref, result):
     job_list = MurdockJobList()
-    job_list.add(*[job1, job2, job3])
-    assert job_list.search_by_ref("test_branch") == [job3]
-    assert job_list.search_by_ref("unknown_branch") == []
+    job_list.add(*[test_job1, test_job2, test_job3, test_job4, test_job5])
+    assert job_list.search_by_ref(ref) == result
 
 
-def test_list_search_matching():
-    job1 = MurdockJob(
-        CommitModel(sha="1", message="job1", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=123,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
-    )
-    job2 = MurdockJob(
-        CommitModel(sha="2", message="job2", author="test"),
-        pr=PullRequestInfo(
-            title="test",
-            number=123,
-            merge_commit="test_merge_commit",
-            user="test_user",
-            url="test_url",
-            base_repo="test_base_repo",
-            base_branch="test_base_branch",
-            base_commit="test_base_commit",
-            base_full_name="test_base_full_name",
-            mergeable=True,
-            labels=["test"]
-        )
-    )
-    job3 = MurdockJob(
-        CommitModel(sha="3", message="job3", author="test"),
-        ref="test_branch"
-    )
-    job4 = MurdockJob(
-        CommitModel(sha="4", message="job3", author="test"),
-        ref="test_branch"
-    )
+@pytest.mark.parametrize(
+    "job,result", [
+        (test_job1, [test_job2, test_job1]),
+        (test_job3, [test_job3]),
+        (test_job4, [test_job5, test_job4]),
+    ]
+)
+def test_list_search_matching(job, result):
     job_list = MurdockJobList()
-    job_list.add(*[job1, job2, job3, job4])
-    assert job_list.search_matching(job1) == [job1, job2]
-    assert job_list.search_matching(job3) == [job3, job4]
+    job_list.add(*[
+        test_job1, test_job2, test_job3, test_job4, test_job5,
+        test_job6, test_job7,
+    ])
+    assert job_list.search_matching(job) == result
+
+
+@pytest.mark.parametrize(
+    "query,result", [
+        ({"uid": test_job1.uid}, [test_job1]),
+        ({"uid": "unknown_uid"}, []),
+        ({"is_pr": True}, [test_job3, test_job2, test_job1]),
+        ({"is_branch": True}, [test_job6]),
+        ({"is_tag": True}, [test_job7]),
+        ({"prnum": 123}, [test_job2, test_job1]),
+        ({"prnum": 1234}, [test_job3]),
+        ({"prnum": 12}, []),
+        ({"ref": "test_ref"}, [test_job5, test_job4]),
+        ({"ref": "uknown_ref"}, []),
+        ({"branch": "test_branch"}, [test_job6]),
+        ({"branch": "unknown_branch"}, []),
+        ({"tag": "test_tag"}, [test_job7]),
+        ({"tag": "unknown_tag"}, []),
+        ({"sha": "2"}, [test_job3, test_job2]),
+        ({"sha": "4"}, [test_job7, test_job5]),
+        ({"sha": "42"}, []),
+        ({"author": "test"}, [test_job7, test_job3, test_job2, test_job1]),
+        ({"author": "unknown"}, []),
+        ({"result": "passed"}, [test_job3, test_job1]),
+        ({"result": "errored"}, [test_job2]),
+        ({"result": "unknown"}, [
+            test_job7, test_job6, test_job5, test_job4, test_job3,
+            test_job2, test_job1
+        ]),
+        (
+            {
+                "is_pr": True,
+                "prnum": 123,
+                "sha": "2",
+                "author": "test",
+                "result": "errored"
+            },
+            [test_job2]
+        ),
+    ]
+)
+def test_list_search_with_query(query, result):
+    job_list = MurdockJobList()
+    job_list.add(*[
+        test_job1, test_job2, test_job3, test_job4, test_job5,
+        test_job6, test_job7
+    ])
+
+    found = job_list.search_with_query(JobQueryModel(**query))
+
+    assert found == result
+
+
+def test_list_search_with_query_on_empty_list():
+    job_list = MurdockJobList()
+    assert job_list.jobs == []
+
+    found = job_list.search_with_query(JobQueryModel())
+
+    assert found == []
 
 
 def test_pool_add_remove():
@@ -198,7 +236,6 @@ def test_pool_add_remove():
     job_pool.remove(job2)
     assert len(job_pool.jobs) == 3
     assert job2 not in job_pool.jobs
-
 
 
 def test_pool_search_by_uid():

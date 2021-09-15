@@ -395,23 +395,19 @@ class Murdock:
     async def reload_jobs(self):
         await self.notify_message_to_clients(json.dumps({"cmd": "reload"}))
 
-    def get_queued_jobs(self) -> List[JobModel]:
-        queued = sorted(
-            [
-                job.queued_model()
-                for job in self.queued.jobs if job.canceled is False
-            ],
-            reverse=True, key=lambda job: job.since
-        )
-        return sorted(queued, key=lambda job: job.fasttracked)
-
-    def get_running_jobs(self) -> List[JobModel]:
+    def get_queued_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
         return sorted(
             [
-                job.running_model()
-                for job in self.running.jobs if job is not None
-            ], reverse=True, key=lambda job: job.since
+                job.queued_model()
+                for job in self.queued.search_with_query(query)
+            ], key=lambda job: job.fasttracked
         )
+
+    def get_running_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
+        return [
+            job.running_model()
+            for job in self.running.search_with_query(query)
+        ]
 
     async def remove_finished_jobs(self, query: JobQueryModel) -> List[FinishedJobModel]:
         jobs_before = await self.db.count_jobs(JobQueryModel(limit=-1))
@@ -429,11 +425,11 @@ class Murdock:
         return jobs_to_remove
 
 
-    async def get_jobs(self, limit: int) -> CategorizedJobsModel:
+    async def get_jobs(self, query: JobQueryModel) -> CategorizedJobsModel:
         return CategorizedJobsModel(
-            queued=self.get_queued_jobs(),
-            running=self.get_running_jobs(),
-            finished=await self.db.find_jobs(limit)
+            queued=self.get_queued_jobs(query),
+            running=self.get_running_jobs(query),
+            finished=await self.db.find_jobs(query)
         )
 
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:

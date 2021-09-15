@@ -129,8 +129,8 @@ async def _check_admin_permissions(
     summary="Return the list of queued jobs",
     tags=["queued jobs"]
 )
-async def queued_jobs_handler():
-    return murdock.get_queued_jobs()
+async def queued_jobs_handler(query: JobQueryModel = Depends()):
+    return murdock.get_queued_jobs(query)
 
 
 @app.delete(
@@ -159,8 +159,8 @@ async def queued_commit_cancel_handler(
     summary="Return the list of running jobs",
     tags=["running jobs"]
 )
-async def running_jobs_handler():
-    return murdock.get_running_jobs()
+async def running_jobs_handler(query: JobQueryModel = Depends()):
+    return murdock.get_running_jobs(query)
 
 
 @app.put(

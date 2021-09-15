@@ -121,12 +121,12 @@ class MurdockJob:
             output_url=job.output_url,
             output_text_url=job.output_text_url,
             status=job.status,
-            prinfo=job.pr if job.pr is not None else None,
+            prinfo=job.pr,
             ref=job.ref,
         ).dict(exclude_none=True)
 
     @staticmethod
-    def from_db_entry(entry: dict) -> FinishedJobModel:
+    def finished_model(entry: dict) -> FinishedJobModel:
         return FinishedJobModel(**entry)
 
     @property
@@ -179,6 +179,9 @@ class MurdockJob:
 
     def __eq__(self, other) -> bool:
         return other is not None and self.uid == other.uid
+
+    def __hash__(self) -> int:
+        return hash(self.uid)
 
     async def execute(self, notify=None):
         MurdockJob.create_dir(self.work_dir)

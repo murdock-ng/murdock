@@ -18,8 +18,18 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
         (JobQueryModel(), {}),
         (JobQueryModel(limit=42), {}),
         (JobQueryModel(uid="12345"), {"uid": "12345"}),
+        (JobQueryModel(is_pr=True), {"prinfo": {"$exists": True}}),
+        (JobQueryModel(is_branch=True), {
+            "ref": {"$exists": True, "$regex": r"/^refs\/heads"}
+        }),
+        (JobQueryModel(is_tag=True), {
+            "ref": {"$exists": True, "$regex": r"/^refs\/tags"}
+        }),
         (JobQueryModel(prnum=42), {"prinfo.number": 42}),
-        (JobQueryModel(branch="test"), {"branch": "test"}),
+        (JobQueryModel(branch="test"), {"ref": "refs/heads/test"}),
+        (JobQueryModel(tag="test"), {"ref": "refs/tags/test"}),
+        (JobQueryModel(ref="refs/heads/test"), {"ref": "refs/heads/test"}),
+        (JobQueryModel(ref="refs/tags/test"), {"ref": "refs/tags/test"}),
         (JobQueryModel(sha="abcdef"), {"commit.sha": "abcdef"}),
         (JobQueryModel(author="me"), {"commit.author": "me"}),
         (JobQueryModel(result="invalid"), {}),

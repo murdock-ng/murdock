@@ -58,7 +58,7 @@ class Database:
                 .to_list(length=query.limit)
         )
 
-        return [MurdockJob.from_db_entry(job) for job in jobs]
+        return [MurdockJob.finished_model(job) for job in jobs]
 
     async def count_jobs(self, query: JobQueryModel) -> int:
         return await self.db.job.count_documents(query.to_mongodb_query())

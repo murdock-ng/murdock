@@ -246,7 +246,7 @@ def test_to_db_entry():
     assert MurdockJob.to_db_entry(job) == expected_model.dict(exclude_none=True)
 
 
-def test_from_db_entry():
+def test_finished_model():
     entry = {
         "uid": "123",
         "since": 12345,
@@ -260,7 +260,7 @@ def test_from_db_entry():
         "prinfo": prinfo.dict(),
         "commit": commit.dict(),
     }
-    result = MurdockJob.from_db_entry(entry)
+    result = MurdockJob.finished_model(entry)
     assert result == FinishedJobModel(
         uid="123",
         since=12345,
