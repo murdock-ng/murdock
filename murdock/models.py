@@ -210,18 +210,16 @@ class JobQueryModel(BaseModel):
             _query.update({"uid": self.uid})
         if self.is_pr is not None:
             _query.update({"prinfo": {"$exists": self.is_pr}})
-        if self.is_branch is not None and self.is_branch is True:
-            _query.update({
-                "ref": {
-                    "$exists": True, "$regex": r"/^refs\/heads"
-                }
-            })
-        if self.is_tag is not None and self.is_tag is True:
-            _query.update({
-                "ref": {
-                    "$exists": True, "$regex": r"/^refs\/tags"
-                }
-            })
+        if self.is_branch is not None:
+            if self.is_branch is True:
+                _query.update({"ref": {"$regex": "^refs/heads/.*"}})
+            else:
+                _query.update({"ref": {"$not": {"$regex": "^refs/heads/.*"}}})
+        if self.is_tag is not None:
+            if self.is_tag is True:
+                _query.update({"ref": {"$regex": "^refs/tags/.*"}})
+            else:
+                _query.update({"ref": {"$not": {"$regex": "^refs/tags/.*"}}})
         if self.prnum is not None:
             _query.update({"prinfo.number": self.prnum})
         if self.branch is not None:

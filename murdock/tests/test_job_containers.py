@@ -156,8 +156,19 @@ def test_list_search_matching(job, result):
         ({"uid": test_job1.uid}, [test_job1]),
         ({"uid": "unknown_uid"}, []),
         ({"is_pr": True}, [test_job3, test_job2, test_job1]),
+        ({"is_pr": False}, [test_job7, test_job6, test_job5, test_job4]),
         ({"is_branch": True}, [test_job6]),
+        ({"is_branch": False}, [
+            test_job7, test_job5, test_job4, test_job3, test_job2, test_job1
+        ]),
         ({"is_tag": True}, [test_job7]),
+        ({"is_tag": False}, [
+            test_job6, test_job5, test_job4, test_job3, test_job2, test_job1
+        ]),
+        ({"is_pr": True, "is_branch": True, "is_tag": True}, []),
+        ({"is_pr": False, "is_branch": False, "is_tag": False}, [
+            test_job5, test_job4
+        ]),
         ({"prnum": 123}, [test_job2, test_job1]),
         ({"prnum": 1234}, [test_job3]),
         ({"prnum": 12}, []),

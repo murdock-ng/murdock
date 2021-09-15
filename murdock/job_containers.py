@@ -62,28 +62,60 @@ class MurdockJobListBase(ABC):
             else:
                 uid_job = {}
         if query.is_pr is not None:
-            is_pr_jobs = {
-                job for job in self.jobs
-                if job is not None and job.pr is not None
-            }
-        if query.is_branch is not None and query.is_branch is True:
-            is_branch_jobs = {
-                job for job in self.jobs
-                if (
-                    job is not None and
-                    job.ref is not None and
-                    job.ref.startswith("refs/heads")
-                )
-            }
-        if query.is_tag is not None and query.is_tag is True:
-            is_tag_jobs = {
-                job for job in self.jobs
-                if (
-                    job is not None and
-                    job.ref is not None and
-                    job.ref.startswith("refs/tags")
-                )
-            }
+            if query.is_pr is True:
+                is_pr_jobs = {
+                    job for job in self.jobs
+                    if job is not None and job.pr is not None
+                }
+            else:
+                is_pr_jobs = {
+                    job for job in self.jobs
+                    if job is not None and job.pr is None
+                }
+        if query.is_branch is not None:
+            if query.is_branch is True:
+                is_branch_jobs = {
+                    job for job in self.jobs
+                    if (
+                        job is not None and
+                        job.ref is not None and
+                        job.ref.startswith("refs/heads/")
+                    )
+                }
+            else:
+                is_branch_jobs = {
+                    job for job in self.jobs
+                    if (
+                        job is not None and (
+                            job.ref is None or (
+                                job.ref is not None and
+                                not job.ref.startswith("refs/heads/")
+                            )
+                        )
+                    )
+                }
+        if query.is_tag is not None:
+            if query.is_tag is True:
+                is_tag_jobs = {
+                    job for job in self.jobs
+                    if (
+                        job is not None and
+                        job.ref is not None and
+                        job.ref.startswith("refs/tags/")
+                    )
+                }
+            else:
+                is_tag_jobs = {
+                    job for job in self.jobs
+                    if (
+                        job is not None and (
+                            job.ref is None or (
+                                job.ref is not None and
+                                not job.ref.startswith("refs/tags/")
+                            )
+                        )
+                    )
+                }
         if query.prnum is not None:
             prnum_jobs = {
                 job for job in self.jobs
