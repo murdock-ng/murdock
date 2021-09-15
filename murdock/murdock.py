@@ -425,7 +425,7 @@ class Murdock:
         return jobs_to_remove
 
 
-    async def get_jobs(self, query: JobQueryModel) -> CategorizedJobsModel:
+    async def get_jobs(self, query: JobQueryModel = JobQueryModel()) -> CategorizedJobsModel:
         return CategorizedJobsModel(
             queued=self.get_queued_jobs(query),
             running=self.get_running_jobs(query),

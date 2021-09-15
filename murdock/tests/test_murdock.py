@@ -209,10 +209,12 @@ async def test_schedule_multiple_jobs(
 
 
 @pytest.mark.asyncio
-@mock.patch("murdock.murdock.set_commit_status")
-@mock.patch("murdock.database.Database.insert_job")
-async def test_schedule_multiple_jobs_with_fasttracked(_, __, tmpdir, caplog):
+@mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
+@mock.patch("murdock.database.Database.insert_job", mock.AsyncMock())
+@mock.patch("murdock.database.Database.find_jobs")
+async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
+    find.return_value = []
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "build.sh")
@@ -252,13 +254,14 @@ async def test_schedule_multiple_jobs_with_fasttracked(_, __, tmpdir, caplog):
     for job in jobs[:num_jobs - 1]:
         await murdock.schedule_job(job)
 
-    import json
     await asyncio.sleep(1)
     assert len(murdock.queued.jobs) == num_jobs - 2
     assert murdock.running.jobs[0] in jobs[:num_jobs - 1]
+    assert murdock.running.jobs[0] == (await murdock.get_jobs()).running[0]
     await asyncio.sleep(0.1)
     await murdock.schedule_job(jobs[-1])
     assert murdock.get_queued_jobs()[-1].uid == jobs[-1].uid
+    assert (await murdock.get_jobs()).queued[-1].uid == jobs[-1].uid
     await asyncio.sleep(1.5)
     assert murdock.running.jobs[0] == jobs[-1]
     assert murdock.get_running_jobs()[-1].uid == jobs[-1].uid

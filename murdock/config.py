@@ -77,7 +77,7 @@ class GlobalSettings(BaseSettings):
     def work_dir_exists(cls, path):
         if not os.path.exists(path):
             raise ValueError(
-                f"'MURDOCK_WORK_DIR' doesn't exist ({path})"
+                f"Work dir doesn't exist ({path})"
             )
         return path
 
@@ -85,7 +85,7 @@ class GlobalSettings(BaseSettings):
     def scripts_dir_exists(cls, path):
         if not os.path.exists(path):
             raise ValueError(
-                f"'MURDOCK_SCRIPTS_DIR' doesn't exist ({path})"
+                f"Scripts dir doesn't exist ({path})"
             )
         return path
 
