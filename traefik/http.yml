@@ -1,0 +1,26 @@
+http:
+  routers:
+    to-murdock-api:
+      rule: >
+        PathPrefix(`/api`) ||
+        PathPrefix(`/github`) ||
+        PathPrefix(`/jobs`) ||
+        PathPrefix(`/results`) ||
+        PathPrefix(`/ws`) ||
+        PathPrefix(`/openapi.json`)
+      service: murdock
+    to-webapp:
+      rule: >
+        PathPrefix(`/`) ||
+        PathPrefix(`/static`)
+      service: webapp
+
+  services:
+    webapp:
+      loadBalancer:
+        servers:
+        - url: http://murdock-webapp:3000
+    murdock:
+      loadBalancer:
+        servers:
+        - url: http://murdock-app:8000

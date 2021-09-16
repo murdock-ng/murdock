@@ -1,0 +1,7 @@
+entryPoints:
+  web:
+    address: :8081
+
+providers:
+  file:
+    filename: /etc/traefik/http.yml

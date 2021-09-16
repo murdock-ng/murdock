@@ -3,8 +3,6 @@ version: "3"
 services:
   murdock:
     user: 0:0
-    ports:
-      - ${MURDOCK_PORT}:8000
     build:
       context: .
     image: ${MURDOCK_DOCKER_IMAGE}
@@ -30,6 +28,13 @@ services:
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
     restart: always
+  webapp:
+    build:
+      context: webapp/.
+    image: murdock-webapp
+    container_name: murdock-webapp
+    volumes:
+      - ${REACT_APP_DIR}:/var/lib/murdock/webapp/build
   mongo:
     image: mongo:4.2.16
     container_name: mongodb
@@ -38,3 +43,10 @@ services:
     volumes:
       - ${MONGODB_BD_DATA_DIR}:/data/db
     restart: always
+  proxy:
+    image: traefik:v2.5
+    container_name: murdock-proxy
+    ports:
+      - ${MURDOCK_PORT}:8081
+    volumes:
+      - ${PWD}/traefik:/etc/traefik
