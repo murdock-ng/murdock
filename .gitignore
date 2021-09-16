@@ -65,3 +65,5 @@ target/
 
 # local docker-compose envs
 .env.local
+
+build/
