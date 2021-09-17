@@ -1,4 +1,4 @@
-version: "3"
+version: "3.9"
 
 services:
   murdock:
@@ -28,18 +28,31 @@ services:
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
     restart: always
+  webapp-build:
+    image: node:16.9.1
+    volumes:
+      - ${MURDOCK_HTML_DIR}:/webapp
+    command: >
+      /bin/sh -c "
+        cd /webapp &&
+        npm install && chown -R node:node node_modules &&
+        REACT_APP_MURDOCK_GITHUP_APP_CLIENT_ID=${MURDOCK_GITHUB_APP_CLIENT_ID} REACT_APP_GITHUB_REPO=${GITHUB_REPO} npm run build &&
+        chown -R node:node build
+      "
+    profiles: ["setup"]
   webapp:
     build:
       context: webapp/.
     image: murdock-webapp
     container_name: murdock-webapp
     volumes:
-      - ${REACT_APP_DIR}:/var/lib/murdock/webapp/build
+      - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/webapp/build
+    restart: always
   mongo:
     image: mongo:4.2.16
     container_name: mongodb
     ports:
-        - 27017:27017
+      - 27017:27017
     volumes:
       - ${MONGODB_BD_DATA_DIR}:/data/db
     restart: always
@@ -50,3 +63,4 @@ services:
       - ${MURDOCK_PORT}:8081
     volumes:
       - ${PWD}/traefik:/etc/traefik
+    restart: always

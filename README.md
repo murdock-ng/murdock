@@ -22,22 +22,31 @@ the [Github WebHook documentation](https://docs.github.com/en/developers/webhook
 First you have to adapt the [.env](.env) file with your project setup:
 - It is important that the variables `GITHUB_REPO` (in the form `orga/repo`) ,
 `GITHUB_WEBHOOK_SECRET` and `GITHUB_API_TOKEN` are correctly set.
-- `MURDOCK_WORK_DIR` corresponds to the base location where all build jobs results
+- `MURDOCK_WORK_DIR` corresponds to the base location where all jobs build results
 will be stored. Each job is launched from a directory with the path
 `<MURDOCK_WORK_DIR>/<job uid>` and all output data for a given job is located there
 - `MURDOCK_SCRIPTS_DIR` corresponds to the location where the `build.sh` is
 located. You can find examples [here](utils/buils.sh) and
-[here](scripts.example/build.sh.example).
-
-Build the base Docker image:
-
-```
-$ docker-compose build
-```
+[here](scripts.example/build.sh.example)
+- `MURDOCK_HTML_DIR` corresponds to the location where the source code of
+[murdock-html react app](https://github.com/riot-os/murdock-html) is located
+- `MURDOCK_GITHUB_APP_CLIENT_ID` and `MURDOCK_GITHUB_APP_CLIENT_SECRET` corresponds
+to the parameters of an Oauth application created on Github
+([here](https://github.com/settings/applications/new)). By default, the
+application should have the following parameters (but adapt if you use your own
+domain):
+  - Homepage URL: `http://localhost:8000`
+  - Authorization callback URL: `http://localhost:8000`
 
 You can specify a custom Docker image using the `MURDOCK_DOCKER_IMAGE`, if
 eventually your `build.sh` requires extra tools. This
 image should derive from `riot/murdock` to be sure Murdock is installed.
+
+Build the React application:
+
+```
+$ docker-compose run webapp-build
+```
 
 Launch Murdock and MongoDb services:
 
