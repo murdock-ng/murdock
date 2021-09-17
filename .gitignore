@@ -64,6 +64,6 @@ target/
 .mypy_cache/
 
 # local docker-compose envs
-.env.local
+.env*.local
 
 build/
