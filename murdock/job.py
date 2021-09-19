@@ -164,7 +164,7 @@ class MurdockJob:
 
         if GLOBAL_CONFIG.use_job_token:
             _env.update({
-                "CI_API_TOKEN": self.token,
+                "CI_JOB_TOKEN": self.token,
             })
 
         return _env
