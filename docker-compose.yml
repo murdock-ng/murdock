@@ -32,11 +32,17 @@ services:
     image: node:16.9.1
     volumes:
       - ${MURDOCK_HTML_DIR}:/webapp
+    environment:
+      - REACT_APP_MURDOCK_HTTP_BASE_URL=${MURDOCK_BASE_URL}
+      - REACT_APP_MURDOCK_WS_URL=${MURDOCK_WS_URL}
+      - REACT_APP_NIGHTLIES_ROOT_URL=${MURDOCK_BASE_URL}
+      - REACT_APP_MURDOCK_GITHUP_APP_CLIENT_ID=${MURDOCK_GITHUB_APP_CLIENT_ID}
+      - REACT_APP_GITHUB_REPO=${GITHUB_REPO}
     command: >
       /bin/sh -c "
         cd /webapp &&
         npm install && chown -R node:node node_modules &&
-        REACT_APP_MURDOCK_GITHUP_APP_CLIENT_ID=${MURDOCK_GITHUB_APP_CLIENT_ID} REACT_APP_GITHUB_REPO=${GITHUB_REPO} npm run build &&
+        npm run build &&
         chown -R node:node build
       "
     profiles: ["setup"]
