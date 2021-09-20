@@ -47,9 +47,7 @@ class MurdockJob:
         self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir: str = os.path.join("results", self.uid)
         self.output_url: Optional[str] = None
-        self.output_text_url: str = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
-        )
+        self.output_text_url: Optional[str] = None
 
     @staticmethod
     def create_dir(work_dir: str):
@@ -219,18 +217,25 @@ class MurdockJob:
             self.result = "errored"
         LOGGER.debug(f"Job {self} {self.result} (ret: {self.proc.returncode})")
 
+        # Store build output in text file
+        output_text_path = os.path.join(self.work_dir, "output.txt")
+        try:
+            with open(output_text_path, "w") as out:
+                out.write(self.output)
+        except Exception as exc:
+            LOGGER.warning(f"Job error for {self}: cannot write output.txt: {exc}")
+
+        output_text_url = os.path.join(
+            GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
+        )
+        if os.path.exists(output_text_path):
+            self.output_text_url = output_text_url
+
         # If the job was stopped, just return now and skip the post_build action
         if self.result == "stopped":
             LOGGER.debug(f"Job {self} stopped before post_build action")
             self.proc = None
             return
-
-        # Store build output in text file
-        try:
-            with open(os.path.join(self.work_dir, "output.txt"), "w") as out:
-                out.write(self.output)
-        except Exception as exc:
-            LOGGER.warning(f"Job error for {self}: cannot write output.txt: {exc}")
 
         # Remove build subdirectory
         MurdockJob.remove_dir(os.path.join(self.work_dir, "build"))
@@ -262,18 +267,15 @@ class MurdockJob:
             int(signal.SIGTERM) * -1,
         ]:
             self.result = "stopped"
-        self.proc = None
 
-        output_text_url = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
-        )
-        if os.path.exists(output_text_url):
-            self.output_text_url = output_text_url
+        output_html_path = os.path.join(self.work_dir, "output.html")
         output_html_url = os.path.join(
             GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
         )
-        if os.path.exists(output_html_url):
+        if os.path.exists(output_html_path):
             self.output_url = output_html_url
+
+        self.proc = None
 
     async def stop(self):
         LOGGER.debug(f"Job {self} immediate stop requested")
