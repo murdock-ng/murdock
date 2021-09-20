@@ -14,8 +14,12 @@ from fastapi.testclient import TestClient
 from ..main import app, _check_push_permissions, _check_admin_permissions
 from ..job import MurdockJob
 from ..models import (
-    CategorizedJobsModel, CommitModel,
-    FinishedJobModel, JobModel, JobQueryModel, PullRequestInfo
+    CategorizedJobsModel,
+    CommitModel,
+    FinishedJobModel,
+    JobModel,
+    JobQueryModel,
+    PullRequestInfo,
 )
 
 
@@ -32,19 +36,23 @@ prinfo = PullRequestInfo(
     base_commit="test",
     base_full_name="test",
     mergeable=True,
-    labels=["test"]
+    labels=["test"],
 )
 test_job_queued = JobModel(
     uid="1234", commit=commit, prinfo=prinfo, since=12345.6, fasttracked=True
 )
 test_job_running = JobModel(
-    uid="1234", commit=commit, prinfo=prinfo,
-    since=12345.6, status={"status": "test"}
+    uid="1234", commit=commit, prinfo=prinfo, since=12345.6, status={"status": "test"}
 )
 test_job_finished = FinishedJobModel(
-    uid="1234", commit=commit, prinfo=prinfo,
-    since=12345.6, status={"status": "test"},
-    result="passed", output_url="test", runtime=1234.5,
+    uid="1234",
+    commit=commit,
+    prinfo=prinfo,
+    since=12345.6,
+    status={"status": "test"},
+    result="passed",
+    output_url="test",
+    runtime=1234.5,
 )
 test_job = MurdockJob(commit, pr=prinfo)
 
@@ -53,6 +61,7 @@ test_job = MurdockJob(commit, pr=prinfo)
 def push_allowed():
     async def with_push(token: str = "token"):
         return token
+
     app.dependency_overrides[_check_push_permissions] = with_push
 
 
@@ -60,6 +69,7 @@ def push_allowed():
 def push_not_allowed():
     async def without_push(token: str = "token"):
         raise HTTPException(status_code=401, detail="Missing push permissions")
+
     app.dependency_overrides[_check_push_permissions] = without_push
 
 
@@ -67,6 +77,7 @@ def push_not_allowed():
 def admin_allowed():
     async def with_admin(token: str = "token"):
         return token
+
     app.dependency_overrides[_check_admin_permissions] = with_admin
 
 
@@ -74,6 +85,7 @@ def admin_allowed():
 def admin_not_allowed():
     async def without_admin(token: str = "token"):
         raise HTTPException(status_code=401, detail="Missing admin permissions")
+
     app.dependency_overrides[_check_admin_permissions] = without_admin
 
 
@@ -83,34 +95,40 @@ def test_openapi_exists():
 
 
 @pytest.mark.parametrize(
-    "event,event_type,code,msg,handle_msg", [
+    "event,event_type,code,msg,handle_msg",
+    [
         (
-            {"event": "test_data_invalid"}, "pull_request",
-            400, {"detail": "Invalid event signature"}, None
+            {"event": "test_data_invalid"},
+            "pull_request",
+            400,
+            {"detail": "Invalid event signature"},
+            None,
         ),
         (
-            {"event": "test_data_invalid"}, "push",
-            400, {"detail": "Invalid event signature"}, None
+            {"event": "test_data_invalid"},
+            "push",
+            400,
+            {"detail": "Invalid event signature"},
+            None,
         ),
         (
-            {"event": "test_data"}, "unsupported_event",
-            400, {"detail": "Unsupported event"}, None
+            {"event": "test_data"},
+            "unsupported_event",
+            400,
+            {"detail": "Unsupported event"},
+            None,
         ),
         (
-            {"event": "test_data"}, "pull_request",
-            400, {"detail": "Murdock msg"}, "Murdock msg"
+            {"event": "test_data"},
+            "pull_request",
+            400,
+            {"detail": "Murdock msg"},
+            "Murdock msg",
         ),
-        (
-            {"event": "test_data"}, "push",
-            400, {"detail": "Murdock msg"}, "Murdock msg"
-        ),
-        (
-            {"event": "test_data"}, "pull_request", 200, None, None
-        ),
-        (
-            {"event": "test_data"}, "push", 200, None, None
-        ),
-    ]
+        ({"event": "test_data"}, "push", 400, {"detail": "Murdock msg"}, "Murdock msg"),
+        ({"event": "test_data"}, "pull_request", 200, None, None),
+        ({"event": "test_data"}, "push", 200, None, None),
+    ],
 )
 @mock.patch("murdock.murdock.Murdock.handle_pull_request_event")
 @mock.patch("murdock.murdock.Murdock.handle_push_event")
@@ -125,12 +143,12 @@ def test_github_webhook(
         headers={
             "X-Hub-Signature-256": "sha256=c9f5bb344fb71f91afbac48f5afcd8421a3d0fbdddb3857a521e155cea75a43e",
             "X-Github-Event": event_type,
-            "Content-Type:": "application/vnd.github.v3+json"
-        }
+            "Content-Type:": "application/vnd.github.v3+json",
+        },
     )
-    if event == {'event': 'test_data'} and event_type == "pull_request":
+    if event == {"event": "test_data"} and event_type == "pull_request":
         handle_pr.assert_called_with(event)
-    elif event == {'event': 'test_data'} and event_type == "push":
+    elif event == {"event": "test_data"} and event_type == "push":
         handle_push.assert_called_with(event)
     else:
         handle_pr.assert_not_called()
@@ -142,9 +160,7 @@ def test_github_webhook(
 
 @mock.patch("httpx.AsyncClient.post")
 def test_github_authenticate(post):
-    post.return_value =  Response(
-        200, text=json.dumps({"access_token": "test_token"})
-    )
+    post.return_value = Response(200, text=json.dumps({"access_token": "test_token"}))
     response = client.get("/github/authenticate/12345")
     post.assert_called_with(
         "https://github.com/login/oauth/access_token",
@@ -153,24 +169,19 @@ def test_github_authenticate(post):
             "client_secret": os.getenv("MURDOCK_GITHUB_APP_CLIENT_SECRET"),
             "code": "12345",
         },
-        headers={"Accept": "application/vnd.github.v3+json"}
+        headers={"Accept": "application/vnd.github.v3+json"},
     )
     assert response.json() == {"token": "test_token"}
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "text,code,valid", [
-        (
-            "error", 403, False
-        ),
-        (
-            json.dumps({"permissions": {"push": False}}), 200, False
-        ),
-        (
-            json.dumps({"permissions": {"push": True}}), 200, True
-        ),
-    ]
+    "text,code,valid",
+    [
+        ("error", 403, False),
+        (json.dumps({"permissions": {"push": False}}), 200, False),
+        (json.dumps({"permissions": {"push": True}}), 200, True),
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 async def test_check_push_permissions(get, text, code, valid):
@@ -187,24 +198,19 @@ async def test_check_push_permissions(get, text, code, valid):
         f"https://api.github.com/repos/{os.getenv('GITHUB_REPO')}",
         headers={
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": "token token"
-        }
+            "Authorization": "token token",
+        },
     )
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "text,code,valid", [
-        (
-            "error", 403, False
-        ),
-        (
-            json.dumps({"permissions": {"admin": False}}), 200, False
-        ),
-        (
-            json.dumps({"permissions": {"admin": True}}), 200, True
-        ),
-    ]
+    "text,code,valid",
+    [
+        ("error", 403, False),
+        (json.dumps({"permissions": {"admin": False}}), 200, False),
+        (json.dumps({"permissions": {"admin": True}}), 200, True),
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 async def test_check_admin_permissions(get, text, code, valid):
@@ -221,8 +227,8 @@ async def test_check_admin_permissions(get, text, code, valid):
         f"https://api.github.com/repos/{os.getenv('GITHUB_REPO')}",
         headers={
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": "token token"
-        }
+            "Authorization": "token token",
+        },
     )
 
 
@@ -237,20 +243,23 @@ def test_get_queued_jobs(jobs, result):
 
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
-    "job_queued,code", [
+    "job_queued,code",
+    [
         pytest.param(None, 404, id="no_job_queued"),
         pytest.param(MurdockJob(commit, pr=prinfo), 200, id="one_job_queued"),
-    ]
+    ],
 )
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 @mock.patch("murdock.murdock.Murdock.cancel_queued_job")
 def test_cancel_queued_job(cancel, search, job_queued, code):
     search.return_value = job_queued
-    response = client.delete(f"/jobs/queued/abcdef")
+    response = client.delete("/jobs/queued/abcdef")
     assert response.status_code == code
     if job_queued:
         cancel.assert_called_with(job_queued, reload_jobs=True)
-        assert response.json() == job_queued.queued_model().dict(exclude={"status", "output"})
+        assert response.json() == job_queued.queued_model().dict(
+            exclude={"status", "output"}
+        )
     else:
         cancel.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
@@ -260,17 +269,13 @@ def test_cancel_queued_job(cancel, search, job_queued, code):
 @mock.patch("murdock.murdock.Murdock.cancel_queued_job")
 def test_cancel_queued_not_allowed(cancel):
     cancel.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.delete(f"/jobs/queued/abcdef")
+    response = client.delete("/jobs/queued/abcdef")
     cancel.assert_not_called()
     assert response.status_code == 401
 
 
 @pytest.mark.parametrize(
-    "result",
-    [
-        [],
-        [test_job_running.dict(exclude={"fasttracked"})]
-    ]
+    "result", [[], [test_job_running.dict(exclude={"fasttracked"})]]
 )
 @mock.patch("murdock.murdock.Murdock.get_running_jobs")
 def test_get_running_jobs(jobs, result):
@@ -281,47 +286,60 @@ def test_get_running_jobs(jobs, result):
 
 
 @pytest.mark.parametrize(
-    "job_running,job_found,headers,code,expected_response", [
+    "job_running,job_found,headers,code,expected_response",
+    [
         pytest.param(
-            None, None, {},
-            400, {"detail": "No job running with uid abcdef"},
-            id="job_not_found"
+            None,
+            None,
+            {},
+            400,
+            {"detail": "No job running with uid abcdef"},
+            id="job_not_found",
         ),
         pytest.param(
-            test_job, None, {},
-            400, {"detail": "Job token is missing"},
-            id="missing_job_token"
+            test_job,
+            None,
+            {},
+            400,
+            {"detail": "Job token is missing"},
+            id="missing_job_token",
         ),
         pytest.param(
-            test_job, None, {"Authorization": "invalid"},
-            400, {"detail": "Invalid Job token"},
-            id="invalid_job_token"
+            test_job,
+            None,
+            {"Authorization": "invalid"},
+            400,
+            {"detail": "Invalid Job token"},
+            id="invalid_job_token",
         ),
         pytest.param(
-            test_job, None, {"Authorization": test_job.token},
-            404, {"detail": "No job with uid 'abcdef' found"},
-            id="update_job_not_found"
+            test_job,
+            None,
+            {"Authorization": test_job.token},
+            404,
+            {"detail": "No job with uid 'abcdef' found"},
+            id="update_job_not_found",
         ),
         pytest.param(
-            test_job, test_job, {"Authorization": test_job.token},
-            200, test_job.running_model().dict(exclude={"fasttracked"}),
-            id="update_job_found"
+            test_job,
+            test_job,
+            {"Authorization": test_job.token},
+            200,
+            test_job.running_model().dict(exclude={"fasttracked"}),
+            id="update_job_found",
         ),
-    ]
+    ],
 )
 @mock.patch("murdock.murdock.Murdock.handle_job_status_data")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 def test_update_running_job_status(
-    running, commit_status,
-    job_running, job_found, headers, code, expected_response
+    running, commit_status, job_running, job_found, headers, code, expected_response
 ):
     running.return_value = job_running
     commit_status.return_value = job_found
     status = {"status": "test"}
     response = client.put(
-        f"/jobs/running/abcdef/status",
-        json.dumps(status),
-        headers=headers
+        "/jobs/running/abcdef/status", json.dumps(status), headers=headers
     )
     running.assert_called_with("abcdef")
     assert response.status_code == code
@@ -332,16 +350,17 @@ def test_update_running_job_status(
 
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
-    "result,code", [
+    "result,code",
+    [
         pytest.param(None, 404, id="job_not_found"),
-        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="job_found")
-    ]
+        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="job_found"),
+    ],
 )
 @mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 def test_stop_running_job(search, stop, result, code):
     search.return_value = result
-    response = client.delete(f"/jobs/running/abcdef")
+    response = client.delete("/jobs/running/abcdef")
     assert response.status_code == code
     if result is not None:
         stop.assert_called_with(result, reload_jobs=True)
@@ -355,7 +374,7 @@ def test_stop_running_job(search, stop, result, code):
 @mock.patch("murdock.murdock.Murdock.stop_running_job")
 def test_stop_running_not_allowed(stop):
     stop.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.delete(f"/jobs/running/abcdef")
+    response = client.delete("/jobs/running/abcdef")
     stop.assert_not_called()
     assert response.status_code == 401
 
@@ -370,19 +389,22 @@ def test_get_finished_jobs(jobs, result):
     jobs.assert_called_with(JobQueryModel())
 
 
-@pytest.mark.parametrize("query,call_arg", [
-    ("", JobQueryModel()),
-    ("?limit=30", JobQueryModel(limit=30)),
-    ("?limit=30&uid=12345", JobQueryModel(limit=30, uid="12345")),
-    ("?prnum=42", JobQueryModel(prnum=42)),
-    ("?branch=test", JobQueryModel(branch="test")),
-    ("?sha=abcdef", JobQueryModel(sha="abcdef")),
-    ("?author=me", JobQueryModel(author="me")),
-    ("?result=passed", JobQueryModel(result="passed")),
-    ("?after=after", JobQueryModel(after="after")),
-    ("?before=before", JobQueryModel(before="before")),
-    ("?invalid=invalid", JobQueryModel()),
-])
+@pytest.mark.parametrize(
+    "query,call_arg",
+    [
+        ("", JobQueryModel()),
+        ("?limit=30", JobQueryModel(limit=30)),
+        ("?limit=30&uid=12345", JobQueryModel(limit=30, uid="12345")),
+        ("?prnum=42", JobQueryModel(prnum=42)),
+        ("?branch=test", JobQueryModel(branch="test")),
+        ("?sha=abcdef", JobQueryModel(sha="abcdef")),
+        ("?author=me", JobQueryModel(author="me")),
+        ("?result=passed", JobQueryModel(result="passed")),
+        ("?after=after", JobQueryModel(after="after")),
+        ("?before=before", JobQueryModel(before="before")),
+        ("?invalid=invalid", JobQueryModel()),
+    ],
+)
 @mock.patch("murdock.database.Database.find_jobs")
 def test_get_finished_jobs_with_query(jobs, query, call_arg):
     jobs.return_value = [test_job_finished]
@@ -401,9 +423,11 @@ def test_restart_job(restart, result, code):
     assert response.status_code == code
     restart.assert_called_with("123")
     if result is not None:
-        assert response.json() == result.queued_model().dict(exclude={"status", "output"})
+        assert response.json() == result.queued_model().dict(
+            exclude={"status", "output"}
+        )
     else:
-        assert response.json() == {"detail": f"Cannot restart job '123'"}
+        assert response.json() == {"detail": "Cannot restart job '123'"}
 
 
 @pytest.mark.usefixtures("push_not_allowed")
@@ -416,9 +440,7 @@ def test_restart_job_not_allowed(restart):
 
 
 @pytest.mark.usefixtures("admin_allowed")
-@pytest.mark.parametrize(
-    "result,code", [([], 404), ([test_job_finished], 200)]
-)
+@pytest.mark.parametrize("result,code", [([], 404), ([test_job_finished], 200)])
 @mock.patch("murdock.murdock.Murdock.remove_finished_jobs")
 def test_delete_job(remove, result, code):
     remove.return_value = result
@@ -446,20 +468,16 @@ def test_delete_job_not_allowed(remove):
     "result",
     [
         CategorizedJobsModel(queued=[], running=[], finished=[]),
+        CategorizedJobsModel(queued=[test_job_queued], running=[], finished=[]),
         CategorizedJobsModel(
-            queued=[test_job_queued], running=[], finished=[]
+            queued=[test_job_queued], running=[test_job_running], finished=[]
         ),
         CategorizedJobsModel(
             queued=[test_job_queued],
             running=[test_job_running],
-            finished=[]
+            finished=[test_job_finished],
         ),
-        CategorizedJobsModel(
-            queued=[test_job_queued],
-            running=[test_job_running],
-            finished=[test_job_finished]
-        ),
-    ]
+    ],
 )
 @mock.patch("murdock.murdock.Murdock.get_jobs")
 def test_get_jobs(jobs, result):

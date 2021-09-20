@@ -9,14 +9,14 @@ from murdock.job import MurdockJob
 from murdock.config import GITHUB_CONFIG, MurdockSettings
 from murdock.models import CommitModel, PullRequestInfo
 from murdock.github import (
-    comment_on_pr, fetch_commit_info, set_commit_status,
-    fetch_murdock_config
+    comment_on_pr,
+    fetch_commit_info,
+    set_commit_status,
+    fetch_murdock_config,
 )
 
 
-commit = CommitModel(
-    sha="test_commit", message="test message", author="test_user"
-)
+commit = CommitModel(sha="test_commit", message="test message", author="test_user")
 prinfo = PullRequestInfo(
     title="test",
     number=123,
@@ -28,16 +28,17 @@ prinfo = PullRequestInfo(
     base_commit="test_base_commit",
     base_full_name="test_base_full_name",
     mergeable=True,
-    labels=["test"]
+    labels=["test"],
 )
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "job", [
+    "job",
+    [
         pytest.param(MurdockJob(commit, pr=prinfo), id="pr"),
         pytest.param(MurdockJob(commit, ref="test"), id="ref"),
-    ]
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 @mock.patch("httpx.AsyncClient.patch")
@@ -55,88 +56,133 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
     [
         pytest.param(
             False,
-            None, Response(201), None,
-            False, True, False,
             None,
-            id="not_sticky_comment_created"
+            Response(201),
+            None,
+            False,
+            True,
+            False,
+            None,
+            id="not_sticky_comment_created",
         ),
         pytest.param(
             False,
-            None, Response(401, text=json.dumps({"details": "error"})), None,
-            False, True, False,
-            {"details": "error"},
-            id="not_sticky_comment_error"
-        ),
-        pytest.param(
-            True,
-            Response(
-                200,
-                text=json.dumps([
-                    {"body": "first comment"},
-                    {"body": "second comment"},
-                ])
-            ), Response(201), None,
-            True, True, False,
             None,
-            id="sticky_comment_created"
-        ),
-        pytest.param(
-            True,
-            Response(
-                200,
-                text=json.dumps([
-                    {"body": "first comment"},
-                    {"body": "second comment"},
-                ])
-            ), Response(401, text=json.dumps({"details": "error"})), None,
-            True, True, False,
-            {"details": "error"},
-            id="sticky_comment_creation_error"
-        ),
-        pytest.param(
-            True,
-            Response(
-                200,
-                text=json.dumps([
-                    {"body": "first comment", "id": "1"},
-                    {"body": "### Murdock results", "id": "2"},
-                ])
-            ), None, Response(200),
-            True, False, True,
+            Response(401, text=json.dumps({"details": "error"})),
             None,
-            id="sticky_comment_updated"
+            False,
+            True,
+            False,
+            {"details": "error"},
+            id="not_sticky_comment_error",
         ),
         pytest.param(
             True,
             Response(
                 200,
-                text=json.dumps([
-                    {"body": "first comment"},
-                    {"body": "### Murdock results", "id": "2"},
-                ])
-            ), None, Response(401, text=json.dumps({"details": "error"})),
-            True, False, True,
-            {"details": "error"},
-            id="sticky_comment_update_error"
+                text=json.dumps(
+                    [
+                        {"body": "first comment"},
+                        {"body": "second comment"},
+                    ]
+                ),
+            ),
+            Response(201),
+            None,
+            True,
+            True,
+            False,
+            None,
+            id="sticky_comment_created",
         ),
-    ]
+        pytest.param(
+            True,
+            Response(
+                200,
+                text=json.dumps(
+                    [
+                        {"body": "first comment"},
+                        {"body": "second comment"},
+                    ]
+                ),
+            ),
+            Response(401, text=json.dumps({"details": "error"})),
+            None,
+            True,
+            True,
+            False,
+            {"details": "error"},
+            id="sticky_comment_creation_error",
+        ),
+        pytest.param(
+            True,
+            Response(
+                200,
+                text=json.dumps(
+                    [
+                        {"body": "first comment", "id": "1"},
+                        {"body": "### Murdock results", "id": "2"},
+                    ]
+                ),
+            ),
+            None,
+            Response(200),
+            True,
+            False,
+            True,
+            None,
+            id="sticky_comment_updated",
+        ),
+        pytest.param(
+            True,
+            Response(
+                200,
+                text=json.dumps(
+                    [
+                        {"body": "first comment"},
+                        {"body": "### Murdock results", "id": "2"},
+                    ]
+                ),
+            ),
+            None,
+            Response(401, text=json.dumps({"details": "error"})),
+            True,
+            False,
+            True,
+            {"details": "error"},
+            id="sticky_comment_update_error",
+        ),
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 @mock.patch("httpx.AsyncClient.patch")
 @mock.patch("httpx.AsyncClient.post")
 async def test_comment_on_pr(
-    post, patch, get, sticky, get_return, post_return, patch_return,
-    get_called, post_called, patch_called, error, caplog
+    post,
+    patch,
+    get,
+    sticky,
+    get_return,
+    post_return,
+    patch_return,
+    get_called,
+    post_called,
+    patch_called,
+    error,
+    caplog,
 ):
     get.return_value = get_return
     post.return_value = post_return
     patch.return_value = patch_return
     job = MurdockJob(
-        commit, pr=prinfo,
-        config=MurdockSettings(pr={
-            "enable_comments": True,
-            "sticky_comment": sticky,
-        })
+        commit,
+        pr=prinfo,
+        config=MurdockSettings(
+            pr={
+                "enable_comments": True,
+                "sticky_comment": sticky,
+            }
+        ),
     )
     job.output_url = f"http://localhost:8000/results/{job.uid}/output.html"
     job.result = "passed"
@@ -146,43 +192,40 @@ async def test_comment_on_pr(
         f":heavy_check_mark: [PASSED](http://localhost:8000/results/{job.uid}/output.html)\n"
     )
     if sticky is True:
-        comment += (
-            "\n"
-            "test_commit test message\n\n\n\n"
-        )
+        comment += "\n" "test_commit test message\n\n\n\n"
     else:
         comment += "\n\n\n"
 
     await comment_on_pr(job)
     if get_called is True:
         get.assert_called_with(
-            f"https://api.github.com/repos/test/repo/issues/123/comments",
+            "https://api.github.com/repos/test/repo/issues/123/comments",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
             },
         )
     else:
         get.assert_not_called()
     if post_called is True:
         post.assert_called_with(
-            f"https://api.github.com/repos/test/repo/issues/123/comments",
+            "https://api.github.com/repos/test/repo/issues/123/comments",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
             },
-            content=json.dumps({"body": comment})
+            content=json.dumps({"body": comment}),
         )
     else:
         post.assert_not_called()
     if patch_called is True:
         patch.assert_called_with(
-            f"https://api.github.com/repos/test/repo/issues/comments/2",
+            "https://api.github.com/repos/test/repo/issues/comments/2",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
             },
-            content=json.dumps({"body": comment})
+            content=json.dumps({"body": comment}),
         )
     else:
         patch.assert_not_called()
@@ -193,21 +236,18 @@ async def test_comment_on_pr(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "text,code,result", [
+    "text,code,result",
+    [
+        pytest.param(json.dumps({"details": "error"}), 403, None, id="error"),
         pytest.param(
-            json.dumps({"details": "error"}), 403, None,
-            id="error"
-        ),
-        pytest.param(
-            json.dumps({
-                "commit": {"message": "test_message"},
-                "author": {"login": "me"}
-            }),
+            json.dumps(
+                {"commit": {"message": "test_message"}, "author": {"login": "me"}}
+            ),
             200,
             CommitModel(sha="123", message="test_message", author="me"),
-            id="success"
+            id="success",
         ),
-    ]
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 async def test_fetch_commit_info(get, text, code, result):
@@ -218,28 +258,29 @@ async def test_fetch_commit_info(get, text, code, result):
         f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/commits/123",
         headers={
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"token {GITHUB_CONFIG.api_token}"
-        }
+            "Authorization": f"token {GITHUB_CONFIG.api_token}",
+        },
     )
     assert fetch_result == result
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "code,text,status", [
+    "code,text,status",
+    [
         pytest.param(
             403,
             json.dumps({"details": "error"}),
             {"description": "test", "status": "test"},
-            id="success"
+            id="success",
         ),
         pytest.param(
             201,
             json.dumps({"details": "ok"}),
             {"description": "test", "status": "test"},
-            id="error"
+            id="error",
         ),
-    ]
+    ],
 )
 @mock.patch("httpx.AsyncClient.post")
 async def test_set_commit_status(post, caplog, code, text, status):
@@ -249,9 +290,9 @@ async def test_set_commit_status(post, caplog, code, text, status):
         f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/statuses/12345678",
         headers={
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"token {GITHUB_CONFIG.api_token}"
+            "Authorization": f"token {GITHUB_CONFIG.api_token}",
         },
-        content=json.dumps(status)
+        content=json.dumps(status),
     )
     if code == 403:
         assert f"<Response [403 Forbidden]>: {json.loads(text)}" in caplog.text
@@ -259,65 +300,66 @@ async def test_set_commit_status(post, caplog, code, text, status):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "text,code,result", [
+    "text,code,result",
+    [
+        pytest.param(json.dumps({"details": "error"}), 404, {}, id="config_not_found"),
         pytest.param(
-            json.dumps({"details": "error"}), 404, {},
-            id="config_not_found"
+            json.dumps({"content": ""}), 200, {}, id="config_found_content_empty"
         ),
         pytest.param(
-            json.dumps({"content": ""}), 200, {},
-            id="config_found_content_empty"
-        ),
-        pytest.param(
-            json.dumps({"content": "YnJhbmNoZXM6IF1b"}), 200, {},
-            id="config_found_invalid_content"
-        ),
-        pytest.param(
-            json.dumps({
-                "content": (
-                    "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
-                    "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
-                    "ogIGVuYWJsZV9jb21tZW50czogVHJ1ZQoKY29tbWl0OgogIHNraXBfa2V"
-                    "5d29yZHM6IFsiY2k6IHNraXAiLCAiY2k6IG5vIiwgImNpOiBpZ25vcmUi"
-                    "XQo="
-                ),
-            }),
+            json.dumps({"content": "YnJhbmNoZXM6IF1b"}),
             200,
-            {
-                'push': {'tags': ['v(\\d+\\.)?(\\d+\\.)?(\\*|\\d+)'],
-                'branches': ['webhook_pushes']},
-                'pr': {'enable_comments': True},
-                'commit': {
-                    'skip_keywords': ['ci: skip', 'ci: no', 'ci: ignore']
+            {},
+            id="config_found_invalid_content",
+        ),
+        pytest.param(
+            json.dumps(
+                {
+                    "content": (
+                        "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
+                        "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
+                        "ogIGVuYWJsZV9jb21tZW50czogVHJ1ZQoKY29tbWl0OgogIHNraXBfa2V"
+                        "5d29yZHM6IFsiY2k6IHNraXAiLCAiY2k6IG5vIiwgImNpOiBpZ25vcmUi"
+                        "XQo="
+                    ),
                 }
-            },
-            id="config_found_valid_content"
-        ),
-        pytest.param(
-            json.dumps({
-                "content": (
-                    "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
-                    "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
-                    "ogIGVuYWJsZV9jb21tZW50czogVHJ1ZQoKY29tbWl0OgogIHNraXBfa2V"
-                    "5d29yZHM6IFsiY2k6IHNraXAiLCAiY2k6IG5vIiwgImNpOiBpZ25vcmUi"
-                    "XQoKZW52OgogIFRFU1RfRU5WOiA0Mgo="
-                ),
-            }),
+            ),
             200,
             {
-                'push': {'tags': ['v(\\d+\\.)?(\\d+\\.)?(\\*|\\d+)'],
-                'branches': ['webhook_pushes']},
-                'pr': {'enable_comments': True},
-                'commit': {
-                    'skip_keywords': ['ci: skip', 'ci: no', 'ci: ignore']
+                "push": {
+                    "tags": ["v(\\d+\\.)?(\\d+\\.)?(\\*|\\d+)"],
+                    "branches": ["webhook_pushes"],
                 },
-                'env': {
-                    'TEST_ENV': 42
-                }
+                "pr": {"enable_comments": True},
+                "commit": {"skip_keywords": ["ci: skip", "ci: no", "ci: ignore"]},
             },
-            id="config_with_env"
+            id="config_found_valid_content",
         ),
-    ]
+        pytest.param(
+            json.dumps(
+                {
+                    "content": (
+                        "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
+                        "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
+                        "ogIGVuYWJsZV9jb21tZW50czogVHJ1ZQoKY29tbWl0OgogIHNraXBfa2V"
+                        "5d29yZHM6IFsiY2k6IHNraXAiLCAiY2k6IG5vIiwgImNpOiBpZ25vcmUi"
+                        "XQoKZW52OgogIFRFU1RfRU5WOiA0Mgo="
+                    ),
+                }
+            ),
+            200,
+            {
+                "push": {
+                    "tags": ["v(\\d+\\.)?(\\d+\\.)?(\\*|\\d+)"],
+                    "branches": ["webhook_pushes"],
+                },
+                "pr": {"enable_comments": True},
+                "commit": {"skip_keywords": ["ci: skip", "ci: no", "ci: ignore"]},
+                "env": {"TEST_ENV": 42},
+            },
+            id="config_with_env",
+        ),
+    ],
 )
 @mock.patch("httpx.AsyncClient.get")
 async def test_fetch_murdock_config(get, text, code, result):
@@ -329,7 +371,7 @@ async def test_fetch_murdock_config(get, text, code, result):
         "/contents/.murdock.yml?ref=123",
         headers={
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"token {GITHUB_CONFIG.api_token}"
-        }
+            "Authorization": f"token {GITHUB_CONFIG.api_token}",
+        },
     )
     assert fetch_result == MurdockSettings(**result)

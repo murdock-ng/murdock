@@ -7,8 +7,13 @@ from typing import List
 import httpx
 
 from fastapi import (
-    FastAPI, Request, HTTPException, Security, Depends,
-    WebSocket, WebSocketDisconnect
+    FastAPI,
+    Request,
+    HTTPException,
+    Security,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
 )
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from fastapi.responses import JSONResponse
@@ -16,17 +21,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from murdock.config import (
-    GLOBAL_CONFIG, DB_CONFIG, GITHUB_CONFIG, CI_CONFIG, MurdockSettings
+    GLOBAL_CONFIG,
+    DB_CONFIG,
+    GITHUB_CONFIG,
+    CI_CONFIG,
+    MurdockSettings,
 )
 from murdock.models import (
-    FinishedJobModel, JobModel, CategorizedJobsModel, JobQueryModel
+    FinishedJobModel,
+    JobModel,
+    CategorizedJobsModel,
+    JobQueryModel,
 )
 from murdock.murdock import Murdock
 from murdock.log import LOGGER
 from murdock.github import check_permissions
 
 
-LOGGER.debug("Configuration:\n"
+LOGGER.debug(
+    "Configuration:\n"
     f"\nGLOBAL_CONFIG:\n{json.dumps(GLOBAL_CONFIG.dict(), indent=4)}\n"
     f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
     f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
@@ -42,7 +55,8 @@ app = FastAPI(
     title="Murdock API",
     description="This is the Murdock API",
     version="1.0.0",
-    docs_url="/api", redoc_url=None,
+    docs_url="/api",
+    redoc_url=None,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -64,11 +78,9 @@ async def github_webhook_handler(request: Request):
     expected_signature = hmac.new(
         key=bytes(GITHUB_CONFIG.webhook_secret, "utf-8"),
         msg=(body := await request.body()),
-        digestmod=hashlib.sha256
+        digestmod=hashlib.sha256,
     ).hexdigest()
-    gh_signature = headers.get(
-        "X-Hub-Signature-256"
-    ).split('sha256=')[-1].strip()
+    gh_signature = headers.get("X-Hub-Signature-256").split("sha256=")[-1].strip()
     if not hmac.compare_digest(gh_signature, expected_signature):
         LOGGER.warning(msg := "Invalid event signature")
         raise HTTPException(status_code=400, detail=msg)
@@ -97,26 +109,26 @@ async def github_authenticate_handler(code: str):
                 "client_secret": GITHUB_CONFIG.app_client_secret,
                 "code": code,
             },
-            headers={"Accept": "application/vnd.github.v3+json"}
+            headers={"Accept": "application/vnd.github.v3+json"},
         )
     return JSONResponse({"token": response.json()["access_token"]})
 
 
 async def _check_push_permissions(
-    token: str = Security(APIKeyHeader(
-        name="authorization",
-        scheme_name="Github OAuth Token",
-        auto_error=False)
+    token: str = Security(
+        APIKeyHeader(
+            name="authorization", scheme_name="Github OAuth Token", auto_error=False
+        )
     )
 ):
     await check_permissions("push", token)
 
 
 async def _check_admin_permissions(
-    token: str = Security(APIKeyHeader(
-        name="authorization",
-        scheme_name="Github OAuth Token",
-        auto_error=False)
+    token: str = Security(
+        APIKeyHeader(
+            name="authorization", scheme_name="Github OAuth Token", auto_error=False
+        )
     )
 ):
     await check_permissions("admin", token)
@@ -127,7 +139,7 @@ async def _check_admin_permissions(
     response_model=List[JobModel],
     response_model_exclude_unset=True,
     summary="Return the list of queued jobs",
-    tags=["queued jobs"]
+    tags=["queued jobs"],
 )
 async def queued_jobs_handler(query: JobQueryModel = Depends()):
     return murdock.get_queued_jobs(query)
@@ -138,15 +150,13 @@ async def queued_jobs_handler(query: JobQueryModel = Depends()):
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Remove a job from the queue",
-    tags=["queued jobs"]
+    tags=["queued jobs"],
 )
 async def queued_commit_cancel_handler(
     uid: str, _: APIKey = Depends(_check_push_permissions)
 ):
     if (job := murdock.queued.search_by_uid(uid)) is None:
-        raise HTTPException(
-            status_code=404, detail=f"No job with uid '{uid}' found"
-        )
+        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
 
     await murdock.cancel_queued_job(job, reload_jobs=True)
     return job.queued_model()
@@ -157,7 +167,7 @@ async def queued_commit_cancel_handler(
     response_model=List[JobModel],
     response_model_exclude_unset=True,
     summary="Return the list of running jobs",
-    tags=["running jobs"]
+    tags=["running jobs"],
 )
 async def running_jobs_handler(query: JobQueryModel = Depends()):
     return murdock.get_running_jobs(query)
@@ -168,7 +178,7 @@ async def running_jobs_handler(query: JobQueryModel = Depends()):
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Update the status of a running job",
-    tags=["running jobs"]
+    tags=["running jobs"],
 )
 async def running_job_status_handler(request: Request, uid: str):
     if GLOBAL_CONFIG.use_job_token:
@@ -178,8 +188,8 @@ async def running_job_status_handler(request: Request, uid: str):
         elif "Authorization" not in request.headers:
             msg = "Job token is missing"
         elif (
-            "Authorization" in request.headers and
-            request.headers["Authorization"] != job.token
+            "Authorization" in request.headers
+            and request.headers["Authorization"] != job.token
         ):
             msg = "Invalid Job token"
 
@@ -189,9 +199,7 @@ async def running_job_status_handler(request: Request, uid: str):
 
     data = await request.json()
     if (job := await murdock.handle_job_status_data(uid, data)) is None:
-        raise HTTPException(
-            status_code=404, detail=f"No job with uid '{uid}' found"
-        )
+        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
 
     return job.running_model()
 
@@ -201,16 +209,13 @@ async def running_job_status_handler(request: Request, uid: str):
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Stop a running job",
-    tags=["running jobs"]
+    tags=["running jobs"],
 )
 async def running_job_stop_handler(
-    uid: str,
-    _: APIKey = Depends(_check_push_permissions)
+    uid: str, _: APIKey = Depends(_check_push_permissions)
 ):
     if (job := murdock.running.search_by_uid(uid)) is None:
-        raise HTTPException(
-            status_code=404, detail=f"No job with uid '{uid}' found"
-        )
+        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
     await murdock.stop_running_job(job, reload_jobs=True)
     return job.running_model()
 
@@ -219,7 +224,7 @@ async def running_job_stop_handler(
     path="/jobs/finished",
     response_model=List[FinishedJobModel],
     summary="Return the list of finished jobs sorted by end time, reversed",
-    tags=["finished jobs"]
+    tags=["finished jobs"],
 )
 async def finished_jobs_handler(query: JobQueryModel = Depends()):
     return await murdock.db.find_jobs(query)
@@ -230,16 +235,13 @@ async def finished_jobs_handler(query: JobQueryModel = Depends()):
     response_model=JobModel,
     response_model_exclude_unset=True,
     summary="Restart a finished job",
-    tags=["finished jobs"]
+    tags=["finished jobs"],
 )
 async def finished_job_restart_handler(
-    uid: str,
-    _: APIKey = Depends(_check_push_permissions)
+    uid: str, _: APIKey = Depends(_check_push_permissions)
 ):
     if (job := await murdock.restart_job(uid)) is None:
-        raise HTTPException(
-            status_code=404, detail=f"Cannot restart job '{uid}'"
-        )
+        raise HTTPException(status_code=404, detail=f"Cannot restart job '{uid}'")
     return job.queued_model()
 
 
@@ -248,17 +250,14 @@ async def finished_job_restart_handler(
     response_model=List[FinishedJobModel],
     response_model_exclude_unset=True,
     summary="Removed finished jobs older than 'before' date",
-    tags=["finished jobs"]
+    tags=["finished jobs"],
 )
 async def finished_job_delete_handler(
-    before: str,
-    _: APIKey = Depends(_check_admin_permissions)
+    before: str, _: APIKey = Depends(_check_admin_permissions)
 ):
     query = JobQueryModel(before=before)
     if not (jobs := await murdock.remove_finished_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"Found no finished job to remove"
-        )
+        raise HTTPException(status_code=404, detail="Found no finished job to remove")
     return jobs
 
 
@@ -267,7 +266,7 @@ async def finished_job_delete_handler(
     response_model=CategorizedJobsModel,
     response_model_exclude_unset=True,
     summary="Return the list of all jobs (queued, running, finished)",
-    tags=["jobs"]
+    tags=["jobs"],
 )
 async def jobs_handler(query: JobQueryModel = Depends()):
     return await murdock.get_jobs(query)
@@ -275,14 +274,14 @@ async def jobs_handler(query: JobQueryModel = Depends()):
 
 @app.websocket("/ws/status")
 async def ws_client_handler(websocket: WebSocket):
-    LOGGER.debug('websocket opening')
+    LOGGER.debug("websocket opening")
     await websocket.accept()
-    LOGGER.debug('websocket connection opened')
+    LOGGER.debug("websocket connection opened")
     murdock.add_ws_client(websocket)
 
     try:
         while True:
             _ = await websocket.receive_text()
     except WebSocketDisconnect:
-        LOGGER.debug('websocket connection closed')
+        LOGGER.debug("websocket connection closed")
         murdock.remove_ws_client(websocket)

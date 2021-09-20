@@ -8,9 +8,7 @@ from ..job import MurdockJob
 from ..models import CommitModel, FinishedJobModel, JobModel, PullRequestInfo
 
 
-commit = CommitModel(
-    sha="test_commit", message="test message", author="test_user"
-)
+commit = CommitModel(sha="test_commit", message="test message", author="test_user")
 commit_other = CommitModel(
     sha="test_commit_other", message="test message other", author="test_user"
 )
@@ -25,7 +23,7 @@ prinfo = PullRequestInfo(
     base_commit="test_base_commit",
     base_full_name="test_base_full_name",
     mergeable=True,
-    labels=["test"]
+    labels=["test"],
 )
 prinfo_not_mergeable = PullRequestInfo(
     title="test",
@@ -38,7 +36,7 @@ prinfo_not_mergeable = PullRequestInfo(
     base_commit="test_base_commit",
     base_full_name="test_base_full_name",
     mergeable=False,
-    labels=["test"]
+    labels=["test"],
 )
 prinfo_other = PullRequestInfo(
     title="test2",
@@ -51,17 +49,21 @@ prinfo_other = PullRequestInfo(
     base_commit="test_base_commit",
     base_full_name="test_base_full_name",
     mergeable=True,
-    labels=["test1, test2"]
+    labels=["test1, test2"],
 )
 
 test_job = MurdockJob(commit, pr=prinfo)
 
 
 @pytest.mark.parametrize(
-    "pr,ref,config,out,env", [
+    "pr,ref,config,out,env",
+    [
         (
-            prinfo ,None,MurdockSettings(),
-            "sha:test_co (PR #123)\n", {
+            prinfo,
+            None,
+            MurdockSettings(),
+            "sha:test_co (PR #123)\n",
+            {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
                 "CI_PULL_NR": "123",
@@ -72,12 +74,15 @@ test_job = MurdockJob(commit, pr=prinfo)
                 "CI_BASE_BRANCH": "test_base_branch",
                 "CI_BASE_COMMIT": "test_base_commit",
                 "CI_PULL_LABELS": "test",
-                "CI_MERGE_COMMIT": "test_merge_commit"
+                "CI_MERGE_COMMIT": "test_merge_commit",
             },
         ),
         (
-            prinfo ,None, MurdockSettings(env={"TEST_ENV": "42"}),
-            "sha:test_co (PR #123)\n", {
+            prinfo,
+            None,
+            MurdockSettings(env={"TEST_ENV": "42"}),
+            "sha:test_co (PR #123)\n",
+            {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
                 "CI_PULL_NR": "123",
@@ -93,8 +98,11 @@ test_job = MurdockJob(commit, pr=prinfo)
             },
         ),
         (
-            prinfo_not_mergeable ,None, MurdockSettings(),
-            "sha:test_co (PR #123)\n", {
+            prinfo_not_mergeable,
+            None,
+            MurdockSettings(),
+            "sha:test_co (PR #123)\n",
+            {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
                 "CI_PULL_NR": "123",
@@ -108,24 +116,28 @@ test_job = MurdockJob(commit, pr=prinfo)
             },
         ),
         (
-            None, "test_branch", MurdockSettings(),
-            "sha:test_co (test_branch)\n", {
+            None,
+            "test_branch",
+            MurdockSettings(),
+            "sha:test_co (test_branch)\n",
+            {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "test_branch",
-            }
+            },
         ),
         (
-            None, "test_branch", MurdockSettings(env={"TEST_ENV": "42"}),
-            "sha:test_co (test_branch)\n", {
+            None,
+            "test_branch",
+            MurdockSettings(env={"TEST_ENV": "42"}),
+            "sha:test_co (test_branch)\n",
+            {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "test_branch",
                 "TEST_ENV": "42",
-            }
+            },
         ),
-        (
-            None, None, MurdockSettings(), "sha:test_co\n", {}
-        ),
-    ]
+        (None, None, MurdockSettings(), "sha:test_co\n", {}),
+    ],
 )
 def test_basic(capsys, pr, ref, config, out, env):
     job = MurdockJob(commit, pr=pr, ref=ref, config=config)
@@ -133,13 +145,15 @@ def test_basic(capsys, pr, ref, config, out, env):
     output = capsys.readouterr()
     assert output.out == out
 
-    env.update({
-        "CI_SCRIPTS_DIR" : "/tmp",
-        "CI_BUILD_HTTP_ROOT" : f"results/{job.uid}",
-        "CI_BASE_URL": "http://localhost:8000",
-        "CI_JOB_TOKEN": job.token,
-        "CI_JOB_UID": job.uid,
-    })
+    env.update(
+        {
+            "CI_SCRIPTS_DIR": "/tmp",
+            "CI_BUILD_HTTP_ROOT": f"results/{job.uid}",
+            "CI_BASE_URL": "http://localhost:8000",
+            "CI_JOB_TOKEN": job.token,
+            "CI_JOB_UID": job.uid,
+        }
+    )
 
     assert job.env == env
 
@@ -165,18 +179,12 @@ def test_remove_dir(tmpdir, caplog):
         f"Directory '{dir_to_remove}' doesn't exist, cannot remove"
     ) not in caplog.text
     MurdockJob.remove_dir(dir_to_remove)
-    assert (
-        f"Directory '{dir_to_remove}' doesn't exist, cannot remove"
-    ) in caplog.text
+    assert (f"Directory '{dir_to_remove}' doesn't exist, cannot remove") in caplog.text
 
 
 @pytest.mark.parametrize(
-    "runtime,expected", [
-        (30, "30s"),
-        (112, "01m:52s"),
-        (3662, "01h:01m:02s"),
-        (100000, "02d:03h:46m:40s")
-    ]
+    "runtime,expected",
+    [(30, "30s"), (112, "01m:52s"), (3662, "01h:01m:02s"), (100000, "02d:03h:46m:40s")],
 )
 def test_runtime(runtime, expected):
     job = MurdockJob(commit, pr=prinfo)
@@ -185,25 +193,18 @@ def test_runtime(runtime, expected):
 
 
 @pytest.mark.parametrize(
-    "job,other,expected", [
+    "job,other,expected",
+    [
         (test_job, test_job, True),
         (MurdockJob(commit, pr=prinfo), None, False),
-        (
-            MurdockJob(commit, pr=prinfo),
-            MurdockJob(commit, pr=prinfo),
-            False
-        ),
-        (
-            MurdockJob(commit, pr=prinfo),
-            MurdockJob(commit, pr=prinfo_other),
-            False
-        ),
+        (MurdockJob(commit, pr=prinfo), MurdockJob(commit, pr=prinfo), False),
+        (MurdockJob(commit, pr=prinfo), MurdockJob(commit, pr=prinfo_other), False),
         (
             MurdockJob(commit, pr=prinfo),
             MurdockJob(commit_other, pr=prinfo_other),
-            False
+            False,
         ),
-    ]
+    ],
 )
 def test_job_equality(job, other, expected):
     assert (job == other) is expected
@@ -212,8 +213,11 @@ def test_job_equality(job, other, expected):
 def test_queued_model():
     job = MurdockJob(commit, pr=prinfo)
     expected_model = JobModel(
-        uid=job.uid, commit=commit, prinfo=prinfo,
-        since=job.start_time, fasttracked=False
+        uid=job.uid,
+        commit=commit,
+        prinfo=prinfo,
+        since=job.start_time,
+        fasttracked=False,
     )
     assert job.queued_model() == expected_model
 
@@ -221,8 +225,12 @@ def test_queued_model():
 def test_running_model():
     job = MurdockJob(commit, pr=prinfo)
     expected_model = JobModel(
-        uid=job.uid, commit=commit, prinfo=prinfo,
-        since=job.start_time, status=job.status, output="",
+        uid=job.uid,
+        commit=commit,
+        prinfo=prinfo,
+        since=job.start_time,
+        status=job.status,
+        output="",
     )
     assert job.running_model() == expected_model
 
@@ -233,7 +241,7 @@ def test_to_db_entry():
     job.output = "test output"
     expected_model = FinishedJobModel(
         uid=job.uid,
-        since= job.start_time,
+        since=job.start_time,
         runtime=job.runtime,
         result="passed",
         output_url=job.output_url,
@@ -254,7 +262,7 @@ def test_finished_model():
         "result": "passed",
         "output": "job output",
         "output_url": "output.html",
-        'output_text_url': 'output.txt',
+        "output_text_url": "output.txt",
         "work_dir": "/tmp",
         "status": {"status": "test"},
         "prinfo": prinfo.dict(),

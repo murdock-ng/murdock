@@ -10,7 +10,7 @@ from fastapi.security.api_key import APIKeyHeader
 
 from jinja2 import FileSystemLoader, Environment
 
-from murdock.config import GLOBAL_CONFIG, GITHUB_CONFIG
+from murdock.config import GITHUB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel
@@ -22,10 +22,10 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 async def check_permissions(
     level: str,
-    token: str = Security(APIKeyHeader(
-        name="authorization",
-        scheme_name="Github OAuth Token",
-        auto_error=False)
+    token: str = Security(
+        APIKeyHeader(
+            name="authorization", scheme_name="Github OAuth Token", auto_error=False
+        )
     ),
 ) -> str:
     async with httpx.AsyncClient() as client:
@@ -33,8 +33,8 @@ async def check_permissions(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {token}"
-            }
+                "Authorization": f"token {token}",
+            },
         )
 
     if response.status_code != 200:
@@ -51,8 +51,7 @@ async def comment_on_pr(job: MurdockJob):
         return
     loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
     env = Environment(
-        loader=loader, trim_blocks=True, lstrip_blocks=True,
-        keep_trailing_newline=True
+        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
     )
     env.globals.update(zip=zip)
     template = env.get_template("comment.md.j2")
@@ -63,7 +62,7 @@ async def comment_on_pr(job: MurdockJob):
     )
     request_headers = {
         "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {GITHUB_CONFIG.api_token}"
+        "Authorization": f"token {GITHUB_CONFIG.api_token}",
     }
     request_data = json.dumps({"body": template.render(**context)})
 
@@ -82,9 +81,7 @@ async def comment_on_pr(job: MurdockJob):
     if comment_id is None:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                issues_comments_url,
-                headers=request_headers,
-                content=request_data
+                issues_comments_url, headers=request_headers, content=request_data
             )
         if response.status_code != 201:
             LOGGER.warning(f"{response}: {response.json()}")
@@ -98,7 +95,7 @@ async def comment_on_pr(job: MurdockJob):
                     f"/issues/comments/{comment_id}"
                 ),
                 headers=request_headers,
-                content=request_data
+                content=request_data,
             )
         if response.status_code != 200:
             LOGGER.warning(f"{response}: {response.json()}")
@@ -109,17 +106,14 @@ async def comment_on_pr(job: MurdockJob):
 async def fetch_commit_info(commit: str) -> CommitModel:
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
-            f"/commits/{commit}",
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}" f"/commits/{commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
-            }
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
+            },
         )
         if response.status_code != 200:
-            LOGGER.debug(
-                f"Failed to fetch commit: {response} {response.json()}"
-            )
+            LOGGER.debug(f"Failed to fetch commit: {response} {response.json()}")
             return
 
         commit_data = response.json()
@@ -131,17 +125,15 @@ async def fetch_commit_info(commit: str) -> CommitModel:
 
 
 async def set_commit_status(commit: str, status: dict):
-    LOGGER.debug(
-        f"Setting commit {commit[0:7]} status to '{status['description']}'"
-    )
+    LOGGER.debug(f"Setting commit {commit[0:7]} status to '{status['description']}'")
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/statuses/{commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
             },
-            content=json.dumps(status)
+            content=json.dumps(status),
         )
         if response.status_code != 201:
             LOGGER.warning(f"{response}: {response.json()}")
@@ -154,8 +146,8 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
             f"/contents/.murdock.yml?ref={commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}"
-            }
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
+            },
         )
         if response.status_code != 200:
             LOGGER.debug("No config file found, using default config")
@@ -164,7 +156,7 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
         try:
             content = yaml.load(
                 base64.b64decode(response.json()["content"]).decode(),
-                Loader=yaml.FullLoader
+                Loader=yaml.FullLoader,
             )
         except yaml.YAMLError as exc:
             LOGGER.warning(f"Cannot parse config file: {exc}")

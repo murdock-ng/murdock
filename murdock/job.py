@@ -12,44 +12,42 @@ from asyncio.subprocess import Process
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
-from murdock.models import (
-    PullRequestInfo, CommitModel, JobModel, FinishedJobModel
-)
+from murdock.models import PullRequestInfo, CommitModel, JobModel, FinishedJobModel
 from murdock.config import MurdockSettings
 
 
 class MurdockJob:
-
     def __init__(
-        self, commit: CommitModel,
+        self,
+        commit: CommitModel,
         ref: Optional[str] = None,
         pr: Optional[PullRequestInfo] = None,
-        config: Optional[MurdockSettings] = MurdockSettings()
+        config: Optional[MurdockSettings] = MurdockSettings(),
     ):
-        self.uid : str = uuid.uuid4().hex
+        self.uid: str = uuid.uuid4().hex
         self.config = config
-        self.result : Optional[str] = None
-        self.proc : Optional[Process] = None
-        self.output : str = ""
-        self.commit : CommitModel = commit
-        self.ref : str = ref
-        self.pr : PullRequestInfo = pr
-        self.start_time : float = time.time()
-        self.stop_time  : float = 0
-        self.canceled : bool = False
-        self.status : dict = { "status": "" }
+        self.result: Optional[str] = None
+        self.proc: Optional[Process] = None
+        self.output: str = ""
+        self.commit: CommitModel = commit
+        self.ref: str = ref
+        self.pr: PullRequestInfo = pr
+        self.start_time: float = time.time()
+        self.stop_time: float = 0
+        self.canceled: bool = False
+        self.status: dict = {"status": ""}
         if self.pr is not None:
-            self.fasttracked : bool = any(
+            self.fasttracked: bool = any(
                 label in CI_CONFIG.fasttrack_labels for label in pr.labels
             )
         else:
-            self.fasttracked : bool = False
-        self.token : str = secrets.token_urlsafe(32)
-        self.scripts_dir : str = GLOBAL_CONFIG.scripts_dir
-        self.work_dir : str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
-        self.http_dir : str = os.path.join("results", self.uid)
-        self.output_url : Optional[str] = None
-        self.output_text_url : str = os.path.join(
+            self.fasttracked: bool = False
+        self.token: str = secrets.token_urlsafe(32)
+        self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
+        self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
+        self.http_dir: str = os.path.join("results", self.uid)
+        self.output_url: Optional[str] = None
+        self.output_text_url: str = os.path.join(
             GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
         )
 
@@ -69,9 +67,7 @@ class MurdockJob:
         try:
             shutil.rmtree(work_dir)
         except FileNotFoundError:
-            LOGGER.debug(
-                f"Directory '{work_dir}' doesn't exist, cannot remove"
-            )
+            LOGGER.debug(f"Directory '{work_dir}' doesn't exist, cannot remove")
 
     @property
     def runtime(self) -> float:
@@ -96,7 +92,7 @@ class MurdockJob:
             ref=self.ref,
             prinfo=self.pr,
             since=self.start_time,
-            fasttracked=self.fasttracked
+            fasttracked=self.fasttracked,
         )
 
     def running_model(self):
@@ -107,7 +103,7 @@ class MurdockJob:
             prinfo=self.pr,
             since=self.start_time,
             status=self.status,
-            output=self.output
+            output=self.output,
         )
 
     @staticmethod
@@ -115,7 +111,7 @@ class MurdockJob:
         return FinishedJobModel(
             uid=job.uid,
             commit=job.commit,
-            since= job.start_time,
+            since=job.start_time,
             runtime=job.runtime,
             result=job.result,
             output_url=job.output_url,
@@ -131,9 +127,9 @@ class MurdockJob:
 
     @property
     def env(self):
-        _env = { 
-            "CI_SCRIPTS_DIR" : GLOBAL_CONFIG.scripts_dir,
-            "CI_BUILD_HTTP_ROOT" : self.http_dir,
+        _env = {
+            "CI_SCRIPTS_DIR": GLOBAL_CONFIG.scripts_dir,
+            "CI_BUILD_HTTP_ROOT": self.http_dir,
             "CI_BASE_URL": GLOBAL_CONFIG.base_url,
             "CI_JOB_UID": self.uid,
         }
@@ -142,30 +138,36 @@ class MurdockJob:
             _env.update(self.config.env)
 
         if self.pr is not None:
-            _env.update({
-                "CI_PULL_COMMIT" : self.commit.sha,
-                "CI_PULL_REPO" : GITHUB_CONFIG.repo,
-                "CI_PULL_NR" : str(self.pr.number),
-                "CI_PULL_URL" : self.pr.url,
-                "CI_PULL_TITLE" : self.pr.title,
-                "CI_PULL_USER" : self.pr.user,
-                "CI_BASE_REPO" : self.pr.base_repo,
-                "CI_BASE_BRANCH" : self.pr.base_branch,
-                "CI_BASE_COMMIT" : self.pr.base_commit,
-                "CI_PULL_LABELS" : ";".join(self.pr.labels),
-            })
+            _env.update(
+                {
+                    "CI_PULL_COMMIT": self.commit.sha,
+                    "CI_PULL_REPO": GITHUB_CONFIG.repo,
+                    "CI_PULL_NR": str(self.pr.number),
+                    "CI_PULL_URL": self.pr.url,
+                    "CI_PULL_TITLE": self.pr.title,
+                    "CI_PULL_USER": self.pr.user,
+                    "CI_BASE_REPO": self.pr.base_repo,
+                    "CI_BASE_BRANCH": self.pr.base_branch,
+                    "CI_BASE_COMMIT": self.pr.base_commit,
+                    "CI_PULL_LABELS": ";".join(self.pr.labels),
+                }
+            )
             if self.pr.mergeable:
                 _env.update({"CI_MERGE_COMMIT": self.pr.merge_commit})
         if self.ref is not None:
-            _env.update({
-                "CI_BUILD_COMMIT" : self.commit.sha,
-                "CI_BUILD_REF" : self.ref,
-            })
+            _env.update(
+                {
+                    "CI_BUILD_COMMIT": self.commit.sha,
+                    "CI_BUILD_REF": self.ref,
+                }
+            )
 
         if GLOBAL_CONFIG.use_job_token:
-            _env.update({
-                "CI_JOB_TOKEN": self.token,
-            })
+            _env.update(
+                {
+                    "CI_JOB_TOKEN": self.token,
+                }
+            )
 
         return _env
 
@@ -187,11 +189,12 @@ class MurdockJob:
         MurdockJob.create_dir(self.work_dir)
         LOGGER.debug(f"Launching build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(self.scripts_dir, "build.sh"), "build",
+            os.path.join(self.scripts_dir, "build.sh"),
+            "build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT
+            stderr=asyncio.subprocess.STDOUT,
         )
         while True:
             data = await self.proc.stdout.readline()
@@ -200,11 +203,9 @@ class MurdockJob:
             line = data.decode()
             self.output += line
             if notify is not None:
-                await notify(json.dumps({
-                    "cmd": "output",
-                    "uid": self.uid,
-                    "line": line
-                }))
+                await notify(
+                    json.dumps({"cmd": "output", "uid": self.uid, "line": line})
+                )
         await self.proc.wait()
         if self.proc.returncode == 0:
             self.result = "passed"
@@ -216,9 +217,7 @@ class MurdockJob:
             self.result = "stopped"
         else:
             self.result = "errored"
-        LOGGER.debug(
-            f"Job {self} {self.result} (ret: {self.proc.returncode})"
-        )
+        LOGGER.debug(f"Job {self} {self.result} (ret: {self.proc.returncode})")
 
         # If the job was stopped, just return now and skip the post_build action
         if self.result == "stopped":
@@ -231,20 +230,19 @@ class MurdockJob:
             with open(os.path.join(self.work_dir, "output.txt"), "w") as out:
                 out.write(self.output)
         except Exception as exc:
-            LOGGER.warning(
-                f"Job error for {self}: cannot write output.txt: {exc}"
-            )
+            LOGGER.warning(f"Job error for {self}: cannot write output.txt: {exc}")
 
         # Remove build subdirectory
         MurdockJob.remove_dir(os.path.join(self.work_dir, "build"))
 
         LOGGER.debug(f"Launch post_build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(self.scripts_dir, "build.sh"), "post_build",
+            os.path.join(self.scripts_dir, "build.sh"),
+            "post_build",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT
+            stderr=asyncio.subprocess.STDOUT,
         )
         out, _ = await self.proc.communicate()
         if self.proc.returncode not in [

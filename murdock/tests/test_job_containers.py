@@ -54,8 +54,8 @@ test_job1 = MurdockJob(
         base_commit="test_base_commit",
         base_full_name="test_base_full_name",
         mergeable=True,
-        labels=["test"]
-    )
+        labels=["test"],
+    ),
 )
 test_job1.result = "passed"
 test_job2 = MurdockJob(
@@ -71,8 +71,8 @@ test_job2 = MurdockJob(
         base_commit="test_base_commit",
         base_full_name="test_base_full_name",
         mergeable=True,
-        labels=["test"]
-    )
+        labels=["test"],
+    ),
 )
 test_job2.result = "errored"
 test_job3 = MurdockJob(
@@ -88,34 +88,32 @@ test_job3 = MurdockJob(
         base_commit="test_base_commit",
         base_full_name="test_base_full_name",
         mergeable=True,
-        labels=["test"]
-    )
+        labels=["test"],
+    ),
 )
 test_job3.result = "passed"
 test_job4 = MurdockJob(
-    CommitModel(sha="3", message="job4", author="other_test"),
-    ref="test_ref"
+    CommitModel(sha="3", message="job4", author="other_test"), ref="test_ref"
 )
 test_job5 = MurdockJob(
-    CommitModel(sha="4", message="job5", author="other_test"),
-    ref="test_ref"
+    CommitModel(sha="4", message="job5", author="other_test"), ref="test_ref"
 )
 test_job6 = MurdockJob(
     CommitModel(sha="3", message="job6", author="other_test"),
-    ref="refs/heads/test_branch"
+    ref="refs/heads/test_branch",
 )
 test_job7 = MurdockJob(
-    CommitModel(sha="4", message="job7", author="test"),
-    ref="refs/tags/test_tag"
+    CommitModel(sha="4", message="job7", author="test"), ref="refs/tags/test_tag"
 )
 
 
 @pytest.mark.parametrize(
-    "prnum,result", [
+    "prnum,result",
+    [
         (123, [test_job2, test_job1]),
         (1234, [test_job3]),
         (12, []),
-    ]
+    ],
 )
 def test_list_search_by_pr_number(prnum, result):
     job_list = MurdockJobList()
@@ -124,10 +122,11 @@ def test_list_search_by_pr_number(prnum, result):
 
 
 @pytest.mark.parametrize(
-    "ref,result", [
+    "ref,result",
+    [
         ("test_ref", [test_job5, test_job4]),
         ("unknown_ref", []),
-    ]
+    ],
 )
 def test_list_search_by_ref(ref, result):
     job_list = MurdockJobList()
@@ -136,39 +135,48 @@ def test_list_search_by_ref(ref, result):
 
 
 @pytest.mark.parametrize(
-    "job,result", [
+    "job,result",
+    [
         (test_job1, [test_job2, test_job1]),
         (test_job3, [test_job3]),
         (test_job4, [test_job5, test_job4]),
-    ]
+    ],
 )
 def test_list_search_matching(job, result):
     job_list = MurdockJobList()
-    job_list.add(*[
-        test_job1, test_job2, test_job3, test_job4, test_job5,
-        test_job6, test_job7,
-    ])
+    job_list.add(
+        *[
+            test_job1,
+            test_job2,
+            test_job3,
+            test_job4,
+            test_job5,
+            test_job6,
+            test_job7,
+        ]
+    )
     assert job_list.search_matching(job) == result
 
 
 @pytest.mark.parametrize(
-    "query,result", [
+    "query,result",
+    [
         ({"uid": test_job1.uid}, [test_job1]),
         ({"uid": "unknown_uid"}, []),
         ({"is_pr": True}, [test_job3, test_job2, test_job1]),
         ({"is_pr": False}, [test_job7, test_job6, test_job5, test_job4]),
         ({"is_branch": True}, [test_job6]),
-        ({"is_branch": False}, [
-            test_job7, test_job5, test_job4, test_job3, test_job2, test_job1
-        ]),
+        (
+            {"is_branch": False},
+            [test_job7, test_job5, test_job4, test_job3, test_job2, test_job1],
+        ),
         ({"is_tag": True}, [test_job7]),
-        ({"is_tag": False}, [
-            test_job6, test_job5, test_job4, test_job3, test_job2, test_job1
-        ]),
+        (
+            {"is_tag": False},
+            [test_job6, test_job5, test_job4, test_job3, test_job2, test_job1],
+        ),
         ({"is_pr": True, "is_branch": True, "is_tag": True}, []),
-        ({"is_pr": False, "is_branch": False, "is_tag": False}, [
-            test_job5, test_job4
-        ]),
+        ({"is_pr": False, "is_branch": False, "is_tag": False}, [test_job5, test_job4]),
         ({"prnum": 123}, [test_job2, test_job1]),
         ({"prnum": 1234}, [test_job3]),
         ({"prnum": 12}, []),
@@ -185,28 +193,35 @@ def test_list_search_matching(job, result):
         ({"author": "unknown"}, []),
         ({"result": "passed"}, [test_job3, test_job1]),
         ({"result": "errored"}, [test_job2]),
-        ({"result": "unknown"}, [
-            test_job7, test_job6, test_job5, test_job4, test_job3,
-            test_job2, test_job1
-        ]),
+        (
+            {"result": "unknown"},
+            [
+                test_job7,
+                test_job6,
+                test_job5,
+                test_job4,
+                test_job3,
+                test_job2,
+                test_job1,
+            ],
+        ),
         (
             {
                 "is_pr": True,
                 "prnum": 123,
                 "sha": "2",
                 "author": "test",
-                "result": "errored"
+                "result": "errored",
             },
-            [test_job2]
+            [test_job2],
         ),
-    ]
+    ],
 )
 def test_list_search_with_query(query, result):
     job_list = MurdockJobList()
-    job_list.add(*[
-        test_job1, test_job2, test_job3, test_job4, test_job5,
-        test_job6, test_job7
-    ])
+    job_list.add(
+        *[test_job1, test_job2, test_job3, test_job4, test_job5, test_job6, test_job7]
+    )
 
     found = job_list.search_with_query(JobQueryModel(**query))
 

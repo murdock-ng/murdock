@@ -68,6 +68,7 @@ class CommitModel(BaseModel):
         title="Author of the commit",
     )
 
+
 class JobModel(BaseModel):
     uid: str = Field(
         None,
@@ -142,10 +143,7 @@ class JobQueryModel(BaseModel):
         GLOBAL_CONFIG.max_finished_length_default,
         title="Limit length of items returned",
     )
-    uid: Optional[str] = Field(
-        None,
-        title="uid of the job"
-    )
+    uid: Optional[str] = Field(None, title="uid of the job")
     is_pr: Optional[bool] = Field(
         None,
         title="Whether the job is about a PR",
@@ -174,23 +172,23 @@ class JobQueryModel(BaseModel):
         None,
         title="Full ref path",
     )
-    sha: Optional[str] =  Field(
+    sha: Optional[str] = Field(
         None,
         title="Commit SHA",
     )
-    author: Optional[str] =  Field(
+    author: Optional[str] = Field(
         None,
         title="Author of the commit",
     )
-    result: Optional[str] =  Field(
+    result: Optional[str] = Field(
         None,
         title="Result of the job",
     )
-    after: Optional[str] =  Field(
+    after: Optional[str] = Field(
         None,
         title="Date after which the job finished",
     )
-    before: Optional[str] =  Field(
+    before: Optional[str] = Field(
         None,
         title="Date before which the job finished (included)",
     )
@@ -200,9 +198,9 @@ class JobQueryModel(BaseModel):
 
     def to_date_before_timestamp(self):
         return datetime.combine(
-                datetime.strptime(self.before, "%Y-%m-%d"),
-                dtime(hour=23, minute=59, second=59, microsecond=999)
-            ).timestamp()
+            datetime.strptime(self.before, "%Y-%m-%d"),
+            dtime(hour=23, minute=59, second=59, microsecond=999),
+        ).timestamp()
 
     def to_mongodb_query(self):
         _query = {}
