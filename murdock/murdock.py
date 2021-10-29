@@ -148,13 +148,6 @@ class Murdock:
         await self.reload_jobs()
 
     async def add_job_to_queue(self, job: MurdockJob):
-        all_busy = all(running is not None for running in self.running.jobs)
-        self.queued.add(job)
-        if all_busy and job.fasttracked:
-            self.fasttrack_queue.put_nowait(job)
-        else:
-            self.queue.put_nowait(job)
-        LOGGER.info(f"Job {job} added to queued jobs")
         await set_commit_status(
             job.commit.sha,
             {
@@ -164,6 +157,13 @@ class Murdock:
                 "target_url": GLOBAL_CONFIG.base_url,
             },
         )
+        all_busy = all(running is not None for running in self.running.jobs)
+        self.queued.add(job)
+        if all_busy and job.fasttracked:
+            self.fasttrack_queue.put_nowait(job)
+        else:
+            self.queue.put_nowait(job)
+        LOGGER.info(f"Job {job} added to queued jobs")
         await self.reload_jobs()
 
     async def cancel_queued_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
