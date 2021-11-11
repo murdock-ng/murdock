@@ -287,5 +287,6 @@ class MurdockJob:
                     await asyncio.wait_for(self.proc.wait(), timeout=1.0)
                 except asyncio.TimeoutError:
                     LOGGER.debug(f"Couldn't stop job {self} with {sig}")
-        LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
-        MurdockJob.remove_dir(self.work_dir)
+        if not GLOBAL_CONFIG.store_stopped_jobs:
+            LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
+            MurdockJob.remove_dir(self.work_dir)

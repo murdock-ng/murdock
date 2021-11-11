@@ -144,6 +144,9 @@ class Murdock:
             if job.pr is not None and job.config.pr.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
+        if job.result in ["passed", "errored"] or (
+            job.result == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
+        ):
             await self.db.insert_job(job)
         await self.reload_jobs()
 
