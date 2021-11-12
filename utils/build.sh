@@ -32,17 +32,17 @@ case "$ACTION" in
 
         RETVAL=$(($RANDOM % 2))
         CANCELED=$(($RANDOM % 2))
-        FAILED_JOBS=""
+        FAILED_BUILDS=""
         for job in $(seq 0 1 ${NUM_JOBS})
         do
             if [ "${RETVAL}" -eq 1 ]
             then
                 if  [ "${job}" -ne 0 ]
                 then
-                    FAILED_JOBS+=", "
+                    FAILED_BUILDS+=", "
                 fi
-                FAILED_JOBS+='{"name": "job_'${job}'", "href": "job_'${job}'"}'
-                STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_jobs": ['${FAILED_JOBS}']}}'
+                FAILED_BUILDS+='{"name": "job_'${job}'", "href": "job_'${job}'"}'
+                STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_builds": ['${FAILED_BUILDS}']}}'
             else
                 STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
             fi
@@ -54,7 +54,7 @@ case "$ACTION" in
 
         if [ "${RETVAL}" -eq 1 ] && [ "${CANCELED}" -eq 1 ]
         then
-            STATUS='{"status" : {"status": "canceled", "failed_jobs": ['${FAILED_JOBS}']}}'
+            STATUS='{"status" : {"status": "canceled", "failed_builds": ['${FAILED_BUILDS}']}}'
             /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/jobs/running/${CI_JOB_UID}/status > /dev/null
         fi
 

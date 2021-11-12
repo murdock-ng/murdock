@@ -192,9 +192,9 @@ async def test_comment_on_pr(
         f":heavy_check_mark: [PASSED](http://localhost:8000/results/{job.uid}/output.html)\n"
     )
     if sticky is True:
-        comment += "\n" "test_commit test message\n\n\n\n"
+        comment += "\n" "test_commit test message\n\n\n"
     else:
-        comment += "\n\n\n"
+        comment += "\n\n"
 
     await comment_on_pr(job)
     if get_called is True:

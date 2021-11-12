@@ -12,11 +12,31 @@
 | ------- | -------- | ----- | ------- |
 | {{ job.status.passed }} | {{ job.status.failed }} | {{ job.status.total }} | {{ job.runtime_human }} |
 {% endif %}
-
 {% if "failed_jobs" in job.status and job.status.failed_jobs %}
-<details><summary><strong>Failed jobs ({{ job.status.failed_jobs | length }})</strong></summary>
+
+<details><summary><strong>Job failures ({{ job.status.failed_jobs | length }})</strong></summary>
 
 {% for failure in job.status.failed_jobs %}
+- [{{ failure.name }}]({{ failure.href }})
+{% endfor %}
+
+</details>
+{% endif %}
+{% if "failed_builds" in job.status and job.status.failed_builds %}
+
+<details><summary><strong>Build failures ({{ job.status.failed_builds | length }})</strong></summary>
+
+{% for failure in job.status.failed_builds %}
+- [{{ failure.name }}]({{ failure.href }})
+{% endfor %}
+
+</details>
+{% endif %}
+{% if "failed_tests" in job.status and job.status.failed_tests %}
+
+<details><summary><strong>Test failures ({{ job.status.failed_tests | length }})</strong></summary>
+
+{% for failure in job.status.failed_tests %}
 - [{{ failure.name }}]({{ failure.href }})
 {% endfor %}
 
