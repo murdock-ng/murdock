@@ -53,7 +53,6 @@ class MurdockJobListBase(ABC):
         ref_jobs = jobs
         sha_jobs = jobs
         author_jobs = jobs
-        result_jobs = jobs
 
         if not jobs:
             return []
@@ -156,8 +155,6 @@ class MurdockJobListBase(ABC):
             author_jobs = {
                 job for job in self.jobs if job.commit.author == query.author
             }
-        if query.result in ["errored", "passed"]:
-            result_jobs = [job for job in self.jobs if job.result == query.result]
         return sorted(
             list(
                 jobs.intersection(uid_job)
@@ -170,7 +167,6 @@ class MurdockJobListBase(ABC):
                 .intersection(ref_jobs)
                 .intersection(sha_jobs)
                 .intersection(author_jobs)
-                .intersection(result_jobs)
             ),
             reverse=True,
             key=lambda job: job.start_time,

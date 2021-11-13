@@ -57,7 +57,6 @@ test_job1 = MurdockJob(
         labels=["test"],
     ),
 )
-test_job1.result = "passed"
 test_job2 = MurdockJob(
     CommitModel(sha="2", message="job2", author="test"),
     pr=PullRequestInfo(
@@ -74,7 +73,6 @@ test_job2 = MurdockJob(
         labels=["test"],
     ),
 )
-test_job2.result = "errored"
 test_job3 = MurdockJob(
     CommitModel(sha="2", message="job3", author="test"),
     pr=PullRequestInfo(
@@ -91,7 +89,6 @@ test_job3 = MurdockJob(
         labels=["test"],
     ),
 )
-test_job3.result = "passed"
 test_job4 = MurdockJob(
     CommitModel(sha="3", message="job4", author="other_test"), ref="test_ref"
 )
@@ -191,8 +188,6 @@ def test_list_search_matching(job, result):
         ({"sha": "42"}, []),
         ({"author": "test"}, [test_job7, test_job3, test_job2, test_job1]),
         ({"author": "unknown"}, []),
-        ({"result": "passed"}, [test_job3, test_job1]),
-        ({"result": "errored"}, [test_job2]),
         (
             {"result": "unknown"},
             [
@@ -211,7 +206,6 @@ def test_list_search_matching(job, result):
                 "prnum": 123,
                 "sha": "2",
                 "author": "test",
-                "result": "errored",
             },
             [test_job2],
         ),

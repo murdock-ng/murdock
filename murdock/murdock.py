@@ -393,14 +393,22 @@ class Murdock:
 
     def get_queued_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
         return sorted(
-            [job.queued_model() for job in self.queued.search_with_query(query)],
+            [
+                job.queued_model()
+                for job in self.queued.search_with_query(query)
+                if query.states is None or "queued" in query.states
+            ],
             key=lambda job: job.fasttracked,
         )
 
     def get_running_jobs(
         self, query: JobQueryModel = JobQueryModel()
     ) -> List[JobModel]:
-        return [job.running_model() for job in self.running.search_with_query(query)]
+        return [
+            job.running_model()
+            for job in self.running.search_with_query(query)
+            if query.states is None or "running" in query.states
+        ]
 
     async def remove_finished_jobs(
         self, query: JobQueryModel

@@ -156,6 +156,13 @@ class JobQueryModel(BaseModel):
         None,
         title="Whether the job is about a tag",
     )
+    states: Optional[str] = Field(
+        None,
+        title=(
+            "space separated list of job states (queued, running, passed, "
+            "errored, stopped)"
+        ),
+    )
     prnum: Optional[int] = Field(
         None,
         title="PR number",
@@ -179,10 +186,6 @@ class JobQueryModel(BaseModel):
     author: Optional[str] = Field(
         None,
         title="Author of the commit",
-    )
-    result: Optional[str] = Field(
-        None,
-        title="Result of the job",
     )
     after: Optional[str] = Field(
         None,
@@ -218,6 +221,8 @@ class JobQueryModel(BaseModel):
                 _query.update({"ref": {"$regex": "^refs/tags/.*"}})
             else:
                 _query.update({"ref": {"$not": {"$regex": "^refs/tags/.*"}}})
+        if self.states is not None:
+            _query.update({"result": {"$in": self.states.split(" ")}})
         if self.prnum is not None:
             _query.update({"prinfo.number": self.prnum})
         if self.branch is not None:
@@ -230,8 +235,6 @@ class JobQueryModel(BaseModel):
             _query.update({"commit.sha": self.sha})
         if self.author is not None:
             _query.update({"commit.author": self.author})
-        if self.result in ["errored", "passed"]:
-            _query.update({"result": self.result})
         if self.after is not None:
             _query.update({"since": {"$gte": self.to_date_after_timestamp()}})
         if self.before is not None:
