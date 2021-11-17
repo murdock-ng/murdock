@@ -384,12 +384,8 @@ class Murdock:
             LOGGER.debug(f"Ref '{ref_name}' not accepted for push events")
             return
 
-        job = MurdockJob(commit, ref=ref, config=config)
-        if await self.handle_skip_job(job):
-            return
-
         LOGGER.info(f"Handle push event on ref '{ref_name}'")
-        await self.schedule_job(job)
+        await self.schedule_job(MurdockJob(commit, ref=ref, config=config))
 
     def add_ws_client(self, ws: WebSocket):
         if ws not in self.clients:

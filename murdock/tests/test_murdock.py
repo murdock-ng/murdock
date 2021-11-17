@@ -761,18 +761,14 @@ async def test_handle_push_event_skip_commit(
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
     assert f"Ref '{branch}' not accepted for push events" not in caplog.text
+    assert f"Handle push event on ref '{branch}'" in caplog.text
+    assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" in caplog.text
     if skipped is False:
         commit_status.assert_not_called()
         queued.assert_called_once()
-        assert f"Handle push event on ref '{branch}'" in caplog.text
-        assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" in caplog.text
     else:
         queued.assert_not_called()
         commit_status.assert_called_once()
-        assert f"Handle push event on ref '{branch}'" not in caplog.text
-        assert (
-            f"Scheduling new job sha:{commit} (refs/heads/{branch})" not in caplog.text
-        )
         assert "Commit message contains skip keywords, skipping job" in caplog.text
 
 
