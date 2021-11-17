@@ -32,7 +32,6 @@ class GlobalSettings(BaseSettings):
     scripts_dir: str = Field(
         env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
     )
-    use_job_token: bool = Field(env="MURDOCK_USE_JOB_TOKEN", default=True)
     accepted_events: List[str] = Field(
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )

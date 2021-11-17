@@ -181,21 +181,20 @@ async def running_jobs_handler(query: JobQueryModel = Depends()):
     tags=["running jobs"],
 )
 async def running_job_status_handler(request: Request, uid: str):
-    if GLOBAL_CONFIG.use_job_token:
-        msg = ""
-        if (job := murdock.running.search_by_uid(uid)) is None:
-            msg = f"No job running with uid {uid}"
-        elif "Authorization" not in request.headers:
-            msg = "Job token is missing"
-        elif (
-            "Authorization" in request.headers
-            and request.headers["Authorization"] != job.token
-        ):
-            msg = "Invalid Job token"
+    msg = ""
+    if (job := murdock.running.search_by_uid(uid)) is None:
+        msg = f"No job running with uid {uid}"
+    elif "Authorization" not in request.headers:
+        msg = "Job token is missing"
+    elif (
+        "Authorization" in request.headers
+        and request.headers["Authorization"] != job.token
+    ):
+        msg = "Invalid Job token"
 
-        if msg:
-            LOGGER.warning(f"Invalid request to control_handler: {msg}")
-            raise HTTPException(status_code=400, detail=msg)
+    if msg:
+        LOGGER.warning(f"Invalid request to control_handler: {msg}")
+        raise HTTPException(status_code=400, detail=msg)
 
     data = await request.json()
     if (job := await murdock.handle_job_status_data(uid, data)) is None:

@@ -130,6 +130,7 @@ class MurdockJob:
             "CI_BUILD_HTTP_ROOT": self.http_dir,
             "CI_BASE_URL": GLOBAL_CONFIG.base_url,
             "CI_JOB_UID": self.uid,
+            "CI_JOB_TOKEN": self.token,
         }
 
         if self.config.env is not None:
@@ -157,13 +158,6 @@ class MurdockJob:
                 {
                     "CI_BUILD_COMMIT": self.commit.sha,
                     "CI_BUILD_REF": self.ref,
-                }
-            )
-
-        if GLOBAL_CONFIG.use_job_token:
-            _env.update(
-                {
-                    "CI_JOB_TOKEN": self.token,
                 }
             )
 
