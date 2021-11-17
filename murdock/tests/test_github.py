@@ -13,6 +13,7 @@ from murdock.github import (
     fetch_commit_info,
     set_commit_status,
     fetch_murdock_config,
+    MAX_PAGES_COUNT,
 )
 
 
@@ -197,7 +198,15 @@ async def test_comment_on_pr(
         comment += "\n\n"
 
     await comment_on_pr(job)
-    if get_called is True:
+    if get_called is True and sticky is True:
+        get.assert_called_with(
+            f"https://api.github.com/repos/test/repo/issues/123/comments?page={MAX_PAGES_COUNT}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
+            },
+        )
+    elif get_called is True:
         get.assert_called_with(
             "https://api.github.com/repos/test/repo/issues/123/comments",
             headers={

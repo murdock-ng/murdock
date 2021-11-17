@@ -18,6 +18,7 @@ from murdock.config import MurdockSettings
 
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+MAX_PAGES_COUNT = 10
 
 
 async def check_permissions(
@@ -69,14 +70,18 @@ async def comment_on_pr(job: MurdockJob):
     comment_id = None
     if job.config.pr.sticky_comment is True:
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                issues_comments_url,
-                headers=request_headers,
-            )
-        for comment in response.json():
-            if comment["body"].split("\n")[0] == "### Murdock results":
-                comment_id = comment["id"]
-                break
+            page = 1
+            while (
+                response := await client.get(
+                    f"{issues_comments_url}?page={page}",
+                    headers=request_headers,
+                )
+            ).json() and page < MAX_PAGES_COUNT:
+                for comment in response.json():
+                    if comment["body"].split("\n")[0] == "### Murdock results":
+                        comment_id = comment["id"]
+                        break
+                page += 1
 
     if comment_id is None:
         async with httpx.AsyncClient() as client:
