@@ -367,7 +367,7 @@ async def test_handle_pr_event_action_missing(
         ("invalid", False, False),
         ("synchronize", True, True),
         ("labeled", True, False),
-        ("unlabeled", True, True),
+        ("unlabeled", True, False),
         ("opened", True, True),
         ("reopened", True, True),
         ("closed", True, False),
@@ -472,16 +472,15 @@ async def test_handle_pr_event_skip_commit(
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
+    assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
     if skipped:
         queued.assert_not_called()
         commit_status.assert_called_once()
         assert "Commit message contains skip keywords, skipping job" in caplog.text
-        assert f"Scheduling new job sha:{commit} (PR #123)" not in caplog.text
     else:
         queued.assert_called_once()
         commit_status.assert_not_called()
         assert "Commit message contains skip keywords, skipping job" not in caplog.text
-        assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -545,6 +544,19 @@ async def test_handle_pr_event_missing_ready_label(
             [
                 MurdockJob(
                     CommitModel(sha="abcdef", message="test", author="me"),
+                    pr=PullRequestInfo(
+                        title="test",
+                        number=123,
+                        merge_commit="test",
+                        user="test",
+                        url="test",
+                        base_repo="test",
+                        base_branch="test",
+                        base_commit="test",
+                        base_full_name="test",
+                        mergeable=True,
+                        labels=["test"],
+                    ),
                 ),
             ],
             True,

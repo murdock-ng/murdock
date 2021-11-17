@@ -29,6 +29,7 @@ from murdock.database import Database
 
 
 ALLOWED_ACTIONS = [
+    "edited",
     "labeled",
     "unlabeled",
     "synchronize",
@@ -235,15 +236,6 @@ class Murdock:
         await self.schedule_job(new_job)
         return new_job
 
-    async def schedule_job(self, job: MurdockJob) -> MurdockJob:
-        LOGGER.info(f"Scheduling new job {job}")
-        if self.cancel_on_update is True:
-            # Similar jobs are already queued or running => cancel/stop them
-            await self.disable_jobs_matching(job)
-
-        await self.add_job_to_queue(job)
-        return job
-
     async def handle_skip_job(self, job: MurdockJob) -> bool:
         if any(
             (
@@ -263,6 +255,19 @@ class Murdock:
             )
             return True
         return False
+
+    async def schedule_job(self, job: MurdockJob) -> MurdockJob:
+        LOGGER.info(f"Scheduling new job {job}")
+        # Check if the job should be skipped (using keywords in commit message)
+        if await self.handle_skip_job(job) is True:
+            return
+
+        if self.cancel_on_update is True:
+            # Similar jobs are already queued or running => cancel/stop them
+            await self.disable_jobs_matching(job)
+
+        await self.add_job_to_queue(job)
+        return job
 
     async def handle_pull_request_event(self, event: dict):
         if "action" not in event:
@@ -298,23 +303,15 @@ class Murdock:
             await self.disable_jobs_matching(job)
             return
 
-        if await self.handle_skip_job(job):
-            return
-
-        if action == "labeled":
-            label = event["label"]["name"]
-            if (
-                CI_CONFIG.ready_label is not None
-                and CI_CONFIG.ready_label not in pull_request.labels
-            ):
-                return
-            elif label != CI_CONFIG.ready_label:
-                for queued_job in self.queued.search_by_pr_number(job.pr.number):
-                    LOGGER.debug(
-                        f"Updating queued job {queued_job} with new label '{label}'"
-                    )
-                    queued_job.pr.labels.append(label)
-                return
+        matching_jobs = self.queued.search_by_pr_number(job.pr.number)
+        matching_jobs += self.running.search_by_pr_number(job.pr.number)
+        for matching_job in matching_jobs:
+            if matching_job.pr.labels != pull_request.labels:
+                LOGGER.debug(f"Updating job {matching_job} labels")
+                matching_job.pr.labels = pull_request.labels
+            if matching_job.pr.title != pull_request.title:
+                LOGGER.debug(f"Updating job {matching_job} title")
+                matching_job.pr.title = pull_request.title
 
         if CI_CONFIG.ready_label not in pull_request.labels:
             LOGGER.debug(f"'{CI_CONFIG.ready_label}' label not set")
@@ -328,11 +325,11 @@ class Murdock:
             await set_commit_status(job.commit.sha, status)
             return
 
-        if action == "unlabeled":
-            for queued_job in self.queued.search_by_pr_number(job.pr.number):
-                label = event["label"]["name"]
-                LOGGER.debug(f"Removing '{label}' from queued job {queued_job}")
-                queued_job.pr.labels.remove(label)
+        if action in ["unlabeled", "edited"]:
+            return
+
+        if action == "labeled" and event["label"]["name"] != CI_CONFIG.ready_label:
+            return
 
         await self.schedule_job(job)
 
