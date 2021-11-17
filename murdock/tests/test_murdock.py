@@ -378,8 +378,17 @@ async def test_handle_pr_event_action_missing(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.disable_jobs_matching")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_action(
-    queued, disable, fetch_commit, fetch_config, action, allowed, queued_called, caplog
+    update,
+    queued,
+    disable,
+    fetch_commit,
+    fetch_config,
+    action,
+    allowed,
+    queued_called,
+    caplog,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -387,6 +396,7 @@ async def test_handle_pr_event_action(
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
+    update.return_value = 0
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     if allowed:
@@ -449,7 +459,9 @@ async def test_handle_pr_event_missing_commit_info(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_skip_commit(
+    update,
     queued,
     commit_status,
     fetch_commit,
@@ -467,6 +479,7 @@ async def test_handle_pr_event_skip_commit(
     fetch_commit.return_value = CommitModel(
         sha=commit, message=commit_message, author="me"
     )
+    update.return_value = 0
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text
@@ -487,8 +500,9 @@ async def test_handle_pr_event_skip_commit(
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_missing_ready_label(
-    queued, fetch_commit, fetch_config, caplog
+    update, queued, fetch_commit, fetch_config, caplog
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
@@ -499,6 +513,7 @@ async def test_handle_pr_event_missing_ready_label(
     fetch_commit.return_value = CommitModel(
         sha=commit, message="test message", author="me"
     )
+    update.return_value = 0
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     queued.assert_not_called()
@@ -575,7 +590,9 @@ async def test_handle_pr_event_missing_ready_label(
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
+@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_labeled_action(
+    update,
     queued,
     fetch_commit,
     fetch_config,
@@ -597,6 +614,7 @@ async def test_handle_pr_event_labeled_action(
         sha=commit, message="test message", author="me"
     )
     pr_queued.return_value = param_queued
+    update.return_value = 0
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text

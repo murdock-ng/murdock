@@ -57,6 +57,13 @@ class Database:
 
         return [MurdockJob.finished_model(job) for job in jobs]
 
+    async def update_jobs(self, query: JobQueryModel, field, value) -> int:
+        return (
+            await self.db.job.update_many(
+                query.to_mongodb_query(), {"$set": {field: value}}
+            )
+        ).modified_count
+
     async def count_jobs(self, query: JobQueryModel) -> int:
         return await self.db.job.count_documents(query.to_mongodb_query())
 
