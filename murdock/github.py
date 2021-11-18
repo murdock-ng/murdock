@@ -72,11 +72,15 @@ async def comment_on_pr(job: MurdockJob):
         async with httpx.AsyncClient() as client:
             page = 1
             while (
-                response := await client.get(
-                    f"{issues_comments_url}?page={page}",
-                    headers=request_headers,
-                )
-            ).json() and page < MAX_PAGES_COUNT:
+                comment_id is None
+                and (
+                    response := await client.get(
+                        f"{issues_comments_url}?page={page}",
+                        headers=request_headers,
+                    )
+                ).json()
+                and page < MAX_PAGES_COUNT
+            ):
                 for comment in response.json():
                     if comment["body"].split("\n")[0] == "### Murdock results":
                         comment_id = comment["id"]

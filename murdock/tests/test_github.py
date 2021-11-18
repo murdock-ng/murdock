@@ -53,7 +53,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "sticky,get_return,post_return,patch_return,get_called,post_called,patch_called,error",
+    "sticky,get_return,post_return,patch_return,get_called,post_called,patch_called,page,error",
     [
         pytest.param(
             False,
@@ -63,6 +63,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             False,
             True,
             False,
+            1,
             None,
             id="not_sticky_comment_created",
         ),
@@ -74,6 +75,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             False,
             True,
             False,
+            1,
             {"details": "error"},
             id="not_sticky_comment_error",
         ),
@@ -93,6 +95,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             True,
             False,
+            MAX_PAGES_COUNT,
             None,
             id="sticky_comment_created",
         ),
@@ -112,6 +115,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             True,
             False,
+            MAX_PAGES_COUNT,
             {"details": "error"},
             id="sticky_comment_creation_error",
         ),
@@ -131,6 +135,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             False,
             True,
+            1,
             None,
             id="sticky_comment_updated",
         ),
@@ -150,6 +155,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             False,
             True,
+            1,
             {"details": "error"},
             id="sticky_comment_update_error",
         ),
@@ -169,6 +175,7 @@ async def test_comment_on_pr(
     get_called,
     post_called,
     patch_called,
+    page,
     error,
     caplog,
 ):
@@ -200,7 +207,7 @@ async def test_comment_on_pr(
     await comment_on_pr(job)
     if get_called is True and sticky is True:
         get.assert_called_with(
-            f"https://api.github.com/repos/test/repo/issues/123/comments?page={MAX_PAGES_COUNT}",
+            f"https://api.github.com/repos/test/repo/issues/123/comments?page={page}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}",
