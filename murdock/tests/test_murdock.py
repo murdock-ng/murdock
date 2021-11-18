@@ -526,12 +526,12 @@ async def test_handle_pr_event_missing_ready_label(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "label,labels,param_queued,scheduled",
+    "labels,new_label,param_queued,scheduled",
     [
-        pytest.param("random label", [], [], False, id="ready_label_not_set"),
+        pytest.param([], "random label", [], False, id="ready_label_not_set"),
         pytest.param(
-            "random label",
             [{"name": CI_CONFIG.ready_label}],
+            CI_CONFIG.ready_label,
             [
                 MurdockJob(
                     CommitModel(sha="abcdef", message="test", author="me"),
@@ -551,42 +551,26 @@ async def test_handle_pr_event_missing_ready_label(
                 )
             ],
             False,
-            id="random_label_set_already_queued",
+            id="random_label_set_already_job_queued",
         ),
         pytest.param(
-            CI_CONFIG.ready_label,
             [{"name": CI_CONFIG.ready_label}],
-            [
-                MurdockJob(
-                    CommitModel(sha="abcdef", message="test", author="me"),
-                    pr=PullRequestInfo(
-                        title="test",
-                        number=123,
-                        merge_commit="test",
-                        user="test",
-                        url="test",
-                        base_repo="test",
-                        base_branch="test",
-                        base_commit="test",
-                        base_full_name="test",
-                        mergeable=True,
-                        labels=["test"],
-                    ),
-                ),
-            ],
-            True,
-            id="ready_label_set",
-        ),
-        pytest.param(
             CI_CONFIG.ready_label,
-            [{"name": CI_CONFIG.ready_label}],
             [],
             True,
-            id="ready_label_set_already_not_queued",
+            id="ready_label_set_already_job_not_queued",
+        ),
+        pytest.param(
+            [{"name": CI_CONFIG.ready_label}],
+            "Random label",
+            [],
+            False,
+            id="ready_label_unset",
         ),
     ],
 )
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_pr_number")
+@mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
@@ -596,9 +580,10 @@ async def test_handle_pr_event_labeled_action(
     queued,
     fetch_commit,
     fetch_config,
+    commit_status,
     pr_queued,
-    label,
     labels,
+    new_label,
     param_queued,
     scheduled,
     caplog,
@@ -607,12 +592,13 @@ async def test_handle_pr_event_labeled_action(
     commit = "abcdef"
     event = pr_event.copy()
     event.update({"action": "labeled"})
-    event.update({"label": {"name": label}})
+    event.update({"label": {"name": new_label}})
     event["pull_request"]["labels"] = labels
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = CommitModel(
         sha=commit, message="test message", author="me"
     )
+    commit_status.return_value = None
     pr_queued.return_value = param_queued
     update.return_value = 0
     murdock = Murdock()

@@ -345,8 +345,16 @@ class Murdock:
         if action in ["unlabeled", "edited"]:
             return
 
-        if action == "labeled" and event["label"]["name"] != CI_CONFIG.ready_label:
-            return
+        if action == "labeled":
+            if event["label"]["name"] != CI_CONFIG.ready_label:
+                return
+            # Skip already queued jobs
+            if event["label"][
+                "name"
+            ] == CI_CONFIG.ready_label and self.queued.search_by_pr_number(
+                job.pr.number
+            ):
+                return
 
         await self.schedule_job(job)
 

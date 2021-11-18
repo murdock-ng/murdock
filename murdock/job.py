@@ -151,7 +151,7 @@ class MurdockJob:
                     "CI_PULL_LABELS": ";".join(self.pr.labels),
                 }
             )
-            if self.pr.mergeable:
+            if self.pr.mergeable and self.pr.merge_commit is not None:
                 _env.update({"CI_MERGE_COMMIT": self.pr.merge_commit})
         if self.ref is not None:
             _env.update(
