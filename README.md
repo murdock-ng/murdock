@@ -5,7 +5,7 @@ Developed for RIOT (riot-os.org).
 
 # Requirements
 
-Murdock is fully written in Python (requires >= 3.8) and is based on the
+Murdock is fully written in Python (requires >= 3.9) and is based on the
 [FastAPI](https://fastapi.tiangolo.com/) framework for the REST API.
 In order to keep the history of completed jobs, they are stored in a
 [MongoDb](https://www.mongodb.com/) database.
