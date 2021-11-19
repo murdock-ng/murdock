@@ -25,9 +25,10 @@ First you have to adapt the [.env](.env) file with your project setup:
 - `MURDOCK_WORK_DIR` corresponds to the base location where all jobs build results
 will be stored. Each job is launched from a directory with the path
 `<MURDOCK_WORK_DIR>/<job uid>` and all output data for a given job is located there
-- `MURDOCK_SCRIPTS_DIR` corresponds to the location where the `build.sh` is
-located. You can find examples [here](utils/buils.sh) and
-[here](scripts.example/build.sh.example)
+- `MURDOCK_SCRIPTS_DIR` corresponds to the location where the `run.sh` (default name)
+is located. You can find examples [here](utils/run.sh) and
+[here](utils/run-with-progress.sh). Use `MURDOCK_SCRIPT_NAME` env variable to
+set a custom script name.
 - `MURDOCK_HTML_DIR` corresponds to the location where the source code of
 [murdock-html react app](https://github.com/riot-os/murdock-html) is located
 - `MURDOCK_GITHUB_APP_CLIENT_ID` and `MURDOCK_GITHUB_APP_CLIENT_SECRET` corresponds
@@ -39,8 +40,8 @@ domain):
   - Authorization callback URL: `http://localhost:8000`
 
 You can specify a custom Docker image using the `MURDOCK_DOCKER_IMAGE`, if
-eventually your `build.sh` requires extra tools. This
-image should derive from `riot/murdock` to be sure Murdock is installed.
+eventually your murdock script requires extra tools.
+This image should derive from `riot/murdock` to be sure Murdock is installed.
 
 Build the React application:
 

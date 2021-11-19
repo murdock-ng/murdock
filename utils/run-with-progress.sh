@@ -4,8 +4,11 @@
 # with Murdock:
 # - the job parameters (PR number, commit hash, etc) are retrieved via
 #   environment variables
-# - Each progress during the build job can be notified to murdock on its /ctrl
-#   endpoint
+# - Each progress during the build job can be notified to the murdock API
+#
+# To use this script, set MURDOCK_SCRIPT_NAME=run-with-progress.sh in a .env
+# file or to the server command line.
+
 
 ACTION="$1"
 
@@ -35,20 +38,22 @@ case "$ACTION" in
         FAILED_BUILDS=""
         for job in $(seq 0 1 ${NUM_JOBS})
         do
+            echo "---- Job ${job} started"
+            echo "I am job ${job} (ret: ${RETVAL})" > job_${job}.txt
             if [ "${RETVAL}" -eq 1 ]
             then
                 if  [ "${job}" -ne 0 ]
                 then
                     FAILED_BUILDS+=", "
                 fi
-                FAILED_BUILDS+='{"name": "job_'${job}'", "href": "job_'${job}'"}'
+                FAILED_BUILDS+='{"name": "job_'${job}'", "href": "'${CI_BASE_URL}'/results/'${CI_JOB_UID}'/job_'${job}'.txt"}'
                 STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": '${job}', "passed": 0, "eta": "'$((${NUM_JOBS} - ${job}))'", "failed_builds": ['${FAILED_BUILDS}']}}'
             else
                 STATUS='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
             fi
             /usr/bin/curl -d "${STATUS}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/jobs/running/${CI_JOB_UID}/status > /dev/null
             sleep ${JOB_DELAY}
-            echo "---- Finishing job_${job}"
+            echo "---- Job ${job} finished"
             echo
         done
 

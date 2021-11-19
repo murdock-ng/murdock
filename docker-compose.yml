@@ -13,6 +13,7 @@ services:
         - MURDOCK_USE_JOB_TOKEN
         - MURDOCK_API_TOKEN
         - MURDOCK_NUM_WORKERS
+        - MURDOCK_SCRIPT_NAME
         - MURDOCK_DB_HOST=mongodb
         - MURDOCK_DB_PORT=27017
         - MURDOCK_DB_NAME

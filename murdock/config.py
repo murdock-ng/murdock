@@ -42,6 +42,7 @@ class GlobalSettings(BaseSettings):
     )
     cancel_on_update: bool = Field(env="MURDOCK_CANCEL_ON_UPDATE", default=True)
     store_stopped_jobs: bool = Field(env="MURDOCK_STORE_STOPPED_JOBS", default=True)
+    script_name: str = Field(env="MURDOCK_SCRIPT_NAME", default="run.sh")
 
     @validator("work_dir")
     def work_dir_exists(cls, path):

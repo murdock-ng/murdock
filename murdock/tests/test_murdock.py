@@ -125,7 +125,7 @@ async def test_schedule_single_job(
     )
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
-    script_file = os.path.join(scripts_dir, "build.sh")
+    script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
         f.write(TEST_SCRIPT.format(**ret))
     os.chmod(script_file, 0o744)
@@ -179,7 +179,7 @@ async def test_schedule_multiple_jobs(
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
-    script_file = os.path.join(scripts_dir, "build.sh")
+    script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
         f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
     os.chmod(script_file, 0o744)
@@ -231,7 +231,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     find.return_value = []
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
-    script_file = os.path.join(scripts_dir, "build.sh")
+    script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
         f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
     os.chmod(script_file, 0o744)

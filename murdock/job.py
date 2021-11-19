@@ -179,9 +179,10 @@ class MurdockJob:
 
     async def execute(self, notify=None):
         MurdockJob.create_dir(self.work_dir)
-        LOGGER.debug(f"Launching build action for {self}")
+        script_path = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
+        LOGGER.debug(f"Launching build action for {self} (script: {script_path})")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(self.scripts_dir, "build.sh"),
+            script_path,
             "build",
             cwd=self.work_dir,
             env=self.env,
@@ -236,7 +237,7 @@ class MurdockJob:
 
         LOGGER.debug(f"Launch post_build action for {self}")
         self.proc = await asyncio.create_subprocess_exec(
-            os.path.join(self.scripts_dir, "build.sh"),
+            script_path,
             "post_build",
             cwd=self.work_dir,
             env=self.env,
