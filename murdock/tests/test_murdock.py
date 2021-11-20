@@ -621,6 +621,12 @@ async def test_handle_pr_event_labeled_action(
         pytest.param(
             "refs/heads/test_branch", "branches", "test_branch", id="branches"
         ),
+        pytest.param(
+            "refs/heads/test_branch/with/slashes",
+            "branches",
+            "test_branch/with/slashes",
+            id="branches_with_slashes",
+        ),
         pytest.param("refs/tags/test_tags", "tags", "test_tags", id="tags"),
     ],
 )
@@ -655,10 +661,22 @@ async def test_handle_push_event(
             id="branches",
         ),
         pytest.param(
+            "refs/heads/test_branch",
+            "test_branch",
+            MurdockSettings(push={"branches": []}),
+            id="branches_empty_rules",
+        ),
+        pytest.param(
+            "refs/heads/test_branch/with/slashes",
+            "test_branch/with/slashes",
+            MurdockSettings(push={"branches": ["other_branch"]}),
+            id="branches_with_slashes",
+        ),
+        pytest.param(
             "refs/tags/test_tags",
             "test_tags",
             MurdockSettings(push={"tags": ["other_tags"]}),
-            id="tags",
+            id="tags_empty_rules",
         ),
     ],
 )

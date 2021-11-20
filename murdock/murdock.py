@@ -363,12 +363,12 @@ class Murdock:
         return (
             "*" in rules
             or ref in rules
-            or any(re.match(expr, ref) is not None for expr in rules)
+            or (rules and any(re.match(expr, ref) is not None for expr in rules))
         )
 
     async def handle_push_event(self, event: dict):
         ref = event["ref"]
-        ref_type, ref_name = ref.split("/")[-2:]
+        ref_type, ref_name = ref.split("/", 2)[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
             LOGGER.debug(
                 f"Ref was removed upstream, aborting all jobs related to ref '{ref}'"
