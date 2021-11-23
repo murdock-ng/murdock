@@ -28,7 +28,6 @@ from murdock.config import (
     MurdockSettings,
 )
 from murdock.models import (
-    FinishedJobModel,
     JobModel,
     CategorizedJobsModel,
     JobQueryModel,
@@ -137,7 +136,7 @@ async def _check_admin_permissions(
 @app.get(
     path="/jobs/queued",
     response_model=List[JobModel],
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Return the list of queued jobs",
     tags=["queued jobs"],
 )
@@ -148,7 +147,7 @@ async def queued_jobs_handler(query: JobQueryModel = Depends()):
 @app.delete(
     path="/jobs/queued/{uid}",
     response_model=JobModel,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Remove a job from the queue",
     tags=["queued jobs"],
 )
@@ -165,7 +164,7 @@ async def queued_commit_cancel_handler(
 @app.get(
     path="/jobs/running",
     response_model=List[JobModel],
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Return the list of running jobs",
     tags=["running jobs"],
 )
@@ -176,7 +175,7 @@ async def running_jobs_handler(query: JobQueryModel = Depends()):
 @app.put(
     path="/jobs/running/{uid}/status",
     response_model=JobModel,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Update the status of a running job",
     tags=["running jobs"],
 )
@@ -206,7 +205,7 @@ async def running_job_status_handler(request: Request, uid: str):
 @app.delete(
     path="/jobs/running/{uid}",
     response_model=JobModel,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Stop a running job",
     tags=["running jobs"],
 )
@@ -221,7 +220,8 @@ async def running_job_stop_handler(
 
 @app.get(
     path="/jobs/finished",
-    response_model=List[FinishedJobModel],
+    response_model=List[JobModel],
+    response_model_exclude_none=True,
     summary="Return the list of finished jobs sorted by end time, reversed",
     tags=["finished jobs"],
 )
@@ -232,7 +232,7 @@ async def finished_jobs_handler(query: JobQueryModel = Depends()):
 @app.post(
     path="/jobs/finished/{uid}",
     response_model=JobModel,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Restart a finished job",
     tags=["finished jobs"],
 )
@@ -246,8 +246,8 @@ async def finished_job_restart_handler(
 
 @app.delete(
     path="/jobs/finished",
-    response_model=List[FinishedJobModel],
-    response_model_exclude_unset=True,
+    response_model=List[JobModel],
+    response_model_exclude_none=True,
     summary="Removed finished jobs older than 'before' date",
     tags=["finished jobs"],
 )
@@ -263,7 +263,7 @@ async def finished_job_delete_handler(
 @app.get(
     path="/jobs",
     response_model=CategorizedJobsModel,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     summary="Return the list of all jobs (queued, running, finished)",
     tags=["jobs"],
 )

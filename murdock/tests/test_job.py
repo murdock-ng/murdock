@@ -5,7 +5,7 @@ import pytest
 
 from ..config import MurdockSettings
 from ..job import MurdockJob
-from ..models import CommitModel, FinishedJobModel, JobModel, PullRequestInfo
+from ..models import CommitModel, JobModel, PullRequestInfo
 
 
 commit = CommitModel(sha="test_commit", message="test message", author="test_user")
@@ -237,13 +237,13 @@ def test_running_model():
 
 def test_to_db_entry():
     job = MurdockJob(commit, pr=prinfo)
-    job.result = "passed"
+    job.state = "passed"
     job.output = "test output"
-    expected_model = FinishedJobModel(
+    expected_model = JobModel(
         uid=job.uid,
         since=job.start_time,
         runtime=job.runtime,
-        result="passed",
+        state="passed",
         output_url=job.output_url,
         output_text_url=job.output_text_url,
         work_dir=job.work_dir,
@@ -259,7 +259,7 @@ def test_finished_model():
         "uid": "123",
         "since": 12345,
         "runtime": 1234.5,
-        "result": "passed",
+        "state": "passed",
         "output": "job output",
         "output_url": "output.html",
         "output_text_url": "output.txt",
@@ -269,11 +269,11 @@ def test_finished_model():
         "commit": commit.dict(),
     }
     result = MurdockJob.finished_model(entry)
-    assert result == FinishedJobModel(
+    assert result == JobModel(
         uid="123",
         since=12345,
         runtime=1234.5,
-        result="passed",
+        state="passed",
         output="job output",
         output_url="output.html",
         output_text_url="output.txt",

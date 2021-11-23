@@ -35,9 +35,9 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
         (JobQueryModel(ref="refs/tags/test"), {"ref": "refs/tags/test"}),
         (JobQueryModel(sha="abcdef"), {"commit.sha": "abcdef"}),
         (JobQueryModel(author="me"), {"commit.author": "me"}),
-        (JobQueryModel(states="invalid"), {"result": {"$in": ["invalid"]}}),
-        (JobQueryModel(states="passed"), {"result": {"$in": ["passed"]}}),
-        (JobQueryModel(states="errored"), {"result": {"$in": ["errored"]}}),
+        (JobQueryModel(states="invalid"), {"state": {"$in": ["invalid"]}}),
+        (JobQueryModel(states="passed"), {"state": {"$in": ["passed"]}}),
+        (JobQueryModel(states="errored"), {"state": {"$in": ["errored"]}}),
         (
             JobQueryModel(after="2021-08-18"),
             {"since": {"$gte": test_date_after.timestamp()}},
@@ -70,7 +70,7 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
                 "prinfo.number": 42,
                 "commit.sha": "abcdef",
                 "commit.author": "me",
-                "result": {"$in": ["passed", "errored"]},
+                "state": {"$in": ["passed", "errored"]},
                 "since": {
                     "$lte": test_date_before.timestamp(),
                     "$gte": test_date_after.timestamp(),

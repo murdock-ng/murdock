@@ -98,16 +98,13 @@ class JobModel(BaseModel):
         None,
         title="Status of the job",
     )
-    output: str = Field(
+    state: str = Field(
+        None,
+        title="State of a job (queued, running, passed, errored or stopped)",
+    )
+    output: Optional[str] = Field(
         None,
         title="Output of the job",
-    )
-
-
-class FinishedJobModel(JobModel):
-    result: str = Field(
-        None,
-        title="Final result of a job (passed or errored)",
     )
     output_url: Optional[str] = Field(
         None,
@@ -117,7 +114,7 @@ class FinishedJobModel(JobModel):
         None,
         title="URL where text output of the job is available",
     )
-    runtime: float = Field(
+    runtime: Optional[float] = Field(
         None,
         title="Runtime of the job",
     )
@@ -132,7 +129,7 @@ class CategorizedJobsModel(BaseModel):
         None,
         title="List of all running jobs",
     )
-    finished: List[FinishedJobModel] = Field(
+    finished: List[JobModel] = Field(
         None,
         title="List of all finished jobs",
     )
@@ -222,7 +219,7 @@ class JobQueryModel(BaseModel):
             else:
                 _query.update({"ref": {"$not": {"$regex": "^refs/tags/.*"}}})
         if self.states is not None:
-            _query.update({"result": {"$in": self.states.split(" ")}})
+            _query.update({"state": {"$in": self.states.split(" ")}})
         if self.prnum is not None:
             _query.update({"prinfo.number": self.prnum})
         if self.branch is not None:

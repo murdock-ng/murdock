@@ -14,7 +14,6 @@ from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
 from murdock.models import (
     CategorizedJobsModel,
-    FinishedJobModel,
     JobModel,
     PullRequestInfo,
     JobQueryModel,
@@ -86,7 +85,7 @@ class Murdock:
                 await job.execute(notify=self.notify_message_to_clients)
             except Exception as exc:
                 LOGGER.warning(f"Build job failed:\n{exc}")
-                job.result = "errored"
+                job.state = "errored"
             await self.job_finalize(job)
             LOGGER.info(f"Job {job} completed")
 
@@ -109,6 +108,7 @@ class Murdock:
     async def job_prepare(self, job: MurdockJob):
         self.queued.remove(job)
         self.running.add(job)
+        job.state = "running"
         LOGGER.debug(f"{job} added to the running jobs")
         job.start_time = time.time()
         await set_commit_status(
@@ -128,9 +128,9 @@ class Murdock:
             job.status["status"] = "finished"
         self.running.remove(job)
         LOGGER.debug(f"{job} removed from running jobs")
-        if job.result != "stopped":
-            job_state = "success" if job.result == "passed" else "failure"
-            job_status_desc = "succeeded" if job.result == "passed" else "failed"
+        if job.state != "stopped":
+            job_state = "success" if job.state == "passed" else "failure"
+            job_status_desc = "succeeded" if job.state == "passed" else "failed"
             await set_commit_status(
                 job.commit.sha,
                 {
@@ -145,8 +145,8 @@ class Murdock:
             if job.pr is not None and job.config.pr.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
-        if job.result in ["passed", "errored"] or (
-            job.result == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
+        if job.state in ["passed", "errored"] or (
+            job.state == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
         ):
             await self.db.insert_job(job)
         await self.reload_jobs()
@@ -163,6 +163,7 @@ class Murdock:
         )
         all_busy = all(running is not None for running in self.running.jobs)
         self.queued.add(job)
+        job.state = "queued"
         if all_busy and job.fasttracked:
             self.fasttrack_queue.put_nowait(job)
         else:
@@ -428,9 +429,7 @@ class Murdock:
             if query.states is None or "running" in query.states
         ]
 
-    async def remove_finished_jobs(
-        self, query: JobQueryModel
-    ) -> List[FinishedJobModel]:
+    async def remove_finished_jobs(self, query: JobQueryModel) -> List[JobModel]:
         jobs_before = await self.db.count_jobs(JobQueryModel(limit=-1))
         query.limit = -1
         jobs_count = await self.db.count_jobs(query)

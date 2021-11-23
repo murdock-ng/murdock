@@ -64,7 +64,7 @@ esac
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "ret,job_result,post_build_stop,comment_on_pr",
+    "ret,job_state,post_build_stop,comment_on_pr",
     [
         pytest.param(
             {"build_ret": 0, "post_build_ret": 0},
@@ -107,7 +107,7 @@ esac
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
 async def test_schedule_single_job(
-    insert, status, comment, ret, job_result, post_build_stop, comment_on_pr, tmpdir
+    insert, status, comment, ret, job_state, post_build_stop, comment_on_pr, tmpdir
 ):
     commit = CommitModel(sha="test_commit", message="test message", author="test_user")
     prinfo = PullRequestInfo(
@@ -144,7 +144,7 @@ async def test_schedule_single_job(
     assert job not in murdock.queued.jobs
     assert job in murdock.running.jobs
     job.status = {"status": "working"}
-    if job_result == "stopped":
+    if job_state == "stopped":
         if post_build_stop is True:
             await asyncio.sleep(1)
         await murdock.stop_running_job(job)
@@ -159,7 +159,7 @@ async def test_schedule_single_job(
     else:
         comment.assert_not_called()
     assert job.status == {"status": "finished"}
-    assert job.result == job_result
+    assert job.state == job_state
     assert status.call_count == 3
 
 
@@ -280,7 +280,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     assert murdock.running.jobs[0] == jobs[-1]
     assert murdock.get_running_jobs()[-1].uid == jobs[-1].uid
     await asyncio.sleep(2)
-    assert jobs[-1].result == "passed"
+    assert jobs[-1].state == "passed"
     assert murdock.running.jobs[0] in jobs[: num_jobs - 1]
     await asyncio.sleep(2.1)
     assert len(murdock.queued.jobs) == 0

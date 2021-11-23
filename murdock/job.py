@@ -12,7 +12,7 @@ from asyncio.subprocess import Process
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
-from murdock.models import PullRequestInfo, CommitModel, JobModel, FinishedJobModel
+from murdock.models import PullRequestInfo, CommitModel, JobModel
 from murdock.config import MurdockSettings
 
 
@@ -26,7 +26,7 @@ class MurdockJob:
     ):
         self.uid: str = uuid.uuid4().hex
         self.config = config
-        self.result: Optional[str] = None
+        self.state = None
         self.proc: Optional[Process] = None
         self.output: str = ""
         self.commit: CommitModel = commit
@@ -90,6 +90,7 @@ class MurdockJob:
             ref=self.ref,
             prinfo=self.pr,
             since=self.start_time,
+            state=self.state,
             fasttracked=self.fasttracked,
         )
 
@@ -101,17 +102,18 @@ class MurdockJob:
             prinfo=self.pr,
             since=self.start_time,
             status=self.status,
+            state=self.state,
             output=self.output,
         )
 
     @staticmethod
     def to_db_entry(job):
-        return FinishedJobModel(
+        return JobModel(
             uid=job.uid,
             commit=job.commit,
             since=job.start_time,
             runtime=job.runtime,
-            result=job.result,
+            state=job.state,
             output_url=job.output_url,
             output_text_url=job.output_text_url,
             status=job.status,
@@ -120,8 +122,8 @@ class MurdockJob:
         ).dict(exclude_none=True)
 
     @staticmethod
-    def finished_model(entry: dict) -> FinishedJobModel:
-        return FinishedJobModel(**entry)
+    def finished_model(entry: dict) -> JobModel:
+        return JobModel(**entry)
 
     @property
     def env(self):
@@ -201,16 +203,16 @@ class MurdockJob:
                 )
         await self.proc.wait()
         if self.proc.returncode == 0:
-            self.result = "passed"
+            self.state = "passed"
         elif self.proc.returncode in [
             int(signal.SIGINT) * -1,
             int(signal.SIGKILL) * -1,
             int(signal.SIGTERM) * -1,
         ]:
-            self.result = "stopped"
+            self.state = "stopped"
         else:
-            self.result = "errored"
-        LOGGER.debug(f"Job {self} {self.result} (ret: {self.proc.returncode})")
+            self.state = "errored"
+        LOGGER.debug(f"Job {self} {self.state} (ret: {self.proc.returncode})")
 
         # Store build output in text file
         output_text_path = os.path.join(self.work_dir, "output.txt")
@@ -227,7 +229,7 @@ class MurdockJob:
             self.output_text_url = output_text_url
 
         # If the job was stopped, just return now and skip the post_build action
-        if self.result == "stopped":
+        if self.state == "stopped":
             LOGGER.debug(f"Job {self} stopped before post_build action")
             self.proc = None
             return
@@ -255,13 +257,13 @@ class MurdockJob:
                 f"Job error for {self}: Post build action failed:\n"
                 f"out: {out.decode()}"
             )
-            self.result = "errored"
+            self.state = "errored"
         if self.proc.returncode in [
             int(signal.SIGINT) * -1,
             int(signal.SIGKILL) * -1,
             int(signal.SIGTERM) * -1,
         ]:
-            self.result = "stopped"
+            self.state = "stopped"
 
         output_html_path = os.path.join(self.work_dir, "output.html")
         output_html_url = os.path.join(

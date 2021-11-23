@@ -16,7 +16,6 @@ from ..job import MurdockJob
 from ..models import (
     CategorizedJobsModel,
     CommitModel,
-    FinishedJobModel,
     JobModel,
     JobQueryModel,
     PullRequestInfo,
@@ -39,18 +38,28 @@ prinfo = PullRequestInfo(
     labels=["test"],
 )
 test_job_queued = JobModel(
-    uid="1234", commit=commit, prinfo=prinfo, since=12345.6, fasttracked=True
+    uid="1234",
+    commit=commit,
+    prinfo=prinfo,
+    since=12345.6,
+    fasttracked=True,
+    state="queued",
 )
 test_job_running = JobModel(
-    uid="1234", commit=commit, prinfo=prinfo, since=12345.6, status={"status": "test"}
-)
-test_job_finished = FinishedJobModel(
     uid="1234",
     commit=commit,
     prinfo=prinfo,
     since=12345.6,
     status={"status": "test"},
-    result="passed",
+    state="running",
+)
+test_job_finished = JobModel(
+    uid="1234",
+    commit=commit,
+    prinfo=prinfo,
+    since=12345.6,
+    status={"status": "test"},
+    state="passed",
     output_url="test",
     runtime=1234.5,
 )
@@ -232,7 +241,7 @@ async def test_check_admin_permissions(get, text, code, valid):
     )
 
 
-@pytest.mark.parametrize("result", [[], [test_job_queued.dict(exclude={"status"})]])
+@pytest.mark.parametrize("result", [[], [test_job_queued.dict(exclude_none=True)]])
 @mock.patch("murdock.murdock.Murdock.get_queued_jobs")
 def test_get_queued_jobs(jobs, result):
     jobs.return_value = result
@@ -257,9 +266,7 @@ def test_cancel_queued_job(cancel, search, job_queued, code):
     assert response.status_code == code
     if job_queued:
         cancel.assert_called_with(job_queued, reload_jobs=True)
-        assert response.json() == job_queued.queued_model().dict(
-            exclude={"status", "output"}
-        )
+        assert response.json() == job_queued.queued_model().dict(exclude_none=True)
     else:
         cancel.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
@@ -274,9 +281,7 @@ def test_cancel_queued_not_allowed(cancel):
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize(
-    "result", [[], [test_job_running.dict(exclude={"fasttracked"})]]
-)
+@pytest.mark.parametrize("result", [[], [test_job_running.dict(exclude_none=True)]])
 @mock.patch("murdock.murdock.Murdock.get_running_jobs")
 def test_get_running_jobs(jobs, result):
     jobs.return_value = result
@@ -325,7 +330,7 @@ def test_get_running_jobs(jobs, result):
             test_job,
             {"Authorization": test_job.token},
             200,
-            test_job.running_model().dict(exclude={"fasttracked"}),
+            test_job.running_model().dict(exclude_none=True),
             id="update_job_found",
         ),
     ],
@@ -364,7 +369,7 @@ def test_stop_running_job(search, stop, result, code):
     assert response.status_code == code
     if result is not None:
         stop.assert_called_with(result, reload_jobs=True)
-        assert response.json() == result.running_model().dict(exclude={"fasttracked"})
+        assert response.json() == result.running_model().dict(exclude_none=True)
     else:
         stop.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
@@ -379,7 +384,7 @@ def test_stop_running_not_allowed(stop):
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize("result", [[], [test_job_finished]])
+@pytest.mark.parametrize("result", [[], [test_job_finished.dict(exclude_none=True)]])
 @mock.patch("murdock.database.Database.find_jobs")
 def test_get_finished_jobs(jobs, result):
     jobs.return_value = result
@@ -423,9 +428,7 @@ def test_restart_job(restart, result, code):
     assert response.status_code == code
     restart.assert_called_with("123")
     if result is not None:
-        assert response.json() == result.queued_model().dict(
-            exclude={"status", "output"}
-        )
+        assert response.json() == result.queued_model().dict(exclude_none=True)
     else:
         assert response.json() == {"detail": "Cannot restart job '123'"}
 

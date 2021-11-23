@@ -193,7 +193,7 @@ async def test_comment_on_pr(
         ),
     )
     job.output_url = f"http://localhost:8000/results/{job.uid}/output.html"
-    job.result = "passed"
+    job.state = "passed"
     comment = (
         "### Murdock results\n"
         "\n"
@@ -205,17 +205,9 @@ async def test_comment_on_pr(
         comment += "\n\n"
 
     await comment_on_pr(job)
-    if get_called is True and sticky is True:
+    if get_called is True:
         get.assert_called_with(
             f"https://api.github.com/repos/test/repo/issues/123/comments?page={page}",
-            headers={
-                "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"token {GITHUB_CONFIG.api_token}",
-            },
-        )
-    elif get_called is True:
-        get.assert_called_with(
-            "https://api.github.com/repos/test/repo/issues/123/comments",
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}",

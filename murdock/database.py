@@ -7,7 +7,7 @@ import motor.motor_asyncio as aiomotor
 from murdock.config import DB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
-from murdock.models import CommitModel, FinishedJobModel, JobQueryModel, PullRequestInfo
+from murdock.models import CommitModel, JobModel, JobQueryModel, PullRequestInfo
 
 
 class Database:
@@ -48,13 +48,12 @@ class Database:
 
         return MurdockJob(commit, pr=prinfo, ref=ref)
 
-    async def find_jobs(self, query: JobQueryModel) -> List[FinishedJobModel]:
+    async def find_jobs(self, query: JobQueryModel) -> List[JobModel]:
         jobs = await (
             self.db.job.find(query.to_mongodb_query())
             .sort("since", -1)
             .to_list(length=query.limit)
         )
-
         return [MurdockJob.finished_model(job) for job in jobs]
 
     async def update_jobs(self, query: JobQueryModel, field, value) -> int:
