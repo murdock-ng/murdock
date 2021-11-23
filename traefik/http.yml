@@ -5,6 +5,7 @@ http:
         PathPrefix(`/api`) ||
         PathPrefix(`/github`) ||
         PathPrefix(`/jobs`) ||
+        PathPrefix(`/job`) ||
         PathPrefix(`/results`) ||
         PathPrefix(`/ws`) ||
         PathPrefix(`/openapi.json`)

@@ -453,6 +453,16 @@ class Murdock:
             finished=await self.db.find_jobs(query),
         )
 
+    async def get_job(self, uid: str) -> JobModel:
+        found_job = None
+        if (job := self.queued.search_by_uid(uid)) is not None:
+            found_job = MurdockJob.queued_model(job)
+        elif (job := self.running.search_by_uid(uid)) is not None:
+            found_job = MurdockJob.queued_model(job)
+        elif jobs := await self.db.find_jobs(JobQueryModel(uid=uid)):
+            found_job = jobs[0]
+        return found_job
+
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
         job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:

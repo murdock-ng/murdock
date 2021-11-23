@@ -271,6 +271,19 @@ async def jobs_handler(query: JobQueryModel = Depends()):
     return await murdock.get_jobs(query)
 
 
+@app.get(
+    path="/job/{uid}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the details of a job",
+    tags=["jobs"],
+)
+async def job_handler(uid: str):
+    if (job := await murdock.get_job(uid)) is None:
+        raise HTTPException(status_code=404, detail="Found no matching job")
+    return job
+
+
 @app.websocket("/ws/status")
 async def ws_client_handler(websocket: WebSocket):
     LOGGER.debug("websocket opening")
