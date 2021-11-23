@@ -198,11 +198,9 @@ async def test_comment_on_pr(
         "### Murdock results\n"
         "\n"
         f":heavy_check_mark: [PASSED](http://localhost:8000/results/{job.uid}/output.html)\n"
+        "\n"
+        "test_commit test message\n\n"
     )
-    if sticky is True:
-        comment += "\n" "test_commit test message\n\n\n"
-    else:
-        comment += "\n\n"
 
     await comment_on_pr(job)
     if get_called is True:
