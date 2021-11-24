@@ -430,17 +430,13 @@ class Murdock:
         ]
 
     async def remove_finished_jobs(self, query: JobQueryModel) -> List[JobModel]:
-        jobs_before = await self.db.count_jobs(JobQueryModel(limit=-1))
         query.limit = -1
-        jobs_count = await self.db.count_jobs(query)
-        query.limit = jobs_count
         jobs_to_remove = await (self.db.find_jobs(query))
         for job in jobs_to_remove:
             work_dir = os.path.join(GLOBAL_CONFIG.work_dir, job.uid)
             MurdockJob.remove_dir(work_dir)
         await self.db.delete_jobs(query)
-        jobs_removed = jobs_before - await self.db.count_jobs()
-        LOGGER.info(f"{jobs_removed} jobs removed")
+        LOGGER.info(f"{len(jobs_to_remove)} jobs removed")
         await self.reload_jobs()
         return jobs_to_remove
 

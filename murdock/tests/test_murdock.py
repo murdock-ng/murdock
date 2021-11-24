@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 
 from murdock.murdock import Murdock
-from murdock.models import CommitModel, PullRequestInfo
+from murdock.models import CommitModel, JobQueryModel, PullRequestInfo
 from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
 
 
@@ -858,3 +858,36 @@ async def test_handle_job_status_data(notify, search, job_found, data, called):
         notify.assert_called_with(json.dumps(data))
     else:
         notify.assert_not_called()
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.database.Database.find_jobs")
+@mock.patch("murdock.database.Database.delete_jobs")
+@mock.patch("murdock.job.MurdockJob.remove_dir")
+async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
+    murdock = Murdock()
+    query = JobQueryModel(before="2021-11-24")
+    jobs_to_remove = [
+        MurdockJob(
+            CommitModel(
+                sha="test_commit_1", message="test message 1", author="test_user"
+            )
+        ),
+        MurdockJob(
+            CommitModel(
+                sha="test_commit 2", message="test message 2", author="test_user"
+            )
+        ),
+    ]
+    find_jobs.return_value = jobs_to_remove
+    result = await murdock.remove_finished_jobs(query)
+
+    find_jobs.assert_called_once()
+    find_jobs.assert_called_with(JobQueryModel(before="2021-11-24", limit=-1))
+    delete_jobs.assert_called_once()
+    delete_jobs.assert_called_with(JobQueryModel(before="2021-11-24", limit=-1))
+
+    assert remove_dir.call_count == len(jobs_to_remove)
+
+    assert f"{len(jobs_to_remove)} jobs removed" in caplog.text
+    assert result == jobs_to_remove
