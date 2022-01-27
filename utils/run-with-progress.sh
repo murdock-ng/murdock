@@ -18,7 +18,7 @@ JOB_DELAY=1
 POST_BUILD_DELAY=1
 
 case "$ACTION" in
-    build)
+    run)
         echo "-- Working directory: $(pwd)"
         echo "-- Environment vars:"
         env
@@ -66,7 +66,7 @@ case "$ACTION" in
         echo "--- Build completed (elapsed: $(($(date +%s) - ${START_TIME}))s, ret=${RETVAL})"
         exit $RETVAL
         ;;
-    post_build)
+    finalize)
         echo "-- Post build action"
         sleep ${POST_BUILD_DELAY}
         cat output.txt | /usr/bin/ansi2html > output.html

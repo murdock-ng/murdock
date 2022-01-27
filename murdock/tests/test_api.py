@@ -490,6 +490,26 @@ def test_get_jobs(jobs, result):
     assert CategorizedJobsModel(**response.json()) == result
 
 
+@pytest.mark.parametrize(
+    "result",
+    [test_job_queued, test_job_running, test_job_finished],
+)
+@mock.patch("murdock.murdock.Murdock.get_job")
+def test_get_job(get_job, result):
+    get_job.return_value = result
+    response = client.get("/job/12345")
+    assert response.status_code == 200
+    assert response.json() == result.dict(exclude_none=True)
+
+
+@mock.patch("murdock.murdock.Murdock.get_job")
+def test_get_job_not_found(get_job):
+    get_job.return_value = None
+    response = client.get("/job/12345")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "No job matching uid '12345' found"}
+
+
 @mock.patch("murdock.murdock.Murdock.remove_ws_client")
 @mock.patch("murdock.murdock.Murdock.add_ws_client")
 def test_ws_client(add_ws_client, remove_ws_client, caplog):

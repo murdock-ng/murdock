@@ -182,10 +182,10 @@ class MurdockJob:
     async def execute(self, notify=None):
         MurdockJob.create_dir(self.work_dir)
         script_path = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
-        LOGGER.debug(f"Launching build action for {self} (script: {script_path})")
+        LOGGER.debug(f"Launching run action for {self} (script: {script_path})")
         self.proc = await asyncio.create_subprocess_exec(
             script_path,
-            "build",
+            "run",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
@@ -214,7 +214,7 @@ class MurdockJob:
             self.state = "errored"
         LOGGER.debug(f"Job {self} {self.state} (ret: {self.proc.returncode})")
 
-        # Store build output in text file
+        # Store job output in text file
         output_text_path = os.path.join(self.work_dir, "output.txt")
         try:
             with open(output_text_path, "w") as out:
@@ -228,19 +228,19 @@ class MurdockJob:
         if os.path.exists(output_text_path):
             self.output_text_url = output_text_url
 
-        # If the job was stopped, just return now and skip the post_build action
+        # If the job was stopped, just return now and skip the finalize step
         if self.state == "stopped":
-            LOGGER.debug(f"Job {self} stopped before post_build action")
+            LOGGER.debug(f"Job {self} stopped before finalizing")
             self.proc = None
             return
 
         # Remove build subdirectory
         MurdockJob.remove_dir(os.path.join(self.work_dir, "build"))
 
-        LOGGER.debug(f"Launch post_build action for {self}")
+        LOGGER.debug(f"Finalizing {self}")
         self.proc = await asyncio.create_subprocess_exec(
             script_path,
-            "post_build",
+            "finalize",
             cwd=self.work_dir,
             env=self.env,
             stdout=asyncio.subprocess.PIPE,
@@ -254,8 +254,7 @@ class MurdockJob:
             int(signal.SIGTERM) * -1,
         ]:
             LOGGER.warning(
-                f"Job error for {self}: Post build action failed:\n"
-                f"out: {out.decode()}"
+                f"Job error: failed to finalize {self}:\n" f"out: {out.decode()}"
             )
             self.state = "errored"
         if self.proc.returncode in [

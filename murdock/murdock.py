@@ -116,7 +116,7 @@ class Murdock:
             {
                 "state": "pending",
                 "context": "Murdock",
-                "description": "The build has started",
+                "description": "The job has started",
                 "target_url": GLOBAL_CONFIG.base_url,
             },
         )
@@ -137,8 +137,7 @@ class Murdock:
                     "state": job_state,
                     "context": "Murdock",
                     "description": (
-                        f"The build {(job_status_desc)}. "
-                        f"runtime: {job.runtime_human}"
+                        f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
                     ),
                 },
             )
@@ -157,7 +156,7 @@ class Murdock:
             {
                 "state": "pending",
                 "context": "Murdock",
-                "description": "The build has been queued",
+                "description": "The job has been queued",
                 "target_url": GLOBAL_CONFIG.base_url,
             },
         )
@@ -275,7 +274,7 @@ class Murdock:
                 {
                     "state": "pending",
                     "context": "Murdock",
-                    "description": "The build was skipped.",
+                    "description": "The job was skipped.",
                 },
             )
             return True

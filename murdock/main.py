@@ -280,7 +280,9 @@ async def jobs_handler(query: JobQueryModel = Depends()):
 )
 async def job_handler(uid: str):
     if (job := await murdock.get_job(uid)) is None:
-        raise HTTPException(status_code=404, detail="Found no matching job")
+        raise HTTPException(
+            status_code=404, detail=f"No job matching uid '{uid}' found"
+        )
     return job
 
 

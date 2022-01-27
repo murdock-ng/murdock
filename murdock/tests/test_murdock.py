@@ -45,14 +45,14 @@ TEST_SCRIPT = """#!/bin/bash
 ACTION="$1"
 
 case "$ACTION" in
-    build)
+    run)
         echo "BUILD"
         sleep 1
-        exit {build_ret}
+        exit {run_ret}
         ;;
-    post_build)
+    finalize)
         sleep 1
-        exit {post_build_ret}
+        exit {finalize_ret}
         ;;
     *)
         echo "$0: unhandled action $ACTION"
@@ -64,42 +64,42 @@ esac
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "ret,job_state,post_build_stop,comment_on_pr",
+    "ret,job_state,finalize_stop,comment_on_pr",
     [
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0},
+            {"run_ret": 0, "finalize_ret": 0},
             "passed",
             False,
             True,
             id="job_succeeded",
         ),
         pytest.param(
-            {"build_ret": 1, "post_build_ret": 0},
+            {"run_ret": 1, "finalize_ret": 0},
             "errored",
             False,
             True,
             id="job_failed",
         ),
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 1},
+            {"run_ret": 0, "finalize_ret": 1},
             "errored",
             False,
             False,
-            id="job_post_build_failed",
+            id="job_finalize_failed",
         ),
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0},
+            {"run_ret": 0, "finalize_ret": 0},
             "stopped",
             False,
             False,
             id="job_stopped",
         ),
         pytest.param(
-            {"build_ret": 0, "post_build_ret": 0},
+            {"run_ret": 0, "finalize_ret": 0},
             "stopped",
             True,
             False,
-            id="job_post_build_stopped",
+            id="job_finalize_stopped",
         ),
     ],
 )
@@ -107,7 +107,7 @@ esac
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
 async def test_schedule_single_job(
-    insert, status, comment, ret, job_state, post_build_stop, comment_on_pr, tmpdir
+    insert, status, comment, ret, job_state, finalize_stop, comment_on_pr, tmpdir
 ):
     commit = CommitModel(sha="test_commit", message="test message", author="test_user")
     prinfo = PullRequestInfo(
@@ -145,7 +145,7 @@ async def test_schedule_single_job(
     assert job in murdock.running.jobs
     job.status = {"status": "working"}
     if job_state == "stopped":
-        if post_build_stop is True:
+        if finalize_stop is True:
             await asyncio.sleep(1)
         await murdock.stop_running_job(job)
         await asyncio.sleep(0.1)
@@ -181,7 +181,7 @@ async def test_schedule_multiple_jobs(
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
-        f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
+        f.write(TEST_SCRIPT.format(run_ret=0, finalize_ret=0))
     os.chmod(script_file, 0o744)
 
     jobs = []
@@ -233,7 +233,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
-        f.write(TEST_SCRIPT.format(build_ret=0, post_build_ret=0))
+        f.write(TEST_SCRIPT.format(run_ret=0, finalize_ret=0))
     os.chmod(script_file, 0o744)
 
     jobs = []
