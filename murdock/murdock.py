@@ -453,7 +453,7 @@ class Murdock:
         if (job := self.queued.search_by_uid(uid)) is not None:
             found_job = MurdockJob.queued_model(job)
         elif (job := self.running.search_by_uid(uid)) is not None:
-            found_job = MurdockJob.queued_model(job)
+            found_job = MurdockJob.running_model(job)
         elif jobs := await self.db.find_jobs(JobQueryModel(uid=uid)):
             found_job = jobs[0]
         return found_job

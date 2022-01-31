@@ -11,10 +11,17 @@ http:
         PathPrefix(`/openapi.json`)
       service: murdock
     to-webapp:
+      middlewares:
+        - "replace-regex"
       rule: >
         PathPrefix(`/`) ||
         PathPrefix(`/static`)
       service: webapp
+  middlewares:
+    replace-regex:
+      replacePathRegex:
+        regex: "^/details/(.*)"
+        replacement: "/"
 
   services:
     webapp:

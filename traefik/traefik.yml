@@ -5,3 +5,6 @@ entryPoints:
 providers:
   file:
     filename: /etc/traefik/http.yml
+
+# log:
+#   level: DEBUG
