@@ -26,8 +26,10 @@ services:
         - CI_READY_LABEL
         - CI_FASTTRACK_LABELS
     volumes:
+      - ./murdock:/var/lib/murdock/murdock
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
+      - ${MURDOCK_SSH_DIR}:/root/.ssh:ro
     logging:
       driver: syslog
       options:

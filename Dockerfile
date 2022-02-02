@@ -10,17 +10,14 @@ RUN apt-get update && \
         && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install Murdock
-RUN mkdir -p /var/lib/murdock-data
-RUN mkdir -p /var/lib/murdock
-COPY murdock/ /var/lib/murdock/murdock/
-
+# Install Murdock dependencies
 COPY requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install -r /tmp/requirements.txt && \
     rm -f /tmp/requirements.txt
 
+RUN mkdir -p /var/lib/{murdock,murdock-data}
 WORKDIR /var/lib/murdock
 EXPOSE 8000
 
-ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "murdock"]
