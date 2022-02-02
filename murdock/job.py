@@ -188,6 +188,7 @@ class MurdockJob:
             "run",
             cwd=self.work_dir,
             env=self.env,
+            start_new_session=True,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -243,6 +244,7 @@ class MurdockJob:
             "finalize",
             cwd=self.work_dir,
             env=self.env,
+            start_new_session=True,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -278,7 +280,8 @@ class MurdockJob:
         for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGKILL]:
             if self.proc is not None and self.proc.returncode is None:
                 LOGGER.debug(f"Send signal {sig} to job {self}")
-                self.proc.send_signal(sig)
+                os.killpg(os.getpgid(self.proc.pid), sig)
+                # self.proc.send_signal(sig)
                 try:
                     await asyncio.wait_for(self.proc.wait(), timeout=1.0)
                 except asyncio.TimeoutError:
