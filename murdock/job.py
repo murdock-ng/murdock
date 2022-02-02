@@ -277,15 +277,10 @@ class MurdockJob:
 
     async def stop(self):
         LOGGER.debug(f"Job {self} immediate stop requested")
-        for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGKILL]:
-            if self.proc is not None and self.proc.returncode is None:
-                LOGGER.debug(f"Send signal {sig} to job {self}")
-                os.killpg(os.getpgid(self.proc.pid), sig)
-                # self.proc.send_signal(sig)
-                try:
-                    await asyncio.wait_for(self.proc.wait(), timeout=1.0)
-                except asyncio.TimeoutError:
-                    LOGGER.debug(f"Couldn't stop job {self} with {sig}")
+        if self.proc is not None and self.proc.returncode is None:
+            LOGGER.debug(f"Send signal {signal.SIGINT} to job {self}")
+            os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
+            await asyncio.sleep(1)
         if not GLOBAL_CONFIG.store_stopped_jobs:
             LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)
