@@ -280,7 +280,10 @@ class MurdockJob:
         if self.proc is not None and self.proc.returncode is None:
             LOGGER.debug(f"Send signal {signal.SIGINT} to job {self}")
             os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
-            await asyncio.sleep(1)
+            try:
+                await asyncio.wait_for(self.proc.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                LOGGER.debug(f"Couldn't stop job {self} with {signal.SIGINT}")
         if not GLOBAL_CONFIG.store_stopped_jobs:
             LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)
