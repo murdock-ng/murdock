@@ -106,10 +106,6 @@ class JobModel(BaseModel):
         None,
         title="Output of the job",
     )
-    output_url: Optional[str] = Field(
-        None,
-        title="URL where html output of the job is available",
-    )
     output_text_url: Optional[str] = Field(
         None,
         title="URL where text output of the job is available",

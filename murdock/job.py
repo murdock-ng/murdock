@@ -46,8 +46,8 @@ class MurdockJob:
         self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
         self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
         self.http_dir: str = os.path.join("results", self.uid)
-        self.output_url: Optional[str] = None
         self.output_text_url: Optional[str] = None
+        self.details_url = os.path.join(GLOBAL_CONFIG.base_url, "details", self.uid)
 
     @staticmethod
     def create_dir(work_dir: str):
@@ -114,7 +114,6 @@ class MurdockJob:
             since=job.start_time,
             runtime=job.runtime,
             state=job.state,
-            output_url=job.output_url,
             output_text_url=job.output_text_url,
             status=job.status,
             prinfo=job.pr,
@@ -265,13 +264,6 @@ class MurdockJob:
             int(signal.SIGTERM) * -1,
         ]:
             self.state = "stopped"
-
-        output_html_path = os.path.join(self.work_dir, "output.html")
-        output_html_url = os.path.join(
-            GLOBAL_CONFIG.base_url, self.http_dir, "output.html"
-        )
-        if os.path.exists(output_html_path):
-            self.output_url = output_html_url
 
         self.proc = None
 

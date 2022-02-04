@@ -117,7 +117,7 @@ class Murdock:
                 "state": "pending",
                 "context": "Murdock",
                 "description": "The job has started",
-                "target_url": GLOBAL_CONFIG.base_url,
+                "target_url": job.details_url,
             },
         )
         await self.reload_jobs()
@@ -139,6 +139,7 @@ class Murdock:
                     "description": (
                         f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
                     ),
+                    "target_url": job.details_url,
                 },
             )
             if job.pr is not None and job.config.pr.enable_comments:
@@ -210,7 +211,7 @@ class Murdock:
         status = {
             "state": "pending",
             "context": "Murdock",
-            "target_url": GLOBAL_CONFIG.base_url,
+            "target_url": job.details_url,
             "description": "Stopped",
         }
         await set_commit_status(job.commit.sha, status)

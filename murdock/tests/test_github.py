@@ -192,12 +192,12 @@ async def test_comment_on_pr(
             }
         ),
     )
-    job.output_url = f"http://localhost:8000/results/{job.uid}/output.html"
+    job.details_url = f"http://localhost:8000/details/{job.uid}"
     job.state = "passed"
     comment = (
         "### Murdock results\n"
         "\n"
-        f":heavy_check_mark: [PASSED](http://localhost:8000/results/{job.uid}/output.html)\n"
+        f":heavy_check_mark: [PASSED](http://localhost:8000/details/{job.uid})\n"
         "\n"
         "test_commit test message\n\n"
     )

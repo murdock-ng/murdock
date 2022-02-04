@@ -1,6 +1,6 @@
 ### Murdock results
 
-{% if job.state == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} [{{ job.state | upper }}]({{ job.output_url }})
+{% if job.state == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} [{{ job.state | upper }}]({{ job.details_url }})
 
 {{ job.commit.sha }} {{ job.commit.message.split('\n')[0] }}
 
