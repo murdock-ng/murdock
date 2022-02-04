@@ -3,6 +3,7 @@ version: "3.9"
 services:
   murdock:
     user: 0:0
+    init: true
     build:
       context: .
     image: ${MURDOCK_DOCKER_IMAGE}
