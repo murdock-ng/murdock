@@ -124,7 +124,7 @@ class Murdock:
 
     async def job_finalize(self, job: MurdockJob):
         job.stop_time = time.time()
-        if job.status["status"] == "working":
+        if "status" in job.status and job.status["status"] == "working":
             job.status["status"] = "finished"
         self.running.remove(job)
         LOGGER.debug(f"{job} removed from running jobs")
