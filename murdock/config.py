@@ -76,6 +76,7 @@ class MurdockSettings(BaseSettings):
     pr: PRSettings = Field(default=PRSettings())
     commit: CommitSettings = Field(default=CommitSettings())
     env: Optional[dict] = Field(default=None)
+    failfast: Optional[bool] = Field(default=False)
 
 
 _ENV_FILE = os.getenv("ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env"))

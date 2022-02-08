@@ -204,11 +204,15 @@ class MurdockJob:
         await self.proc.wait()
         if self.proc.returncode == 0:
             self.state = "passed"
-        elif self.proc.returncode in [
-            int(signal.SIGINT) * -1,
-            int(signal.SIGKILL) * -1,
-            int(signal.SIGTERM) * -1,
-        ]:
+        elif (
+            self.proc.returncode
+            in [
+                int(signal.SIGINT) * -1,
+                int(signal.SIGKILL) * -1,
+                int(signal.SIGTERM) * -1,
+            ]
+            and self.state == "running"
+        ):
             self.state = "stopped"
         else:
             self.state = "errored"

@@ -205,8 +205,16 @@ class Murdock:
             await self.stop_running_job(job)
         return jobs_to_stop
 
-    async def stop_running_job(self, job: MurdockJob, reload_jobs=False) -> MurdockJob:
+    async def stop_running_job(
+        self, job: MurdockJob, reload_jobs=False, fail=False
+    ) -> MurdockJob:
         LOGGER.debug(f"Stopping job {job}")
+        if fail is True:
+            LOGGER.debug(f"Stopping {job} with errored state")
+            job.state = "errored"
+            await job.stop()
+            return
+
         await job.stop()
         status = {
             "state": "pending",
@@ -468,6 +476,13 @@ class Murdock:
         job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
+            if job.config.failfast is True and (
+                "failed_jobs" in job.status
+                or "failed_builds" in job.status
+                or "failed_tests" in job.status
+            ):
+                LOGGER.debug(f"Failfast enabled and failures detected, stopping {job}")
+                await self.stop_running_job(job, fail=True)
             data.update({"cmd": "status", "uid": job.uid})
             await self.notify_message_to_clients(json.dumps(data))
         return job
