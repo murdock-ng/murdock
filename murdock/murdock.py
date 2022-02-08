@@ -345,7 +345,7 @@ class Murdock:
 
         if action in ["unlabeled", "edited"]:
             return
-        
+
         if action == "opened" and CI_CONFIG.ready_label in pull_request.labels:
             # A PR opened with "Ready label" already set will be scheduled via
             # the "labeled" action

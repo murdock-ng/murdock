@@ -368,7 +368,7 @@ async def test_handle_pr_event_action_missing(
         ("synchronize", True, True),
         ("labeled", True, False),
         ("unlabeled", True, False),
-        ("opened", True, True),
+        ("opened", True, False),
         ("reopened", True, True),
         ("closed", True, False),
         ("created", True, True),
