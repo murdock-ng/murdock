@@ -30,6 +30,7 @@ from murdock.config import (
 from murdock.models import (
     JobModel,
     CategorizedJobsModel,
+    ManualJobModel,
     JobQueryModel,
 )
 from murdock.murdock import Murdock
@@ -284,6 +285,19 @@ async def job_handler(uid: str):
             status_code=404, detail=f"No job matching uid '{uid}' found"
         )
     return job
+
+
+@app.post(
+    path="/job",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Start a manual job",
+    tags=["jobs"],
+)
+async def job_start_handler(
+    job: ManualJobModel, _: APIKey = Depends(_check_push_permissions)
+):
+    return await murdock.start_job(job)
 
 
 @app.websocket("/ws/status")

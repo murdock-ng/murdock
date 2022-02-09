@@ -131,6 +131,14 @@ class CategorizedJobsModel(BaseModel):
     )
 
 
+class ManualJobModel(BaseModel):
+    ref: str
+    is_tag: bool = (Field(False, title="Use tag commit if true, branch otherwise"),)
+    sha: Optional[str] = Field(
+        None, title="Specific commit SHA, if none, use HEAD. Ignore if is_tag is True"
+    )
+
+
 class JobQueryModel(BaseModel):
     limit: Optional[int] = Field(
         GLOBAL_CONFIG.max_finished_length_default,

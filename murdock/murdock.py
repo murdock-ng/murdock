@@ -15,12 +15,15 @@ from murdock.job_containers import MurdockJobList, MurdockJobPool
 from murdock.models import (
     CategorizedJobsModel,
     JobModel,
+    ManualJobModel,
     PullRequestInfo,
     JobQueryModel,
 )
 from murdock.github import (
     comment_on_pr,
     fetch_commit_info,
+    fetch_branch_info,
+    fetch_tag_info,
     set_commit_status,
     fetch_murdock_config,
 )
@@ -471,6 +474,24 @@ class Murdock:
         elif jobs := await self.db.find_jobs(JobQueryModel(uid=uid)):
             found_job = jobs[0]
         return found_job
+
+    async def start_job(self, manual_job: ManualJobModel) -> JobModel:
+        LOGGER.debug(f"Starting manual job {manual_job}")
+        name = manual_job.ref
+        ref = f"refs/heads/{name}"
+        if manual_job.is_tag is True:
+            commit = await fetch_tag_info(name)
+            ref = f"refs/tags/{name}"
+        elif manual_job.sha is not None:
+            commit = await fetch_commit_info(manual_job.sha)
+        else:
+            commit = await fetch_branch_info(name)
+        config = await fetch_murdock_config(commit.sha)
+
+        LOGGER.info(f"Schedule manual job for ref '{ref}'")
+        job = MurdockJob(commit, ref=ref, config=config)
+        await self.schedule_job(job)
+        return job.queued_model()
 
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
         job = self.running.search_by_uid(uid)

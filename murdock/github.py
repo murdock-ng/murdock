@@ -115,7 +115,7 @@ async def comment_on_pr(job: MurdockJob):
 async def fetch_commit_info(commit: str) -> CommitModel:
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}" f"/commits/{commit}",
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/commits/{commit}",
             headers={
                 "Accept": "application/vnd.github.v3+json",
                 "Authorization": f"token {GITHUB_CONFIG.api_token}",
@@ -131,6 +131,44 @@ async def fetch_commit_info(commit: str) -> CommitModel:
             message=commit_data["commit"]["message"],
             author=commit_data["author"]["login"],
         )
+
+
+async def fetch_branch_info(branch: str) -> CommitModel:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/branches/{branch}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
+            },
+        )
+        if response.status_code != 200:
+            LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
+            return
+
+        branch_data = response.json()
+        return CommitModel(
+            sha=branch_data["commit"]["sha"],
+            message=branch_data["commit"]["commit"]["message"],
+            author=branch_data["commit"]["author"]["login"],
+        )
+
+
+async def fetch_tag_info(tag: str) -> CommitModel:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/git/refs/tags/{tag}",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {GITHUB_CONFIG.api_token}",
+            },
+        )
+        if response.status_code != 200:
+            LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
+            return
+
+        tag_data = response.json()
+        return await fetch_commit_info(tag_data["object"]["sha"])
 
 
 async def set_commit_status(commit: str, status: dict):
