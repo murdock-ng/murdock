@@ -133,12 +133,15 @@ class CategorizedJobsModel(BaseModel):
 
 class ManualJobModel(BaseModel):
     ref: str
-    is_tag: bool = (Field(False, title="Use tag commit if true, branch otherwise"),)
+    is_tag: bool = Field(False, title="Use tag commit if true, branch otherwise")
     sha: Optional[str] = Field(
         None, title="Specific commit SHA, if none, use HEAD. Ignore if is_tag is True"
     )
     env: Optional[dict] = Field(
-        default=None, title="List of custom environment variables to pass to the job."
+        default=None, title="List of custom environment variables to pass to the job"
+    )
+    fasttrack: Optional[bool] = Field(
+        default=False, title="Run the job in fasttrack mode."
     )
 
 

@@ -497,6 +497,8 @@ class Murdock:
 
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
         job = MurdockJob(commit, ref=ref, config=config)
+        if manual_job.fasttrack is True:
+            job.fasttracked = True
         await self.schedule_job(job)
         return job.queued_model()
 
