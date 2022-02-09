@@ -137,6 +137,9 @@ class ManualJobModel(BaseModel):
     sha: Optional[str] = Field(
         None, title="Specific commit SHA, if none, use HEAD. Ignore if is_tag is True"
     )
+    env: Optional[dict] = Field(
+        default=None, title="List of custom environment variables to pass to the job."
+    )
 
 
 class JobQueryModel(BaseModel):

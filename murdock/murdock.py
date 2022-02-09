@@ -488,6 +488,13 @@ class Murdock:
             commit = await fetch_branch_info(name)
         config = await fetch_murdock_config(commit.sha)
 
+        # Handling potential env variables
+        if manual_job.env:
+            if config.env:
+                config.env.update(manual_job.env)
+            else:
+                config.env = manual_job.env
+
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
         job = MurdockJob(commit, ref=ref, config=config)
         await self.schedule_job(job)
