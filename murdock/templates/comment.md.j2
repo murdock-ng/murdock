@@ -1,6 +1,6 @@
 ### Murdock results
 
-{% if job.state == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} [{{ job.state | upper }}]({{ job.details_url }})
+{% if job.state == "passed" %}:heavy_check_mark:{% else %}:x:{% endif %} <a href="{{ job.details_url }}" target="_blank" rel="noreferrer noopener">{{ job.state | upper }}</a>
 
 {{ job.commit.sha }} {{ job.commit.message.split('\n')[0] }}
 
@@ -17,7 +17,7 @@
 | Application | Board |  Toolchain  |  Runtime (s)  |  Output  |
 | ----------- | ----- | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_builds %}
-| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | [Output]({{ job.output_url }}/compile/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
+| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | <a href="{{ job.output_url }}/compile/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt" target="_blank" rel="noreferrer noopener">Output</a> |
 {% endfor %}
 
 </details>
@@ -29,7 +29,7 @@
 | Application | Board |  Toolchain  |  Runtime (s)  |  Output  |
 | ----------- | ----- | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_tests %}
-| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | [Output]({{ job.output_url }}/run_test/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
+| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | <a href="{{ job.output_url }}/run_test/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt" target="_blank" rel="noreferrer noopener">Output</a> |
 {% endfor %}
 
 </details>
