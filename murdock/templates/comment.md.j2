@@ -9,22 +9,15 @@
 | ------- | -------- | ----- | ------- |
 | {{ job.status.passed }} | {{ job.status.failed }} | {{ job.status.total }} | {{ job.runtime_human }} |
 {% endif %}
-{% if "failed_jobs" in job.status and job.status.failed_jobs %}
 
-<details><summary><strong>Job failures ({{ job.status.failed_jobs | length }})</strong></summary>
-
-{% for failure in job.status.failed_jobs %}
-- [{{ failure.name }}]({{ failure.href }})
-{% endfor %}
-
-</details>
-{% endif %}
 {% if "failed_builds" in job.status and job.status.failed_builds %}
 
 <details><summary><strong>Build failures ({{ job.status.failed_builds | length }})</strong></summary>
 
+| Application | Board | Toolchain | Runtime | Output |
+| ----------- | ----- | --------- | ------- | ------ |
 {% for failure in job.status.failed_builds %}
-- [{{ failure.name }}]({{ failure.href }})
+| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ failure.runtime }} | [Output]({{ job.output_url }}/compile/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
 {% endfor %}
 
 </details>
@@ -33,8 +26,10 @@
 
 <details><summary><strong>Test failures ({{ job.status.failed_tests | length }})</strong></summary>
 
+| Application | Board | Toolchain | Runtime | Output |
+| ----------- | ----- | --------- | ------- | ------ |
 {% for failure in job.status.failed_tests %}
-- [{{ failure.name }}]({{ failure.href }})
+| {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ failure.runtime }} | [Output]({{ job.output_url }}/run_test/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
 {% endfor %}
 
 </details>
