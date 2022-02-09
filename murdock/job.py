@@ -48,7 +48,9 @@ class MurdockJob:
         self.http_dir: str = os.path.join("results", self.uid)
         self.output_text_url: Optional[str] = None
         self.details_url = os.path.join(GLOBAL_CONFIG.base_url, "details", self.uid)
-        self.output_url = os.path.join(GLOBAL_CONFIG.base_url, "results", self.uid, "output")
+        self.output_url = os.path.join(
+            GLOBAL_CONFIG.base_url, "results", self.uid, "output"
+        )
 
     @staticmethod
     def create_dir(work_dir: str):

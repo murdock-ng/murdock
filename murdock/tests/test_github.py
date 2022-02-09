@@ -199,7 +199,7 @@ async def test_comment_on_pr(
         "\n"
         f":heavy_check_mark: [PASSED](http://localhost:8000/details/{job.uid})\n"
         "\n"
-        "test_commit test message\n\n"
+        "test_commit test message\n\n\n"
     )
 
     await comment_on_pr(job)
