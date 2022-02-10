@@ -127,7 +127,7 @@ async def fetch_commit_info(commit: str) -> CommitModel:
 
         commit_data = response.json()
         return CommitModel(
-            sha=commit,
+            sha=commit_data["sha"],
             message=commit_data["commit"]["message"],
             author=commit_data["author"]["login"],
         )

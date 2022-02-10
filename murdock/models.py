@@ -131,18 +131,26 @@ class CategorizedJobsModel(BaseModel):
     )
 
 
-class ManualJobModel(BaseModel):
-    ref: str
-    is_tag: bool = Field(False, title="Use tag commit if true, branch otherwise")
-    sha: Optional[str] = Field(
-        None, title="Specific commit SHA, if none, use HEAD. Ignore if is_tag is True"
-    )
+class ManualJobParamModel(BaseModel):
     env: Optional[dict] = Field(
         default=None, title="List of custom environment variables to pass to the job"
     )
     fasttrack: Optional[bool] = Field(
         default=False, title="Run the job in fasttrack mode."
     )
+
+
+class ManualJobBranchParamModel(ManualJobParamModel):
+    branch: str = Field(title="Name of the branch")
+    commit: Optional[str] = Field(default=None, title="Name of the tag")
+
+
+class ManualJobTagParamModel(ManualJobParamModel):
+    tag: str = Field(title="Name of the tag")
+
+
+class ManualJobCommitParamModel(ManualJobParamModel):
+    sha: str = Field(title="SHA of the commit")
 
 
 class JobQueryModel(BaseModel):

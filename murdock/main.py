@@ -30,7 +30,9 @@ from murdock.config import (
 from murdock.models import (
     JobModel,
     CategorizedJobsModel,
-    ManualJobModel,
+    ManualJobBranchParamModel,
+    ManualJobTagParamModel,
+    ManualJobCommitParamModel,
     JobQueryModel,
 )
 from murdock.murdock import Murdock
@@ -288,16 +290,51 @@ async def job_handler(uid: str):
 
 
 @app.post(
-    path="/job",
+    path="/job/branch",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Start a manual job",
+    summary="Start a manual job on a branch",
     tags=["jobs"],
 )
-async def job_start_handler(
-    job: ManualJobModel, _: APIKey = Depends(_check_push_permissions)
+async def job_start_branch_handler(
+    param: ManualJobBranchParamModel, _: APIKey = Depends(_check_push_permissions)
 ):
-    return await murdock.start_job(job)
+    if (job := await murdock.start_branch_job(param)) is None:
+        raise HTTPException(status_code=404, detail="No matching branch found")
+
+    return job
+
+
+@app.post(
+    path="/job/tag",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Start a manual job on a tag",
+    tags=["jobs"],
+)
+async def job_start_tag_handler(
+    param: ManualJobTagParamModel, _: APIKey = Depends(_check_push_permissions)
+):
+    if (job := await murdock.start_tag_job(param)) is None:
+        raise HTTPException(status_code=404, detail="No matching tag found")
+
+    return job
+
+
+@app.post(
+    path="/job/commit",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Start a manual job on a tag",
+    tags=["jobs"],
+)
+async def job_start_commit_handler(
+    param: ManualJobCommitParamModel, _: APIKey = Depends(_check_push_permissions)
+):
+    if (job := await murdock.start_commit_job(param)) is None:
+        raise HTTPException(status_code=404, detail="No matching commit found")
+
+    return job
 
 
 @app.websocket("/ws/status")

@@ -4,7 +4,7 @@ import os
 import re
 import time
 
-from typing import List
+from typing import List, Union
 
 from fastapi import WebSocket
 
@@ -15,7 +15,9 @@ from murdock.job_containers import MurdockJobList, MurdockJobPool
 from murdock.models import (
     CategorizedJobsModel,
     JobModel,
-    ManualJobModel,
+    ManualJobBranchParamModel,
+    ManualJobTagParamModel,
+    ManualJobCommitParamModel,
     PullRequestInfo,
     JobQueryModel,
 )
@@ -475,32 +477,53 @@ class Murdock:
             found_job = jobs[0]
         return found_job
 
-    async def start_job(self, manual_job: ManualJobModel) -> JobModel:
-        LOGGER.debug(f"Starting manual job {manual_job}")
-        name = manual_job.ref
-        ref = f"refs/heads/{name}"
-        if manual_job.is_tag is True:
-            commit = await fetch_tag_info(name)
-            ref = f"refs/tags/{name}"
-        elif manual_job.sha is not None:
-            commit = await fetch_commit_info(manual_job.sha)
-        else:
-            commit = await fetch_branch_info(name)
-        config = await fetch_murdock_config(commit.sha)
+    async def start_job(
+        self,
+        ref,
+        commit,
+        param: Union[
+            ManualJobBranchParamModel, ManualJobTagParamModel, ManualJobCommitParamModel
+        ],
+    ) -> JobModel:
+        if commit is None:
+            return
 
-        # Handling potential env variables
-        if manual_job.env:
+        # Fetch and setup job configuration
+        config = await fetch_murdock_config(commit.sha)
+        # Handling potential custom env variables
+        if param.env:
             if config.env:
-                config.env.update(manual_job.env)
+                config.env.update(param.env)
             else:
-                config.env = manual_job.env
+                config.env = param.env
 
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
         job = MurdockJob(commit, ref=ref, config=config)
-        if manual_job.fasttrack is True:
+        if param.fasttrack is True:
             job.fasttracked = True
         await self.schedule_job(job)
         return job.queued_model()
+
+    async def start_branch_job(self, param: ManualJobBranchParamModel) -> JobModel:
+        LOGGER.debug(f"Starting manual job on branch {param.branch}")
+        if param.commit is not None:
+            commit = await fetch_commit_info(param.commit)
+        else:
+            commit = await fetch_branch_info(param.branch)
+        ref = f"refs/heads/{param.branch}"
+        return await self.start_job(ref, commit, param)
+
+    async def start_tag_job(self, param: ManualJobTagParamModel) -> JobModel:
+        LOGGER.debug(f"Starting manual job on tag {param.tag}")
+        commit = await fetch_tag_info(param.tag)
+        ref = f"refs/tags/{param.tag}"
+        return await self.start_job(ref, commit, param)
+
+    async def start_commit_job(self, param: ManualJobCommitParamModel) -> JobModel:
+        LOGGER.debug(f"Starting manual job on commit {param.sha}")
+        commit = await fetch_commit_info(param.sha)
+        ref = f"Commit {param.sha}"
+        return await self.start_job(ref, commit, param)
 
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
         job = self.running.search_by_uid(uid)

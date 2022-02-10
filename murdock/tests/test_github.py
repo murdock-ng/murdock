@@ -247,7 +247,11 @@ async def test_comment_on_pr(
         pytest.param(json.dumps({"details": "error"}), 403, None, id="error"),
         pytest.param(
             json.dumps(
-                {"commit": {"message": "test_message"}, "author": {"login": "me"}}
+                {
+                    "sha": "123",
+                    "commit": {"message": "test_message"},
+                    "author": {"login": "me"},
+                }
             ),
             200,
             CommitModel(sha="123", message="test_message", author="me"),
