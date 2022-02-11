@@ -334,7 +334,7 @@ class Murdock:
             labels=sorted([label["name"] for label in pr_data["labels"]]),
         )
 
-        job = MurdockJob(commit, pr=pull_request, config=config)
+        job = MurdockJob(commit, pr=pull_request, config=config, trigger="pr")
         action = event["action"]
         if action == "closed":
             LOGGER.info(f"PR #{pull_request.number} closed, disabling matching jobs")
@@ -412,7 +412,9 @@ class Murdock:
             return
 
         LOGGER.info(f"Handle push event on ref '{ref_name}'")
-        await self.schedule_job(MurdockJob(commit, ref=ref, config=config))
+        await self.schedule_job(
+            MurdockJob(commit, ref=ref, config=config, trigger="push")
+        )
 
     def add_ws_client(self, ws: WebSocket):
         if ws not in self.clients:

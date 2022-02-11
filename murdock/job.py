@@ -23,7 +23,9 @@ class MurdockJob:
         ref: Optional[str] = None,
         pr: Optional[PullRequestInfo] = None,
         config: Optional[MurdockSettings] = MurdockSettings(),
+        trigger: Optional[str] = "api",
     ):
+        self.trigger: str = trigger
         self.uid: str = uuid.uuid4().hex
         self.config = config
         self.state = None
@@ -95,6 +97,7 @@ class MurdockJob:
             since=self.start_time,
             state=self.state,
             fasttracked=self.fasttracked,
+            trigger=self.trigger,
         )
 
     def running_model(self):
@@ -107,6 +110,8 @@ class MurdockJob:
             status=self.status,
             state=self.state,
             output=self.output,
+            fasttracked=self.fasttracked,
+            trigger=self.trigger,
         )
 
     @staticmethod
@@ -121,6 +126,8 @@ class MurdockJob:
             status=job.status,
             prinfo=job.pr,
             ref=job.ref,
+            fasttracked=job.fasttracked,
+            trigger=job.trigger,
         ).dict(exclude_none=True)
 
     @staticmethod

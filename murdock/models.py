@@ -114,6 +114,9 @@ class JobModel(BaseModel):
         None,
         title="Runtime of the job",
     )
+    trigger: Optional[str] = Field(
+        "api", title="Action that triggered the job creation"
+    )
 
 
 class CategorizedJobsModel(BaseModel):

@@ -230,6 +230,8 @@ def test_running_model():
         since=job.start_time,
         status=job.status,
         output="",
+        fasttracked=False,
+        trigger="api",
     )
     assert job.running_model() == expected_model
 
@@ -248,6 +250,8 @@ def test_to_db_entry():
         status=job.status,
         prinfo=job.pr.dict(),
         commit=commit.dict(),
+        fasttracked=False,
+        trigger="api",
     )
     assert MurdockJob.to_db_entry(job) == expected_model.dict(exclude_none=True)
 
