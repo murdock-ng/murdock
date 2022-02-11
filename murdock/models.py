@@ -149,7 +149,6 @@ class ManualJobParamModel(BaseModel):
 
 class ManualJobBranchParamModel(ManualJobParamModel):
     branch: str = Field(title="Name of the branch")
-    commit: Optional[str] = Field(default=None, title="Name of the tag")
 
 
 class ManualJobTagParamModel(ManualJobParamModel):

@@ -508,10 +508,7 @@ class Murdock:
 
     async def start_branch_job(self, param: ManualJobBranchParamModel) -> JobModel:
         LOGGER.debug(f"Starting manual job on branch {param.branch}")
-        if param.commit is not None:
-            commit = await fetch_commit_info(param.commit)
-        else:
-            commit = await fetch_branch_info(param.branch)
+        commit = await fetch_branch_info(param.branch)
         ref = f"refs/heads/{param.branch}"
         return await self.start_job(ref, commit, param)
 
