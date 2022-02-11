@@ -148,7 +148,6 @@ def test_basic(capsys, pr, ref, config, out, env):
     env.update(
         {
             "CI_SCRIPTS_DIR": "/tmp",
-            "CI_BUILD_HTTP_ROOT": f"results/{job.uid}",
             "CI_BASE_URL": "http://localhost:8000",
             "CI_JOB_TOKEN": job.token,
             "CI_JOB_UID": job.uid,
