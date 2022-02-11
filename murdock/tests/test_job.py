@@ -217,6 +217,21 @@ def test_queued_model():
         prinfo=prinfo,
         since=job.start_time,
         fasttracked=False,
+        env={
+            "CI_BASE_BRANCH": "test_base_branch",
+            "CI_BASE_COMMIT": "test_base_commit",
+            "CI_BASE_REPO": "test_base_repo",
+            "CI_BASE_URL": "http://localhost:8000",
+            "CI_JOB_UID": job.uid,
+            "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_PULL_COMMIT": "test_commit",
+            "CI_PULL_LABELS": "test",
+            "CI_PULL_NR": "123",
+            "CI_PULL_REPO": "test/repo",
+            "CI_PULL_TITLE": "test",
+            "CI_PULL_URL": "test_url",
+            "CI_PULL_USER": "test_user",
+        },
     )
     assert job.queued_model() == expected_model
 
@@ -232,6 +247,21 @@ def test_running_model():
         output="",
         fasttracked=False,
         trigger="api",
+        env={
+            "CI_BASE_BRANCH": "test_base_branch",
+            "CI_BASE_COMMIT": "test_base_commit",
+            "CI_BASE_REPO": "test_base_repo",
+            "CI_BASE_URL": "http://localhost:8000",
+            "CI_JOB_UID": job.uid,
+            "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_PULL_COMMIT": "test_commit",
+            "CI_PULL_LABELS": "test",
+            "CI_PULL_NR": "123",
+            "CI_PULL_REPO": "test/repo",
+            "CI_PULL_TITLE": "test",
+            "CI_PULL_URL": "test_url",
+            "CI_PULL_USER": "test_user",
+        },
     )
     assert job.running_model() == expected_model
 
@@ -252,6 +282,21 @@ def test_to_db_entry():
         commit=commit.dict(),
         fasttracked=False,
         trigger="api",
+        env={
+            "CI_BASE_BRANCH": "test_base_branch",
+            "CI_BASE_COMMIT": "test_base_commit",
+            "CI_BASE_REPO": "test_base_repo",
+            "CI_BASE_URL": "http://localhost:8000",
+            "CI_JOB_UID": job.uid,
+            "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_PULL_COMMIT": "test_commit",
+            "CI_PULL_LABELS": "test",
+            "CI_PULL_NR": "123",
+            "CI_PULL_REPO": "test/repo",
+            "CI_PULL_TITLE": "test",
+            "CI_PULL_URL": "test_url",
+            "CI_PULL_USER": "test_user",
+        },
     )
     assert MurdockJob.to_db_entry(job) == expected_model.dict(exclude_none=True)
 

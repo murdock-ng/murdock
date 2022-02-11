@@ -16,6 +16,9 @@ from murdock.models import PullRequestInfo, CommitModel, JobModel
 from murdock.config import MurdockSettings
 
 
+UNSAFE_ENVS = ["CI_JOB_TOKEN", "CI_SCRIPTS_DIR"]
+
+
 class MurdockJob:
     def __init__(
         self,
@@ -98,6 +101,7 @@ class MurdockJob:
             state=self.state,
             fasttracked=self.fasttracked,
             trigger=self.trigger,
+            env=self.safe_env,
         )
 
     def running_model(self):
@@ -112,6 +116,7 @@ class MurdockJob:
             output=self.output,
             fasttracked=self.fasttracked,
             trigger=self.trigger,
+            env=self.safe_env,
         )
 
     @staticmethod
@@ -128,6 +133,7 @@ class MurdockJob:
             ref=job.ref,
             fasttracked=job.fasttracked,
             trigger=job.trigger,
+            env=job.safe_env,
         ).dict(exclude_none=True)
 
     @staticmethod
@@ -175,6 +181,13 @@ class MurdockJob:
             if self.ref.startswith("refs/heads"):
                 _env.update({"CI_BUILD_BRANCH": self.ref[11:]})
 
+        return _env
+
+    @property
+    def safe_env(self):
+        _env = self.env.copy()
+        for var in UNSAFE_ENVS:
+            _env.pop(var)
         return _env
 
     def __repr__(self) -> str:

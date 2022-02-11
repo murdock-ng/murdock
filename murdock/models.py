@@ -117,6 +117,10 @@ class JobModel(BaseModel):
     trigger: Optional[str] = Field(
         "api", title="Action that triggered the job creation"
     )
+    env: Optional[dict] = Field(
+        None,
+        title="Dictionnary of environment variables attached to the job",
+    )
 
 
 class CategorizedJobsModel(BaseModel):
