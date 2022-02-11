@@ -163,6 +163,10 @@ class MurdockJob:
                     "CI_BUILD_REF": self.ref,
                 }
             )
+            if self.ref.startswith("refs/tags"):
+                _env.update({"CI_BUILD_TAG": self.ref[10:]})
+            if self.ref.startswith("refs/heads"):
+                _env.update({"CI_BUILD_BRANCH": self.ref[11:]})
 
         return _env
 
