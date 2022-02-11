@@ -174,6 +174,7 @@ class MurdockJob:
                 {
                     "CI_BUILD_COMMIT": self.commit.sha,
                     "CI_BUILD_REF": self.ref,
+                    "CI_BUILD_REPO": GITHUB_CONFIG.repo,
                 }
             )
             if self.ref.startswith("refs/tags"):

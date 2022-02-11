@@ -123,6 +123,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "test_branch",
+                "CI_BUILD_REPO": "test/repo",
             },
         ),
         (
@@ -133,6 +134,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "test_branch",
+                "CI_BUILD_REPO": "test/repo",
                 "TEST_ENV": "42",
             },
         ),
