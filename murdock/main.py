@@ -240,9 +240,9 @@ async def finished_jobs_handler(query: JobQueryModel = Depends()):
     tags=["finished jobs"],
 )
 async def finished_job_restart_handler(
-    uid: str, _: APIKey = Depends(_check_push_permissions)
+    uid: str, token: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.restart_job(uid)) is None:
+    if (job := await murdock.restart_job(uid, token)) is None:
         raise HTTPException(status_code=404, detail=f"Cannot restart job '{uid}'")
     return job.queued_model()
 

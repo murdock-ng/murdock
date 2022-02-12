@@ -303,7 +303,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
 async def test_restart_job(find, fetch_config, schedule, job_found, caplog):
     murdock = Murdock()
     find.return_value = job_found
-    await murdock.restart_job("1234")
+    await murdock.restart_job("1234", "token")
     if job_found is None:
         schedule.assert_not_called()
     else:

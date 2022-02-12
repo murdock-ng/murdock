@@ -426,7 +426,7 @@ def test_restart_job(restart, result, code):
     restart.return_value = result
     response = client.post("/jobs/finished/123")
     assert response.status_code == code
-    restart.assert_called_with("123")
+    restart.assert_called_with("123", "token")
     if result is not None:
         assert response.json() == result.queued_model().dict(exclude_none=True)
     else:

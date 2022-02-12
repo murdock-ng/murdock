@@ -263,15 +263,23 @@ class Murdock:
             "prinfo.title",
             pull_request.title,
         )
+        modified_jobs += await self.db.update_jobs(
+            JobQueryModel(is_pr=True, prnum=pull_request.number),
+            "prinfo.labels",
+            pull_request.labels,
+        )
         if modified_jobs:
             await self.reload_jobs()
 
-    async def restart_job(self, uid: str) -> MurdockJob:
+    async def restart_job(self, uid: str, token: str) -> MurdockJob:
         if (job := await self.db.find_job(uid)) is None:
             return
+        login = await fetch_user_login(token)
         LOGGER.info(f"Restarting job {job}")
         config = await fetch_murdock_config(job.commit.sha)
-        new_job = MurdockJob(job.commit, pr=job.pr, ref=job.ref, config=config)
+        new_job = MurdockJob(
+            job.commit, pr=job.pr, ref=job.ref, config=config, triggered_by=login
+        )
         await self.schedule_job(new_job)
         return new_job
 
