@@ -171,6 +171,23 @@ async def fetch_tag_info(tag: str) -> CommitModel:
         return await fetch_commit_info(tag_data["object"]["sha"])
 
 
+async def fetch_user_login(token: str) -> str:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {token}",
+            },
+        )
+        if response.status_code != 200:
+            LOGGER.debug(f"Failed to fetch user info: {response} {response.json()}")
+            return
+
+        user_data = response.json()
+        return user_data["login"]
+
+
 async def set_commit_status(commit: str, status: dict):
     LOGGER.debug(f"Setting commit {commit[0:7]} status to '{status['description']}'")
     async with httpx.AsyncClient() as client:

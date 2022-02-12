@@ -239,7 +239,7 @@ def test_queued_model():
 
 
 def test_running_model():
-    job = MurdockJob(commit, pr=prinfo)
+    job = MurdockJob(commit, pr=prinfo, triggered_by="user")
     expected_model = JobModel(
         uid=job.uid,
         commit=commit,
@@ -249,6 +249,7 @@ def test_running_model():
         output="",
         fasttracked=False,
         trigger="api",
+        triggered_by="user",
         env={
             "CI_BASE_BRANCH": "test_base_branch",
             "CI_BASE_COMMIT": "test_base_commit",
@@ -269,7 +270,7 @@ def test_running_model():
 
 
 def test_to_db_entry():
-    job = MurdockJob(commit, pr=prinfo)
+    job = MurdockJob(commit, pr=prinfo, triggered_by="user")
     job.state = "passed"
     job.output = "test output"
     expected_model = JobModel(
@@ -284,6 +285,7 @@ def test_to_db_entry():
         commit=commit.dict(),
         fasttracked=False,
         trigger="api",
+        triggered_by="user",
         env={
             "CI_BASE_BRANCH": "test_base_branch",
             "CI_BASE_COMMIT": "test_base_commit",

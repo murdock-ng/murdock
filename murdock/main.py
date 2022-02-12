@@ -122,8 +122,8 @@ async def _check_push_permissions(
             name="authorization", scheme_name="Github OAuth Token", auto_error=False
         )
     )
-):
-    await check_permissions("push", token)
+) -> str:
+    return await check_permissions("push", token)
 
 
 async def _check_admin_permissions(
@@ -297,9 +297,9 @@ async def job_handler(uid: str):
     tags=["jobs"],
 )
 async def job_start_branch_handler(
-    param: ManualJobBranchParamModel, _: APIKey = Depends(_check_push_permissions)
+    param: ManualJobBranchParamModel, token: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.start_branch_job(param)) is None:
+    if (job := await murdock.start_branch_job(token, param)) is None:
         raise HTTPException(status_code=404, detail="No matching branch found")
 
     return job
@@ -313,9 +313,9 @@ async def job_start_branch_handler(
     tags=["jobs"],
 )
 async def job_start_tag_handler(
-    param: ManualJobTagParamModel, _: APIKey = Depends(_check_push_permissions)
+    param: ManualJobTagParamModel, token: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.start_tag_job(param)) is None:
+    if (job := await murdock.start_tag_job(token, param)) is None:
         raise HTTPException(status_code=404, detail="No matching tag found")
 
     return job
@@ -329,9 +329,9 @@ async def job_start_tag_handler(
     tags=["jobs"],
 )
 async def job_start_commit_handler(
-    param: ManualJobCommitParamModel, _: APIKey = Depends(_check_push_permissions)
+    param: ManualJobCommitParamModel, token: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := await murdock.start_commit_job(param)) is None:
+    if (job := await murdock.start_commit_job(token, param)) is None:
         raise HTTPException(status_code=404, detail="No matching commit found")
 
     return job

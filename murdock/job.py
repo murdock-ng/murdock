@@ -27,8 +27,10 @@ class MurdockJob:
         pr: Optional[PullRequestInfo] = None,
         config: Optional[MurdockSettings] = MurdockSettings(),
         trigger: Optional[str] = "api",
+        triggered_by: Optional[str] = None,
     ):
         self.trigger: str = trigger
+        self.triggered_by: str = triggered_by
         self.uid: str = uuid.uuid4().hex
         self.config = config
         self.state = None
@@ -101,6 +103,7 @@ class MurdockJob:
             state=self.state,
             fasttracked=self.fasttracked,
             trigger=self.trigger,
+            triggered_by=self.triggered_by,
             env=self.safe_env,
         )
 
@@ -116,6 +119,7 @@ class MurdockJob:
             output=self.output,
             fasttracked=self.fasttracked,
             trigger=self.trigger,
+            triggered_by=self.triggered_by,
             env=self.safe_env,
         )
 
@@ -133,6 +137,7 @@ class MurdockJob:
             ref=job.ref,
             fasttracked=job.fasttracked,
             trigger=job.trigger,
+            triggered_by=job.triggered_by,
             env=job.safe_env,
         ).dict(exclude_none=True)
 

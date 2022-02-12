@@ -26,6 +26,7 @@ from murdock.github import (
     fetch_commit_info,
     fetch_branch_info,
     fetch_tag_info,
+    fetch_user_login,
     set_commit_status,
     fetch_murdock_config,
 )
@@ -315,6 +316,7 @@ class Murdock:
             return f"Unsupported action '{action}'"
         LOGGER.info(f"Handle pull request event '{action}'")
         pr_data = event["pull_request"]
+        sender = event["sender"]["login"]
         commit = await fetch_commit_info(pr_data["head"]["sha"])
         if commit is None:
             LOGGER.error("Cannot fetch commit information, aborting")
@@ -334,7 +336,9 @@ class Murdock:
             labels=sorted([label["name"] for label in pr_data["labels"]]),
         )
 
-        job = MurdockJob(commit, pr=pull_request, config=config, trigger="pr")
+        job = MurdockJob(
+            commit, pr=pull_request, config=config, trigger="pr", triggered_by=sender
+        )
         action = event["action"]
         if action == "closed":
             LOGGER.info(f"PR #{pull_request.number} closed, disabling matching jobs")
@@ -386,6 +390,7 @@ class Murdock:
         )
 
     async def handle_push_event(self, event: dict):
+        sender = event["sender"]["login"]
         ref = event["ref"]
         ref_type, ref_name = ref.split("/", 2)[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
@@ -413,7 +418,9 @@ class Murdock:
 
         LOGGER.info(f"Handle push event on ref '{ref_name}'")
         await self.schedule_job(
-            MurdockJob(commit, ref=ref, config=config, trigger="push")
+            MurdockJob(
+                commit, ref=ref, config=config, trigger="push", triggered_by=sender
+            )
         )
 
     def add_ws_client(self, ws: WebSocket):
@@ -483,12 +490,15 @@ class Murdock:
         self,
         ref,
         commit,
+        token,
         param: Union[
             ManualJobBranchParamModel, ManualJobTagParamModel, ManualJobCommitParamModel
         ],
     ) -> JobModel:
         if commit is None:
             return
+
+        login = await fetch_user_login(token)
 
         # Fetch and setup job configuration
         config = await fetch_murdock_config(commit.sha)
@@ -500,29 +510,33 @@ class Murdock:
                 config.env = param.env
 
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
-        job = MurdockJob(commit, ref=ref, config=config)
+        job = MurdockJob(commit, ref=ref, config=config, triggered_by=login)
         if param.fasttrack is True:
             job.fasttracked = True
         await self.schedule_job(job)
         return job.queued_model()
 
-    async def start_branch_job(self, param: ManualJobBranchParamModel) -> JobModel:
+    async def start_branch_job(
+        self, token, param: ManualJobBranchParamModel
+    ) -> JobModel:
         LOGGER.debug(f"Starting manual job on branch {param.branch}")
         commit = await fetch_branch_info(param.branch)
         ref = f"refs/heads/{param.branch}"
-        return await self.start_job(ref, commit, param)
+        return await self.start_job(ref, commit, token, param)
 
-    async def start_tag_job(self, param: ManualJobTagParamModel) -> JobModel:
+    async def start_tag_job(self, token, param: ManualJobTagParamModel) -> JobModel:
         LOGGER.debug(f"Starting manual job on tag {param.tag}")
         commit = await fetch_tag_info(param.tag)
         ref = f"refs/tags/{param.tag}"
-        return await self.start_job(ref, commit, param)
+        return await self.start_job(ref, commit, token, param)
 
-    async def start_commit_job(self, param: ManualJobCommitParamModel) -> JobModel:
+    async def start_commit_job(
+        self, token, param: ManualJobCommitParamModel
+    ) -> JobModel:
         LOGGER.debug(f"Starting manual job on commit {param.sha}")
         commit = await fetch_commit_info(param.sha)
         ref = f"Commit {param.sha}"
-        return await self.start_job(ref, commit, param)
+        return await self.start_job(ref, commit, token, param)
 
     async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
         job = self.running.search_by_uid(uid)

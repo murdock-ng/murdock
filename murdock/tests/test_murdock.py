@@ -337,6 +337,7 @@ pr_event = {
         "labels": [{"name": "CI: ready for build"}],
     },
     "label": {"name": "test label"},
+    "sender": {"login": "user"},
 }
 
 
@@ -640,7 +641,7 @@ async def test_handle_push_event(
     fetch_config.return_value = MurdockSettings(push={ref_type: [ref_name]})
     fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
     murdock = Murdock()
-    event = {"ref": ref, "after": commit}
+    event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
@@ -690,7 +691,7 @@ async def test_handle_push_event_ref_not_handled(
     fetch_config.return_value = settings
     fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
     murdock = Murdock()
-    event = {"ref": ref, "after": commit}
+    event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
@@ -712,7 +713,11 @@ async def test_handle_push_event_commit_fetch_error(
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = None
     murdock = Murdock()
-    event = {"ref": f"refs/heads/{branch}", "after": commit}
+    event = {
+        "ref": f"refs/heads/{branch}",
+        "after": commit,
+        "sender": {"login": "user"},
+    }
     await murdock.handle_push_event(event)
     fetch_commit.assert_called_with(commit)
     fetch_config.assert_not_called()
@@ -760,7 +765,11 @@ async def test_handle_push_event_skip_commit(
         sha=commit, message=commit_message, author="me"
     )
     murdock = Murdock()
-    event = {"ref": f"refs/heads/{branch}", "after": commit}
+    event = {
+        "ref": f"refs/heads/{branch}",
+        "after": commit,
+        "sender": {"login": "user"},
+    }
     await murdock.handle_push_event(event)
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
@@ -799,6 +808,7 @@ async def test_handle_push_event_ref_removed(
         "ref": ref,
         "before": commit,
         "after": "0000000000000000000000000000000000000000",
+        "sender": {"login": "user"},
     }
     await murdock.handle_push_event(event)
     cancel.assert_called_with(job, reload_jobs=True)
