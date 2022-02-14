@@ -216,7 +216,6 @@ class MurdockJob:
         LOGGER.debug(f"Launching run action for {self} (script: {script_path})")
         self.proc = await asyncio.create_subprocess_exec(
             script_path,
-            "run",
             cwd=self.work_dir,
             env=self.env,
             start_new_session=True,
@@ -263,43 +262,6 @@ class MurdockJob:
         )
         if os.path.exists(output_text_path):
             self.output_text_url = output_text_url
-
-        # If the job was stopped, just return now and skip the finalize step
-        if self.state == "stopped":
-            LOGGER.debug(f"Job {self} stopped before finalizing")
-            self.proc = None
-            return
-
-        # Remove build subdirectory
-        MurdockJob.remove_dir(os.path.join(self.work_dir, "build"))
-
-        LOGGER.debug(f"Finalizing {self}")
-        self.proc = await asyncio.create_subprocess_exec(
-            script_path,
-            "finalize",
-            cwd=self.work_dir,
-            env=self.env,
-            start_new_session=True,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        out, _ = await self.proc.communicate()
-        if self.proc.returncode not in [
-            0,
-            int(signal.SIGINT) * -1,
-            int(signal.SIGKILL) * -1,
-            int(signal.SIGTERM) * -1,
-        ]:
-            LOGGER.warning(
-                f"Job error: failed to finalize {self}:\n" f"out: {out.decode()}"
-            )
-            self.state = "errored"
-        if self.proc.returncode in [
-            int(signal.SIGINT) * -1,
-            int(signal.SIGKILL) * -1,
-            int(signal.SIGTERM) * -1,
-        ]:
-            self.state = "stopped"
 
         self.proc = None
 
