@@ -52,6 +52,8 @@ class PullRequestInfo(BaseModel):
         None,
         title="List of Github labels assigned to the pull request",
     )
+    state: str = Field(None, title="State of the pull request on GitHub")
+    is_merged: bool = Field(None, title="Wether the pull request or not")
 
 
 class CommitModel(BaseModel):

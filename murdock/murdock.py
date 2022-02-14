@@ -256,6 +256,14 @@ class Murdock:
                 LOGGER.debug(f"Updating job {matching_job} title")
                 matching_job.pr.title = pull_request.title
                 modified_jobs += 1
+            if matching_job.pr.state != pull_request.state:
+                LOGGER.debug(f"Updating job {matching_job} state")
+                matching_job.pr.state = pull_request.state
+                modified_jobs += 1
+            if matching_job.pr.is_merged != pull_request.is_merged:
+                LOGGER.debug(f"Updating job {matching_job} merged state")
+                matching_job.pr.is_merged = pull_request.is_merged
+                modified_jobs += 1
 
         # Update matching PRs that are already in DB
         modified_jobs += await self.db.update_jobs(
@@ -267,6 +275,16 @@ class Murdock:
             JobQueryModel(is_pr=True, prnum=pull_request.number),
             "prinfo.labels",
             pull_request.labels,
+        )
+        modified_jobs += await self.db.update_jobs(
+            JobQueryModel(is_pr=True, prnum=pull_request.number),
+            "prinfo.state",
+            pull_request.state,
+        )
+        modified_jobs += await self.db.update_jobs(
+            JobQueryModel(is_pr=True, prnum=pull_request.number),
+            "prinfo.is_merged",
+            pull_request.is_merged,
         )
         if modified_jobs:
             await self.reload_jobs()
@@ -342,19 +360,22 @@ class Murdock:
             base_full_name=pr_data["base"]["repo"]["full_name"],
             mergeable=pr_data["mergeable"] in [True, None],
             labels=sorted([label["name"] for label in pr_data["labels"]]),
+            state=pr_data["state"],
+            is_merged=pr_data["merged_at"] is not None,
         )
 
         job = MurdockJob(
             commit, pr=pull_request, config=config, trigger="pr", triggered_by=sender
         )
+
+        # Update matching PRs (queued, running and finished)
+        await self.update_matching_prs(pull_request)
+
         action = event["action"]
         if action == "closed":
             LOGGER.info(f"PR #{pull_request.number} closed, disabling matching jobs")
             await self.disable_jobs_matching(job)
             return
-
-        # Update matching PRs (queued, running and finished)
-        await self.update_matching_prs(pull_request)
 
         if CI_CONFIG.ready_label not in pull_request.labels:
             LOGGER.debug(f"'{CI_CONFIG.ready_label}' label not set")

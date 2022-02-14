@@ -93,6 +93,8 @@ async def test_schedule_single_job(
         base_full_name="test_base_full_name",
         mergeable=True,
         labels=["test"],
+        state="open",
+        is_merged=False,
     )
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
@@ -173,6 +175,8 @@ async def test_schedule_multiple_jobs(
             base_full_name="test_base_full_name",
             mergeable=True,
             labels=["test"],
+            state="open",
+            is_merged=False,
         )
         job = MurdockJob(commit, pr=prinfo)
         job.scripts_dir = scripts_dir
@@ -229,6 +233,8 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
             base_full_name="test_base_full_name",
             mergeable=True,
             labels=["test"],
+            state="open",
+            is_merged=False,
         )
         job = MurdockJob(commit, pr=prinfo)
         if prnum == num_jobs:
@@ -315,6 +321,8 @@ pr_event = {
         },
         "mergeable": True,
         "labels": [{"name": "CI: ready for build"}],
+        "state": "open",
+        "merged_at": None,
     },
     "label": {"name": "test label"},
     "sender": {"login": "user"},
@@ -534,6 +542,8 @@ async def test_handle_pr_event_missing_ready_label(
                         base_full_name="test",
                         mergeable=True,
                         labels=["test"],
+                        state="open",
+                        is_merged=False,
                     ),
                 )
             ],
