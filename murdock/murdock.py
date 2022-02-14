@@ -296,7 +296,12 @@ class Murdock:
         LOGGER.info(f"Restarting job {job}")
         config = await fetch_murdock_config(job.commit.sha)
         new_job = MurdockJob(
-            job.commit, pr=job.pr, ref=job.ref, config=config, triggered_by=login
+            job.commit,
+            pr=job.pr,
+            ref=job.ref,
+            config=config,
+            trigger="api (restart)",
+            triggered_by=login,
         )
         await self.schedule_job(new_job)
         return new_job
@@ -365,7 +370,11 @@ class Murdock:
         )
 
         job = MurdockJob(
-            commit, pr=pull_request, config=config, trigger="pr", triggered_by=sender
+            commit,
+            pr=pull_request,
+            config=config,
+            trigger=f"pr ({action})",
+            triggered_by=sender,
         )
 
         # Update matching PRs (queued, running and finished)
@@ -539,7 +548,9 @@ class Murdock:
                 config.env = param.env
 
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
-        job = MurdockJob(commit, ref=ref, config=config, triggered_by=login)
+        job = MurdockJob(
+            commit, ref=ref, config=config, trigger="api (manual)", triggered_by=login
+        )
         if param.fasttrack is True:
             job.fasttracked = True
         await self.schedule_job(job)
