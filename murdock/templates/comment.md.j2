@@ -17,7 +17,9 @@
 | Application | Board |  Toolchain  |  Runtime (s)  |  Output  |
 | ----------- | ----- | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_builds %}
+{% if "application" in failure and "board" in failure and "toolchain" in failure and "runtime" in failure %}
 | {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | [Output]({{ job.output_url }}/compile/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
+{% endif %}
 {% endfor %}
 
 </details>
@@ -29,7 +31,9 @@
 | Application | Board |  Toolchain  |  Runtime (s)  |  Output  |
 | ----------- | ----- | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_tests %}
+{% if "application" in failure and "board" in failure and "toolchain" in failure and "runtime" in failure %}
 | {{ failure.application }} | {{ failure.board }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | [Output]({{ job.output_url }}/run_test/{{ failure.application }}/{{ failure.board }}:{{ failure.toolchain }}.txt) |
+{% endif %}
 {% endfor %}
 
 </details>
