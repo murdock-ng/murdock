@@ -149,11 +149,7 @@ async def fetch_branch_info(branch: str) -> CommitModel:
             return
 
         branch_data = response.json()
-        return CommitModel(
-            sha=branch_data["commit"]["sha"],
-            message=branch_data["commit"]["commit"]["message"],
-            author=branch_data["commit"]["author"]["login"],
-        )
+        return await fetch_commit_info(branch_data["commit"]["sha"])
 
 
 async def fetch_tag_info(tag: str) -> CommitModel:
