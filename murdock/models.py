@@ -59,6 +59,10 @@ class CommitModel(BaseModel):
         None,
         title="SHA value of the commit to process",
     )
+    tree: str = Field(
+        None,
+        title="SHA value of the commit tree",
+    )
     message: str = Field(
         None,
         title="Commit message",
@@ -207,6 +211,10 @@ class JobQueryModel(BaseModel):
         None,
         title="Commit SHA",
     )
+    tree: Optional[str] = Field(
+        None,
+        title="Commit tree SHA",
+    )
     author: Optional[str] = Field(
         None,
         title="Author of the commit",
@@ -257,6 +265,8 @@ class JobQueryModel(BaseModel):
             _query.update({"ref": self.ref})
         if self.sha is not None:
             _query.update({"commit.sha": self.sha})
+        if self.tree is not None:
+            _query.update({"commit.tree": self.tree})
         if self.author is not None:
             _query.update({"commit.author": self.author})
         if self.after is not None:

@@ -23,7 +23,7 @@ from ..models import (
 
 
 client = TestClient(app)
-commit = CommitModel(sha="test", message="test message", author="test")
+commit = CommitModel(sha="test", tree="test", message="test message", author="test")
 prinfo = PullRequestInfo(
     title="test",
     number=123,
@@ -403,6 +403,7 @@ def test_get_finished_jobs(jobs, result):
         ("?prnum=42", JobQueryModel(prnum=42)),
         ("?branch=test", JobQueryModel(branch="test")),
         ("?sha=abcdef", JobQueryModel(sha="abcdef")),
+        ("?tree=abcdef", JobQueryModel(tree="abcdef")),
         ("?author=me", JobQueryModel(author="me")),
         ("?result=passed", JobQueryModel(result="passed")),
         ("?after=after", JobQueryModel(after="after")),

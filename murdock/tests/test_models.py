@@ -34,6 +34,7 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
         (JobQueryModel(ref="refs/heads/test"), {"ref": "refs/heads/test"}),
         (JobQueryModel(ref="refs/tags/test"), {"ref": "refs/tags/test"}),
         (JobQueryModel(sha="abcdef"), {"commit.sha": "abcdef"}),
+        (JobQueryModel(tree="abcdef"), {"commit.tree": "abcdef"}),
         (JobQueryModel(author="me"), {"commit.author": "me"}),
         (JobQueryModel(states="invalid"), {"state": {"$in": ["invalid"]}}),
         (JobQueryModel(states="passed"), {"state": {"$in": ["passed"]}}),

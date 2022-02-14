@@ -8,9 +8,14 @@ from ..job import MurdockJob
 from ..models import CommitModel, JobModel, PullRequestInfo
 
 
-commit = CommitModel(sha="test_commit", message="test message", author="test_user")
+commit = CommitModel(
+    sha="test_commit", tree="test_tree", message="test message", author="test_user"
+)
 commit_other = CommitModel(
-    sha="test_commit_other", message="test message other", author="test_user"
+    sha="test_commit_other",
+    tree="test_other_tree",
+    message="test message other",
+    author="test_user",
 )
 prinfo = PullRequestInfo(
     title="test",
@@ -151,6 +156,7 @@ def test_basic(capsys, pr, ref, config, out, env):
         {
             "CI_SCRIPTS_DIR": "/tmp",
             "CI_BASE_URL": "http://localhost:8000",
+            "CI_BUILD_TREE": "test_tree",
             "CI_JOB_TOKEN": job.token,
             "CI_JOB_UID": job.uid,
         }
@@ -223,6 +229,7 @@ def test_queued_model():
             "CI_BASE_BRANCH": "test_base_branch",
             "CI_BASE_COMMIT": "test_base_commit",
             "CI_BASE_REPO": "test_base_repo",
+            "CI_BUILD_TREE": "test_tree",
             "CI_BASE_URL": "http://localhost:8000",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
@@ -255,6 +262,7 @@ def test_running_model():
             "CI_BASE_COMMIT": "test_base_commit",
             "CI_BASE_REPO": "test_base_repo",
             "CI_BASE_URL": "http://localhost:8000",
+            "CI_BUILD_TREE": "test_tree",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
             "CI_PULL_COMMIT": "test_commit",
@@ -291,6 +299,7 @@ def test_to_db_entry():
             "CI_BASE_COMMIT": "test_base_commit",
             "CI_BASE_REPO": "test_base_repo",
             "CI_BASE_URL": "http://localhost:8000",
+            "CI_BUILD_TREE": "test_tree",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
             "CI_PULL_COMMIT": "test_commit",

@@ -78,7 +78,9 @@ exit {run_ret}
 async def test_schedule_single_job(
     insert, status, comment, ret, job_state, comment_on_pr, tmpdir
 ):
-    commit = CommitModel(sha="test_commit", message="test message", author="test_user")
+    commit = CommitModel(
+        sha="test_commit", tree="test_tree", message="test message", author="test_user"
+    )
     prinfo = PullRequestInfo(
         title="test",
         number=123,
@@ -154,7 +156,10 @@ async def test_schedule_multiple_jobs(
     jobs = []
     for prnum in prnums:
         commit = CommitModel(
-            sha="test_commit", message="test message", author="test_user"
+            sha="test_commit",
+            tree="test_tree",
+            message="test message",
+            author="test_user",
         )
         prinfo = PullRequestInfo(
             title="test",
@@ -207,7 +212,10 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     num_jobs = 3
     for prnum in range(1, num_jobs + 1):
         commit = CommitModel(
-            sha="test_commit", message="test message", author="test_user"
+            sha="test_commit",
+            tree="test_tree",
+            message="test message",
+            author="test_user",
         )
         prinfo = PullRequestInfo(
             title="test",
@@ -260,7 +268,12 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     [
         None,
         MurdockJob(
-            CommitModel(sha="test_commit", message="test message", author="test_user")
+            CommitModel(
+                sha="test_commit",
+                tree="test_tree",
+                message="test message",
+                author="test_user",
+            )
         ),
     ],
 )
@@ -319,7 +332,9 @@ async def test_handle_pr_event_action_missing(
     event = pr_event.copy()
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings()
-    fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
+    fetch_commit.return_value = CommitModel(
+        sha=commit, tree="test_tree", message="test", author="me"
+    )
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     queued.assert_not_called()
@@ -363,7 +378,9 @@ async def test_handle_pr_event_action(
     event.update({"action": action})
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings()
-    fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
+    fetch_commit.return_value = CommitModel(
+        sha=commit, tree="test_tree", message="test", author="me"
+    )
     update.return_value = 0
     murdock = Murdock()
     await murdock.handle_pull_request_event(event)
@@ -445,7 +462,7 @@ async def test_handle_pr_event_skip_commit(
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings(commit={"skip_keywords": keywords})
     fetch_commit.return_value = CommitModel(
-        sha=commit, message=commit_message, author="me"
+        sha=commit, tree="test_tree", message=commit_message, author="me"
     )
     update.return_value = 0
     murdock = Murdock()
@@ -479,7 +496,7 @@ async def test_handle_pr_event_missing_ready_label(
     event.update({"action": "synchronize"})
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = CommitModel(
-        sha=commit, message="test message", author="me"
+        sha=commit, tree="test_tree", message="test message", author="me"
     )
     update.return_value = 0
     murdock = Murdock()
@@ -502,7 +519,9 @@ async def test_handle_pr_event_missing_ready_label(
             CI_CONFIG.ready_label,
             [
                 MurdockJob(
-                    CommitModel(sha="abcdef", message="test", author="me"),
+                    CommitModel(
+                        sha="abcdef", tree="test_tree", message="test", author="me"
+                    ),
                     pr=PullRequestInfo(
                         title="test",
                         number=123,
@@ -564,7 +583,7 @@ async def test_handle_pr_event_labeled_action(
     event["pull_request"]["labels"] = labels
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = CommitModel(
-        sha=commit, message="test message", author="me"
+        sha=commit, tree="test_tree", message="test message", author="me"
     )
     commit_status.return_value = None
     pr_queued.return_value = param_queued
@@ -606,7 +625,9 @@ async def test_handle_push_event(
 ):
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings(push={ref_type: [ref_name]})
-    fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
+    fetch_commit.return_value = CommitModel(
+        sha=commit, tree="test_tree", message="test", author="me"
+    )
     murdock = Murdock()
     event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
@@ -656,7 +677,9 @@ async def test_handle_push_event_ref_not_handled(
 ):
     commit = "abcdef"
     fetch_config.return_value = settings
-    fetch_commit.return_value = CommitModel(sha=commit, message="test", author="me")
+    fetch_commit.return_value = CommitModel(
+        sha=commit, tree="test_tree", message="test", author="me"
+    )
     murdock = Murdock()
     event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
@@ -729,7 +752,7 @@ async def test_handle_push_event_skip_commit(
         push={"branches": [branch]}, commit={"skip_keywords": keywords}
     )
     fetch_commit.return_value = CommitModel(
-        sha=commit, message=commit_message, author="me"
+        sha=commit, tree="test_tree", message=commit_message, author="me"
     )
     murdock = Murdock()
     event = {
@@ -765,7 +788,9 @@ async def test_handle_push_event_ref_removed(
     branch = "test_branch"
     commit = "abcdef"
     ref = f"refs/heads/{branch}"
-    commit_model = CommitModel(sha=commit, message="test", author="me")
+    commit_model = CommitModel(
+        sha=commit, tree="test_tree", message="test", author="me"
+    )
     job = MurdockJob(commit=commit_model, ref=ref)
     search.return_value = [job]
     fetch_config.return_value = MurdockSettings()
@@ -795,7 +820,10 @@ async def test_handle_push_event_ref_removed(
         pytest.param(
             MurdockJob(
                 CommitModel(
-                    sha="test_commit", message="test message", author="test_user"
+                    sha="test_commit",
+                    tree="test_tree",
+                    message="test message",
+                    author="test_user",
                 )
             ),
             {},
@@ -805,7 +833,10 @@ async def test_handle_push_event_ref_removed(
         pytest.param(
             MurdockJob(
                 CommitModel(
-                    sha="test_commit", message="test message", author="test_user"
+                    sha="test_commit",
+                    tree="test_tree",
+                    message="test message",
+                    author="test_user",
                 )
             ),
             {"status": ""},
@@ -815,7 +846,10 @@ async def test_handle_push_event_ref_removed(
         pytest.param(
             MurdockJob(
                 CommitModel(
-                    sha="test_commit", message="test message", author="test_user"
+                    sha="test_commit",
+                    tree="test_tree",
+                    message="test message",
+                    author="test_user",
                 )
             ),
             {"status": "test"},
@@ -847,12 +881,18 @@ async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
     jobs_to_remove = [
         MurdockJob(
             CommitModel(
-                sha="test_commit_1", message="test message 1", author="test_user"
+                sha="test_commit_1",
+                tree="test_tree",
+                message="test message 1",
+                author="test_user",
             )
         ),
         MurdockJob(
             CommitModel(
-                sha="test_commit 2", message="test message 2", author="test_user"
+                sha="test_commit 2",
+                tree="test_tree",
+                message="test message 2",
+                author="test_user",
             )
         ),
     ]

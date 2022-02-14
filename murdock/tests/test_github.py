@@ -249,12 +249,15 @@ async def test_comment_on_pr(
             json.dumps(
                 {
                     "sha": "123",
-                    "commit": {"message": "test_message"},
+                    "commit": {
+                        "message": "test_message",
+                        "tree": {"sha": "456"},
+                    },
                     "author": {"login": "me"},
                 }
             ),
             200,
-            CommitModel(sha="123", message="test_message", author="me"),
+            CommitModel(sha="123", tree="456", message="test_message", author="me"),
             id="success",
         ),
     ],

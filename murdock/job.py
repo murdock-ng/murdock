@@ -152,6 +152,7 @@ class MurdockJob:
             "CI_BASE_URL": GLOBAL_CONFIG.base_url,
             "CI_JOB_UID": self.uid,
             "CI_JOB_TOKEN": self.token,
+            "CI_BUILD_TREE": self.commit.tree,
         }
 
         if self.config.env is not None:
