@@ -305,6 +305,20 @@ async def job_start_branch_handler(
     return job
 
 
+@app.get(
+    path="/job/branch/{branch}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last job run on the given branch",
+    tags=["jobs"],
+)
+async def job_get_branch_handler(branch: str):
+    query = JobQueryModel(branch=branch, limit=1)
+    if not (jobs := await murdock.murdock.db.find_jobs(query)):
+        raise HTTPException(status_code=404, detail=f"No matching job found for branch '{branch}'")
+
+    return jobs[0]
+
 @app.post(
     path="/job/tag",
     response_model=JobModel,
