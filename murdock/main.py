@@ -309,7 +309,7 @@ async def job_start_branch_handler(
     path="/job/branch/{branch}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the last job run on the given branch",
+    summary="Return the last finished job run on the given branch",
     tags=["jobs"],
 )
 async def job_get_branch_handler(branch: str):
@@ -335,6 +335,21 @@ async def job_start_tag_handler(
     return job
 
 
+@app.get(
+    path="/job/tag/{tag}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last finished job run on the given tag",
+    tags=["jobs"],
+)
+async def job_get_tag_handler(tag: str):
+    query = JobQueryModel(tag=tag, limit=1)
+    if not (jobs := await murdock.db.find_jobs(query)):
+        raise HTTPException(status_code=404, detail=f"No matching job found for tag '{tag}'")
+
+    return jobs[0]
+
+
 @app.post(
     path="/job/commit",
     response_model=JobModel,
@@ -350,6 +365,20 @@ async def job_start_commit_handler(
 
     return job
 
+
+@app.get(
+    path="/job/commit/{sha}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last finished job run on the given commit",
+    tags=["jobs"],
+)
+async def job_get_commit_handler(sha: str):
+    query = JobQueryModel(sha=sha, limit=1)
+    if not (jobs := await murdock.db.find_jobs(query)):
+        raise HTTPException(status_code=404, detail=f"No matching job found for commit '{sha}'")
+
+    return jobs[0]
 
 @app.websocket("/ws/status")
 async def ws_client_handler(websocket: WebSocket):
