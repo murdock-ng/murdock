@@ -314,7 +314,7 @@ async def job_start_branch_handler(
 )
 async def job_get_branch_handler(branch: str):
     query = JobQueryModel(branch=branch, limit=1)
-    if not (jobs := await murdock.murdock.db.find_jobs(query)):
+    if not (jobs := await murdock.db.find_jobs(query)):
         raise HTTPException(status_code=404, detail=f"No matching job found for branch '{branch}'")
 
     return jobs[0]
