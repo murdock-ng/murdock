@@ -45,8 +45,12 @@ class Database:
             ref = entry["ref"]
         else:
             ref = None
+        if "user_env" in entry:
+            user_env = entry["user_env"]
+        else:
+            user_env = None
 
-        return MurdockJob(commit, pr=prinfo, ref=ref)
+        return MurdockJob(commit, pr=prinfo, ref=ref, user_env=user_env)
 
     async def find_jobs(self, query: JobQueryModel) -> List[JobModel]:
         jobs = await (

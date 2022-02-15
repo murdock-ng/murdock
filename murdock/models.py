@@ -130,6 +130,10 @@ class JobModel(BaseModel):
         None,
         title="Dictionnary of environment variables attached to the job",
     )
+    user_env: Optional[dict] = Field(
+        None,
+        title="User defined dictionnary of environment variables atteched to the job",
+    )
 
 
 class CategorizedJobsModel(BaseModel):

@@ -302,6 +302,7 @@ class Murdock:
             config=config,
             trigger="api (restart)",
             triggered_by=login,
+            user_env=job.user_env,
         )
         await self.schedule_job(new_job)
         return new_job
@@ -540,16 +541,15 @@ class Murdock:
 
         # Fetch and setup job configuration
         config = await fetch_murdock_config(commit.sha)
-        # Handling potential custom env variables
-        if param.env:
-            if config.env:
-                config.env.update(param.env)
-            else:
-                config.env = param.env
 
         LOGGER.info(f"Schedule manual job for ref '{ref}'")
         job = MurdockJob(
-            commit, ref=ref, config=config, trigger="api (manual)", triggered_by=login
+            commit,
+            ref=ref,
+            config=config,
+            trigger="api (manual)",
+            triggered_by=login,
+            user_env=param.env,
         )
         if param.fasttrack is True:
             job.fasttracked = True

@@ -28,9 +28,11 @@ class MurdockJob:
         config: Optional[MurdockSettings] = MurdockSettings(),
         trigger: Optional[str] = "api",
         triggered_by: Optional[str] = None,
+        user_env: Optional[dict] = None,
     ):
         self.trigger: str = trigger
         self.triggered_by: str = triggered_by
+        self.user_env: dict = user_env
         self.uid: str = uuid.uuid4().hex
         self.config = config
         self.state = None
@@ -105,6 +107,7 @@ class MurdockJob:
             trigger=self.trigger,
             triggered_by=self.triggered_by,
             env=self.safe_env,
+            user_env=self.user_env,
         )
 
     def running_model(self):
@@ -121,6 +124,7 @@ class MurdockJob:
             trigger=self.trigger,
             triggered_by=self.triggered_by,
             env=self.safe_env,
+            user_env=self.user_env,
         )
 
     @staticmethod
@@ -139,6 +143,7 @@ class MurdockJob:
             trigger=job.trigger,
             triggered_by=job.triggered_by,
             env=job.safe_env,
+            user_env=job.user_env,
         ).dict(exclude_none=True)
 
     @staticmethod
@@ -157,6 +162,9 @@ class MurdockJob:
 
         if self.config.env is not None:
             _env.update(self.config.env)
+
+        if self.user_env is not None:
+            _env.update(self.user_env)
 
         if self.pr is not None:
             _env.update(
