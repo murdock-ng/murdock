@@ -13,7 +13,6 @@ from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
 from murdock.models import (
-    CategorizedJobsModel,
     JobModel,
     ManualJobBranchParamModel,
     ManualJobTagParamModel,
@@ -506,14 +505,11 @@ class Murdock:
         await self.reload_jobs()
         return jobs_to_remove
 
-    async def get_jobs(
-        self, query: JobQueryModel = JobQueryModel()
-    ) -> CategorizedJobsModel:
-        return CategorizedJobsModel(
-            queued=self.get_queued_jobs(query),
-            running=self.get_running_jobs(query),
-            finished=await self.db.find_jobs(query),
-        )
+    async def get_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
+        result = self.get_queued_jobs(query)
+        result += self.get_running_jobs(query)
+        result += await self.db.find_jobs(query)
+        return result
 
     async def get_job(self, uid: str) -> JobModel:
         found_job = None

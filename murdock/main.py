@@ -29,7 +29,6 @@ from murdock.config import (
 )
 from murdock.models import (
     JobModel,
-    CategorizedJobsModel,
     ManualJobBranchParamModel,
     ManualJobTagParamModel,
     ManualJobCommitParamModel,
@@ -265,9 +264,9 @@ async def finished_job_delete_handler(
 
 @app.get(
     path="/jobs",
-    response_model=CategorizedJobsModel,
+    response_model=List[JobModel],
     response_model_exclude_none=True,
-    summary="Return the list of all jobs (queued, running, finished)",
+    summary="Return the list of all jobs",
     tags=["jobs"],
 )
 async def jobs_handler(query: JobQueryModel = Depends()):
@@ -312,7 +311,7 @@ async def job_start_branch_handler(
     summary="Return the last finished job run on the given branch",
     tags=["jobs"],
 )
-async def job_get_branch_handler(branch: str):
+async def job_get_last_branch_handler(branch: str):
     query = JobQueryModel(branch=branch, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
         raise HTTPException(
@@ -345,7 +344,7 @@ async def job_start_tag_handler(
     summary="Return the last finished job run on the given tag",
     tags=["jobs"],
 )
-async def job_get_tag_handler(tag: str):
+async def job_get_last_tag_handler(tag: str):
     query = JobQueryModel(tag=tag, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
         raise HTTPException(
@@ -378,7 +377,7 @@ async def job_start_commit_handler(
     summary="Return the last finished job run on the given commit",
     tags=["jobs"],
 )
-async def job_get_commit_handler(sha: str):
+async def job_get_last_commit_handler(sha: str):
     query = JobQueryModel(sha=sha, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
         raise HTTPException(
@@ -395,7 +394,7 @@ async def job_get_commit_handler(sha: str):
     summary="Return the last finished job run on the given PR number",
     tags=["jobs"],
 )
-async def job_get_prnum_handler(prnum: int):
+async def job_get_last_prnum_handler(prnum: int):
     query = JobQueryModel(prnum=prnum, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
         raise HTTPException(

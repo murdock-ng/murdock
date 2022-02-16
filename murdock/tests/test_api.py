@@ -14,7 +14,6 @@ from fastapi.testclient import TestClient
 from ..main import app, _check_push_permissions, _check_admin_permissions
 from ..job import MurdockJob
 from ..models import (
-    CategorizedJobsModel,
     CommitModel,
     JobModel,
     JobQueryModel,
@@ -471,24 +470,25 @@ def test_delete_job_not_allowed(remove):
 @pytest.mark.parametrize(
     "result",
     [
-        CategorizedJobsModel(queued=[], running=[], finished=[]),
-        CategorizedJobsModel(queued=[test_job_queued], running=[], finished=[]),
-        CategorizedJobsModel(
-            queued=[test_job_queued], running=[test_job_running], finished=[]
-        ),
-        CategorizedJobsModel(
-            queued=[test_job_queued],
-            running=[test_job_running],
-            finished=[test_job_finished],
-        ),
+        [],
+        [test_job_queued.dict(exclude_none=True)],
+        [
+            test_job_queued.dict(exclude_none=True),
+            test_job_running.dict(exclude_none=True),
+        ],
+        [
+            test_job_queued.dict(exclude_none=True),
+            test_job_running.dict(exclude_none=True),
+            test_job_finished.dict(exclude_none=True),
+        ],
     ],
 )
 @mock.patch("murdock.murdock.Murdock.get_jobs")
 def test_get_jobs(jobs, result):
-    jobs.return_value = result.dict()
+    jobs.return_value = result
     response = client.get("/jobs")
     assert response.status_code == 200
-    assert CategorizedJobsModel(**response.json()) == result
+    assert response.json() == result
 
 
 @pytest.mark.parametrize(

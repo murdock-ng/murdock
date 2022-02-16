@@ -1,6 +1,6 @@
 from datetime import datetime
 from datetime import time as dtime
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -133,21 +133,6 @@ class JobModel(BaseModel):
     user_env: Optional[dict] = Field(
         None,
         title="User defined dictionnary of environment variables atteched to the job",
-    )
-
-
-class CategorizedJobsModel(BaseModel):
-    queued: List[JobModel] = Field(
-        None,
-        title="List of all queued jobs",
-    )
-    running: List[JobModel] = Field(
-        None,
-        title="List of all running jobs",
-    )
-    finished: List[JobModel] = Field(
-        None,
-        title="List of all finished jobs",
     )
 
 
