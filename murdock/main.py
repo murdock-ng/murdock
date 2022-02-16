@@ -315,9 +315,12 @@ async def job_start_branch_handler(
 async def job_get_branch_handler(branch: str):
     query = JobQueryModel(branch=branch, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
-        raise HTTPException(status_code=404, detail=f"No matching job found for branch '{branch}'")
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for branch '{branch}'"
+        )
 
     return jobs[0]
+
 
 @app.post(
     path="/job/tag",
@@ -345,7 +348,9 @@ async def job_start_tag_handler(
 async def job_get_tag_handler(tag: str):
     query = JobQueryModel(tag=tag, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
-        raise HTTPException(status_code=404, detail=f"No matching job found for tag '{tag}'")
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for tag '{tag}'"
+        )
 
     return jobs[0]
 
@@ -376,7 +381,9 @@ async def job_start_commit_handler(
 async def job_get_commit_handler(sha: str):
     query = JobQueryModel(sha=sha, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
-        raise HTTPException(status_code=404, detail=f"No matching job found for commit '{sha}'")
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for commit '{sha}'"
+        )
 
     return jobs[0]
 
@@ -391,7 +398,9 @@ async def job_get_commit_handler(sha: str):
 async def job_get_prnum_handler(prnum: int):
     query = JobQueryModel(prnum=prnum, limit=1)
     if not (jobs := await murdock.db.find_jobs(query)):
-        raise HTTPException(status_code=404, detail=f"No matching job found for PR #{prnum}")
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for PR #{prnum}"
+        )
 
     return jobs[0]
 
