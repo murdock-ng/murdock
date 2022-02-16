@@ -2,6 +2,7 @@ import asyncio
 
 from typing import List
 
+import pymongo
 import motor.motor_asyncio as aiomotor
 
 from murdock.config import DB_CONFIG
@@ -22,6 +23,10 @@ class Database:
             io_loop=asyncio.get_event_loop(),
         )
         self.db = conn[DB_CONFIG.name]
+        await self.db.job.create_index([("uid", 1)], unique=True, name="job_uid")
+        await self.db.job.create_index(
+            [("creation_time", pymongo.ASCENDING)], name="job_creation_time"
+        )
 
     def close(self):
         LOGGER.info("Closing database connection")
