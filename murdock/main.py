@@ -380,6 +380,22 @@ async def job_get_commit_handler(sha: str):
 
     return jobs[0]
 
+
+@app.get(
+    path="/job/pr/{prnum}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last finished job run on the given PR number",
+    tags=["jobs"],
+)
+async def job_get_prnum_handler(prnum: int):
+    query = JobQueryModel(prnum=prnum, limit=1)
+    if not (jobs := await murdock.db.find_jobs(query)):
+        raise HTTPException(status_code=404, detail=f"No matching job found for PR #{prnum}")
+
+    return jobs[0]
+
+
 @app.websocket("/ws/status")
 async def ws_client_handler(websocket: WebSocket):
     LOGGER.debug("websocket opening")
