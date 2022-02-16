@@ -160,7 +160,7 @@ async def queued_commit_cancel_handler(
         raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
 
     await murdock.cancel_queued_job(job, reload_jobs=True)
-    return job.queued_model()
+    return job.model()
 
 
 @app.get(
@@ -201,7 +201,7 @@ async def running_job_status_handler(request: Request, uid: str):
     if (job := await murdock.handle_job_status_data(uid, data)) is None:
         raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
 
-    return job.running_model()
+    return job.model()
 
 
 @app.delete(
@@ -217,7 +217,7 @@ async def running_job_stop_handler(
     if (job := murdock.running.search_by_uid(uid)) is None:
         raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
     await murdock.stop_running_job(job, reload_jobs=True)
-    return job.running_model()
+    return job.model()
 
 
 @app.get(
@@ -243,7 +243,7 @@ async def finished_job_restart_handler(
 ):
     if (job := await murdock.restart_job(uid, token)) is None:
         raise HTTPException(status_code=404, detail=f"Cannot restart job '{uid}'")
-    return job.queued_model()
+    return job.model()
 
 
 @app.delete(

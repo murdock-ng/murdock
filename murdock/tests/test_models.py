@@ -41,16 +41,16 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
         (JobQueryModel(states="errored"), {"state": {"$in": ["errored"]}}),
         (
             JobQueryModel(after="2021-08-18"),
-            {"since": {"$gte": test_date_after.timestamp()}},
+            {"creation_time": {"$gte": test_date_after.timestamp()}},
         ),
         (
             JobQueryModel(before="2021-09-03"),
-            {"since": {"$lte": test_date_before.timestamp()}},
+            {"creation_time": {"$lte": test_date_before.timestamp()}},
         ),
         (
             JobQueryModel(before="2021-09-03", after="2021-08-18"),
             {
-                "since": {
+                "creation_time": {
                     "$lte": test_date_before.timestamp(),
                     "$gte": test_date_after.timestamp(),
                 }
@@ -72,7 +72,7 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
                 "commit.sha": "abcdef",
                 "commit.author": "me",
                 "state": {"$in": ["passed", "errored"]},
-                "since": {
+                "creation_time": {
                     "$lte": test_date_before.timestamp(),
                     "$gte": test_date_after.timestamp(),
                 },

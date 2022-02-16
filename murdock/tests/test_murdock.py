@@ -252,7 +252,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
     await asyncio.sleep(1)
     assert len(murdock.queued.jobs) == num_jobs - 2
     assert murdock.running.jobs[0] in jobs[: num_jobs - 1]
-    assert murdock.running.jobs[0].running_model() == (await murdock.get_jobs())[-1]
+    assert murdock.running.jobs[0].model() == (await murdock.get_jobs())[-1]
     await asyncio.sleep(0.1)
     await murdock.schedule_job(jobs[-1])
     assert murdock.get_queued_jobs()[-1].uid == jobs[-1].uid

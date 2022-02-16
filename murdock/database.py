@@ -55,7 +55,7 @@ class Database:
     async def find_jobs(self, query: JobQueryModel) -> List[JobModel]:
         jobs = await (
             self.db.job.find(query.to_mongodb_query())
-            .sort("since", -1)
+            .sort("creation_time", -1)
             .to_list(length=query.limit)
         )
         return [MurdockJob.finished_model(job) for job in jobs]

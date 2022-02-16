@@ -478,7 +478,7 @@ class Murdock:
     def get_queued_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
         return sorted(
             [
-                job.queued_model()
+                job.model()
                 for job in self.queued.search_with_query(query)
                 if query.states is None or "queued" in query.states
             ],
@@ -489,7 +489,7 @@ class Murdock:
         self, query: JobQueryModel = JobQueryModel()
     ) -> List[JobModel]:
         return [
-            job.running_model()
+            job.model()
             for job in self.running.search_with_query(query)
             if query.states is None or "running" in query.states
         ]
@@ -514,9 +514,9 @@ class Murdock:
     async def get_job(self, uid: str) -> JobModel:
         found_job = None
         if (job := self.queued.search_by_uid(uid)) is not None:
-            found_job = MurdockJob.queued_model(job)
+            found_job = MurdockJob.model(job)
         elif (job := self.running.search_by_uid(uid)) is not None:
-            found_job = MurdockJob.running_model(job)
+            found_job = MurdockJob.model(job)
         elif jobs := await self.db.find_jobs(JobQueryModel(uid=uid)):
             found_job = jobs[0]
         return found_job
@@ -550,7 +550,7 @@ class Murdock:
         if param.fasttrack is True:
             job.fasttracked = True
         await self.schedule_job(job)
-        return job.queued_model()
+        return job.model()
 
     async def start_branch_job(
         self, token, param: ManualJobBranchParamModel

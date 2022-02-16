@@ -41,7 +41,8 @@ class MurdockJob:
         self.commit: CommitModel = commit
         self.ref: str = ref
         self.pr: PullRequestInfo = pr
-        self.start_time: float = time.time()
+        self.creation_time: float = time.time()
+        self.start_time: float = 0
         self.stop_time: float = 0
         self.canceled: bool = False
         self.status: dict = {"status": ""}
@@ -95,31 +96,19 @@ class MurdockJob:
             runtime_format = "%Ss"
         return time.strftime(runtime_format, time.gmtime(self.runtime))
 
-    def queued_model(self):
+    def model(self):
         return JobModel(
             uid=self.uid,
             commit=self.commit,
-            ref=self.ref,
-            prinfo=self.pr,
-            since=self.start_time,
-            state=self.state,
-            fasttracked=self.fasttracked,
-            trigger=self.trigger,
-            triggered_by=self.triggered_by,
-            env=self.safe_env,
-            user_env=self.user_env,
-        )
-
-    def running_model(self):
-        return JobModel(
-            uid=self.uid,
-            commit=self.commit,
-            ref=self.ref,
-            prinfo=self.pr,
-            since=self.start_time,
-            status=self.status,
+            creation_time=self.creation_time,
+            start_time=self.start_time,
+            runtime=self.runtime,
             state=self.state,
             output=self.output,
+            output_text_url=self.output_text_url,
+            status=self.status,
+            prinfo=self.pr,
+            ref=self.ref,
             fasttracked=self.fasttracked,
             trigger=self.trigger,
             triggered_by=self.triggered_by,
@@ -129,22 +118,7 @@ class MurdockJob:
 
     @staticmethod
     def to_db_entry(job):
-        return JobModel(
-            uid=job.uid,
-            commit=job.commit,
-            since=job.start_time,
-            runtime=job.runtime,
-            state=job.state,
-            output_text_url=job.output_text_url,
-            status=job.status,
-            prinfo=job.pr,
-            ref=job.ref,
-            fasttracked=job.fasttracked,
-            trigger=job.trigger,
-            triggered_by=job.triggered_by,
-            env=job.safe_env,
-            user_env=job.user_env,
-        ).dict(exclude_none=True)
+        return job.model().dict(exclude_none=True)
 
     @staticmethod
     def finished_model(entry: dict) -> JobModel:

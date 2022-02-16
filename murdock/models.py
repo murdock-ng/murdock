@@ -92,9 +92,13 @@ class JobModel(BaseModel):
         None,
         title="Pull Request detailed information (if any)",
     )
-    since: float = Field(
+    creation_time: float = Field(
         None,
-        title="Time of last update of the job",
+        title="Job creation time",
+    )
+    start_time: float = Field(
+        None,
+        title="Job start time",
     )
     fasttracked: Optional[bool] = Field(
         None,
@@ -261,11 +265,11 @@ class JobQueryModel(BaseModel):
         if self.author is not None:
             _query.update({"commit.author": self.author})
         if self.after is not None:
-            _query.update({"since": {"$gte": self.to_date_after_timestamp()}})
+            _query.update({"creation_time": {"$gte": self.to_date_after_timestamp()}})
         if self.before is not None:
             timestamp = self.to_date_before_timestamp()
-            if "since" in _query:
-                _query["since"].update({"$lte": timestamp})
+            if "creation_time" in _query:
+                _query["creation_time"].update({"$lte": timestamp})
             else:
-                _query.update({"since": {"$lte": timestamp}})
+                _query.update({"creation_time": {"$lte": timestamp}})
         return _query

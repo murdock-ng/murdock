@@ -223,8 +223,15 @@ def test_queued_model():
         uid=job.uid,
         commit=commit,
         prinfo=prinfo,
-        since=job.start_time,
+        creation_time=job.creation_time,
+        start_time=job.start_time,
+        runtime=0.0,
         fasttracked=False,
+        trigger="api",
+        triggered_by=None,
+        status={"status": ""},
+        output="",
+        output_text_url=None,
         env={
             "CI_BASE_BRANCH": "test_base_branch",
             "CI_BASE_COMMIT": "test_base_commit",
@@ -242,7 +249,7 @@ def test_queued_model():
             "CI_PULL_USER": "test_user",
         },
     )
-    assert job.queued_model() == expected_model
+    assert job.model() == expected_model
 
 
 def test_running_model():
@@ -251,12 +258,15 @@ def test_running_model():
         uid=job.uid,
         commit=commit,
         prinfo=prinfo,
-        since=job.start_time,
+        creation_time=job.creation_time,
+        start_time=job.start_time,
+        runtime=0.0,
         status=job.status,
-        output="",
         fasttracked=False,
         trigger="api",
         triggered_by="user",
+        output="",
+        output_text_url=None,
         env={
             "CI_BASE_BRANCH": "test_base_branch",
             "CI_BASE_COMMIT": "test_base_commit",
@@ -274,7 +284,7 @@ def test_running_model():
             "CI_PULL_USER": "test_user",
         },
     )
-    assert job.running_model() == expected_model
+    assert job.model() == expected_model
 
 
 def test_to_db_entry():
@@ -283,9 +293,11 @@ def test_to_db_entry():
     job.output = "test output"
     expected_model = JobModel(
         uid=job.uid,
-        since=job.start_time,
+        start_time=job.start_time,
+        creation_time=job.creation_time,
         runtime=job.runtime,
         state="passed",
+        output=job.output,
         output_text_url=job.output_text_url,
         work_dir=job.work_dir,
         status=job.status,
@@ -317,7 +329,8 @@ def test_to_db_entry():
 def test_finished_model():
     entry = {
         "uid": "123",
-        "since": 12345,
+        "creation_time": 12345,
+        "start_time": 34567,
         "runtime": 1234.5,
         "state": "passed",
         "output": "job output",
@@ -330,7 +343,8 @@ def test_finished_model():
     result = MurdockJob.finished_model(entry)
     assert result == JobModel(
         uid="123",
-        since=12345,
+        creation_time=12345,
+        start_time=34567,
         runtime=1234.5,
         state="passed",
         output="job output",
