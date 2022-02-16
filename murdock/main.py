@@ -308,7 +308,7 @@ async def job_start_branch_handler(
     path="/job/branch/{branch}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the last finished job run on the given branch",
+    summary="Return the last job of the given branch",
     tags=["jobs"],
 )
 async def job_get_last_branch_handler(branch: str):
@@ -341,7 +341,7 @@ async def job_start_tag_handler(
     path="/job/tag/{tag}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the last finished job run on the given tag",
+    summary="Return the last job of the given tag",
     tags=["jobs"],
 )
 async def job_get_last_tag_handler(tag: str):
@@ -374,7 +374,7 @@ async def job_start_commit_handler(
     path="/job/commit/{sha}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the last finished job run on the given commit",
+    summary="Return the last job of the given commit",
     tags=["jobs"],
 )
 async def job_get_last_commit_handler(sha: str):
@@ -391,7 +391,7 @@ async def job_get_last_commit_handler(sha: str):
     path="/job/pr/{prnum}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the last finished job run on the given PR number",
+    summary="Return the last job of the given PR number",
     tags=["jobs"],
 )
 async def job_get_last_prnum_handler(prnum: int):
