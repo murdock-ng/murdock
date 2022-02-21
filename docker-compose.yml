@@ -70,8 +70,6 @@ services:
   mongo:
     image: mongo:4.2.16
     container_name: mongodb
-    ports:
-      - 27017:27017
     volumes:
       - ${MONGODB_BD_DATA_DIR}:/data/db
     logging:
@@ -79,6 +77,14 @@ services:
       options:
         tag: murdock-mongo
     restart: always
+  mongo-dev:
+    image: mongo:4.2.16
+    container_name: mongodb
+    ports:
+      - 27017:27017
+    volumes:
+      - ${MONGODB_BD_DATA_DIR}:/data/db
+    profiles: ["dev"]
   proxy:
     image: traefik:v2.5
     container_name: murdock-proxy

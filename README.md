@@ -69,7 +69,7 @@ $ python3 -m pip install -r requirements.txt
 Launch the MongoDb service:
 
 ```
-$ docker-compose up mongo
+$ docker-compose up mongo-dev
 ```
 
 Launch the `uvicorn` server with the `--reload` option:
