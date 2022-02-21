@@ -22,7 +22,7 @@ ARG UID=1000
 ARG GID=1000
 
 RUN groupadd --gid ${GID} murdock
-RUN useradd --shell /bin/bash --uid ${UID} --gid ${GID} murdock
+RUN useradd --home-dir /var/lib/murdock --shell /bin/bash --uid ${UID} --gid ${GID} murdock
 USER murdock
 
 WORKDIR /var/lib/murdock
