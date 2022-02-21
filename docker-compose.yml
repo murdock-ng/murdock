@@ -24,6 +24,7 @@ services:
         - GITHUB_WEBHOOK_SECRET
         - GITHUB_API_TOKEN
         - MURCOCK_CANCEL_ON_UPDATE
+        - MURDOCK_COMMIT_STATUS_CONTEXT
         - CI_READY_LABEL
         - CI_FASTTRACK_LABELS
     volumes:
