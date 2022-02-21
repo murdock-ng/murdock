@@ -41,6 +41,9 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
     )
     cancel_on_update: bool = Field(env="MURDOCK_CANCEL_ON_UPDATE", default=True)
+    commit_status_context: str = Field(
+        env="MURDOCK_COMMIT_STATUS_CONTEXT", default="Murdock"
+    )
     store_stopped_jobs: bool = Field(env="MURDOCK_STORE_STOPPED_JOBS", default=True)
     script_name: str = Field(env="MURDOCK_SCRIPT_NAME", default="run.sh")
 

@@ -120,7 +120,7 @@ class Murdock:
             job.commit.sha,
             {
                 "state": "pending",
-                "context": "Murdock",
+                "context": GLOBAL_CONFIG.commit_status_context,
                 "description": "The job has started",
                 "target_url": job.details_url,
             },
@@ -140,7 +140,7 @@ class Murdock:
                 job.commit.sha,
                 {
                     "state": job_state,
-                    "context": "Murdock",
+                    "context": GLOBAL_CONFIG.commit_status_context,
                     "description": (
                         f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
                     ),
@@ -161,7 +161,7 @@ class Murdock:
             job.commit.sha,
             {
                 "state": "pending",
-                "context": "Murdock",
+                "context": GLOBAL_CONFIG.commit_status_context,
                 "description": "The job has been queued",
                 "target_url": GLOBAL_CONFIG.base_url,
             },
@@ -192,7 +192,7 @@ class Murdock:
         self.queued.remove(job)
         status = {
             "state": "pending",
-            "context": "Murdock",
+            "context": GLOBAL_CONFIG.commit_status_context,
             "target_url": GLOBAL_CONFIG.base_url,
             "description": "Canceled",
         }
@@ -223,7 +223,7 @@ class Murdock:
         await job.stop()
         status = {
             "state": "pending",
-            "context": "Murdock",
+            "context": GLOBAL_CONFIG.commit_status_context,
             "target_url": job.details_url,
             "description": "Stopped",
         }
@@ -319,7 +319,7 @@ class Murdock:
                 job.commit.sha,
                 {
                     "state": "pending",
-                    "context": "Murdock",
+                    "context": GLOBAL_CONFIG.commit_status_context,
                     "description": "The job was skipped.",
                 },
             )
@@ -391,7 +391,7 @@ class Murdock:
             await self.disable_jobs_matching(job)
             status = {
                 "state": "pending",
-                "context": "Murdock",
+                "context": GLOBAL_CONFIG.commit_status_context,
                 "target_url": GLOBAL_CONFIG.base_url,
                 "description": f'"{CI_CONFIG.ready_label}" label not set',
             }
