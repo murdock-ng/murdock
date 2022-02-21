@@ -17,6 +17,14 @@ RUN python3 -m pip install --upgrade pip && \
     rm -f /tmp/requirements.txt
 
 RUN mkdir -p /var/lib/{murdock,murdock-data}
+
+ARG UID=1000
+ARG GID=1000
+
+RUN groupadd --gid ${GID} murdock
+RUN useradd --shell /bin/bash --uid ${UID} --gid ${GID} murdock
+USER murdock
+
 WORKDIR /var/lib/murdock
 EXPOSE 8000
 

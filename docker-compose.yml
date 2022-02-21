@@ -2,10 +2,13 @@ version: "3.9"
 
 services:
   murdock:
-    user: 0:0
+    user: ${MURDOCK_USER_UID}:${MURDOCK_USER_GID}
     init: true
     build:
       context: .
+      args:
+        UID: ${MURDOCK_USER_UID}
+        GID: ${MURDOCK_USER_GID}
     image: ${MURDOCK_DOCKER_IMAGE}
     container_name: murdock-app
     environment:
@@ -56,11 +59,16 @@ services:
       "
     profiles: ["setup"]
   webapp:
+    user: ${MURDOCK_USER_UID}:${MURDOCK_USER_GID}
     build:
       context: webapp/.
+      args:
+        UID: ${MURDOCK_USER_UID}
+        GID: ${MURDOCK_USER_GID}
     image: murdock-webapp
     container_name: murdock-webapp
     volumes:
+      - ./webapp:/var/lib/murdock/webapp
       - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/webapp/build
     logging:
       driver: syslog
@@ -79,7 +87,7 @@ services:
     restart: always
   mongo-dev:
     image: mongo:4.2.16
-    container_name: mongodb
+    container_name: mongodb-dev
     ports:
       - 27017:27017
     volumes:
