@@ -10,7 +10,7 @@ from fastapi.security.api_key import APIKeyHeader
 
 from jinja2 import FileSystemLoader, Environment
 
-from murdock.config import GITHUB_CONFIG
+from murdock.config import GITHUB_CONFIG, GLOBAL_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel
@@ -187,6 +187,10 @@ async def fetch_user_login(token: str) -> str:
 
 
 async def set_commit_status(commit: str, status: dict):
+    if GLOBAL_CONFIG.enable_commit_status is False:
+        LOGGER.debug("Skipping commit status update")
+        return
+
     LOGGER.debug(f"Setting commit {commit[0:7]} status to '{status['description']}'")
     async with httpx.AsyncClient() as client:
         response = await client.post(

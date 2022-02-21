@@ -41,6 +41,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
     )
     cancel_on_update: bool = Field(env="MURDOCK_CANCEL_ON_UPDATE", default=True)
+    enable_commit_status: bool = Field(env="MURDOCK_ENABLE_COMMIT_STATUS", default=True)
     commit_status_context: str = Field(
         env="MURDOCK_COMMIT_STATUS_CONTEXT", default="Murdock"
     )
