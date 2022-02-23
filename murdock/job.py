@@ -179,13 +179,20 @@ class MurdockJob:
             _env.pop(var)
         return _env
 
-    def __repr__(self) -> str:
-        ret = f"sha:{self.commit.sha[0:7]}"
+    @property
+    def title(self):
+        commit = self.commit.sha[0:7]
         if self.pr is not None:
-            ret += f" (PR #{self.pr.number})"
-        if self.ref is not None:
-            ret += f" ({self.ref})"
-        return ret
+            return f"PR #{self.pr.number} ({commit})"
+        elif self.ref is not None and self.ref.startswith("refs/tags"):
+            return f"tag {self.ref[10:]} ({commit})"
+        elif self.ref is not None and self.ref.startswith("refs/heads"):
+            return f"branch {self.ref[11:]} ({commit})"
+        else:
+            return f"commit {commit}"
+
+    def __repr__(self) -> str:
+        return f"job {self.uid[0:7]} - {self.title}"
 
     def __eq__(self, other) -> bool:
         return other is not None and self.uid == other.uid
@@ -230,7 +237,7 @@ class MurdockJob:
             self.state = "stopped"
         else:
             self.state = "errored"
-        LOGGER.debug(f"Job {self} {self.state} (ret: {self.proc.returncode})")
+        LOGGER.debug(f"{self} {self.state} (ret: {self.proc.returncode})")
 
         # Store job output in text file
         output_text_path = os.path.join(self.work_dir, "output.txt")
@@ -238,7 +245,7 @@ class MurdockJob:
             with open(output_text_path, "w") as out:
                 out.write(self.output)
         except Exception as exc:
-            LOGGER.warning(f"Job error for {self}: cannot write output.txt: {exc}")
+            LOGGER.warning(f"Error for {self}: cannot write output.txt: {exc}")
 
         output_text_url = os.path.join(
             GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
@@ -249,14 +256,14 @@ class MurdockJob:
         self.proc = None
 
     async def stop(self):
-        LOGGER.debug(f"Job {self} immediate stop requested")
+        LOGGER.debug(f"{self} immediate stop requested")
         if self.proc is not None and self.proc.returncode is None:
-            LOGGER.debug(f"Send signal {signal.SIGINT} to job {self}")
+            LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
             os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
             try:
                 await asyncio.wait_for(self.proc.wait(), timeout=5.0)
             except asyncio.TimeoutError:
-                LOGGER.debug(f"Couldn't stop job {self} with {signal.SIGINT}")
+                LOGGER.debug(f"Couldn't stop {self} with {signal.SIGINT}")
         if not GLOBAL_CONFIG.store_stopped_jobs:
             LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)

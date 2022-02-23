@@ -296,7 +296,7 @@ async def test_restart_job(find, fetch_config, schedule, job_found, caplog):
         fetch_config.assert_called_once()
         schedule.assert_called_once()
         schedule.call_args[0][0].commit == job_found.commit
-        assert f"Restarting job {job_found}" in caplog.text
+        assert f"Restarting {job_found}" in caplog.text
 
 
 pr_event = {
@@ -478,7 +478,7 @@ async def test_handle_pr_event_skip_commit(
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
-    assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
+    assert "Scheduling new job" in caplog.text
     if skipped:
         queued.assert_not_called()
         commit_status.assert_called_once()
@@ -514,7 +514,7 @@ async def test_handle_pr_event_missing_ready_label(
     fetch_commit.assert_called_once()
     assert "Handle pull request event" in caplog.text
     assert f"'{CI_CONFIG.ready_label}' label not set" in caplog.text
-    assert f"Scheduling new job sha:{commit} (PR #123)" not in caplog.text
+    assert "Scheduling new job" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -605,10 +605,10 @@ async def test_handle_pr_event_labeled_action(
     fetch_commit.assert_called_once()
     if scheduled:
         queued.assert_called_once()
-        assert f"Scheduling new job sha:{commit} (PR #123)" in caplog.text
+        assert "Scheduling new job" in caplog.text
     else:
         queued.assert_not_called()
-        assert f"Scheduling new job sha:{commit} (PR #123)" not in caplog.text
+        assert "Scheduling new job" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -645,7 +645,7 @@ async def test_handle_push_event(
     fetch_commit.assert_called_with(commit)
     queued.assert_called_once()
     assert f"Handle push event on ref '{ref_name}'" in caplog.text
-    assert f"Scheduling new job sha:{commit} ({ref})" in caplog.text
+    assert "Scheduling new job" in caplog.text
     assert "Cannot fetch commit information, aborting" not in caplog.text
 
 
@@ -698,7 +698,7 @@ async def test_handle_push_event_ref_not_handled(
     queued.assert_not_called()
     assert f"Ref '{ref_name}' not accepted for push events" not in caplog.text
     assert f"Handle push event on ref '{ref_name}'" not in caplog.text
-    assert f"Scheduling new job sha:{commit} ({ref})" not in caplog.text
+    assert "Scheduling new job" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -723,7 +723,7 @@ async def test_handle_push_event_commit_fetch_error(
     fetch_config.assert_not_called()
     queued.assert_not_called()
     assert f"Handle push event on ref '{branch}'" not in caplog.text
-    assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" not in caplog.text
+    assert "Scheduling new job" not in caplog.text
     assert "Cannot fetch commit information, aborting" in caplog.text
 
 
@@ -775,7 +775,7 @@ async def test_handle_push_event_skip_commit(
     fetch_commit.assert_called_with(commit)
     assert f"Ref '{branch}' not accepted for push events" not in caplog.text
     assert f"Handle push event on ref '{branch}'" in caplog.text
-    assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" in caplog.text
+    assert "Scheduling new job" in caplog.text
     if skipped is False:
         commit_status.assert_not_called()
         queued.assert_called_once()
@@ -819,7 +819,7 @@ async def test_handle_push_event_ref_removed(
     fetch_commit.assert_not_called()
     queued.assert_not_called()
     assert f"Handle push event on ref '{branch}'" not in caplog.text
-    assert f"Scheduling new job sha:{commit} (refs/heads/{branch})" not in caplog.text
+    assert "Scheduling new job" not in caplog.text
 
 
 @pytest.mark.asyncio

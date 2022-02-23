@@ -73,18 +73,18 @@ class Murdock:
             LOGGER.debug(f"Closing websocket {ws}")
             ws.close()
         for job in self.queued.jobs:
-            LOGGER.debug(f"Canceling job {job}")
+            LOGGER.debug(f"Canceling {job}")
             job.cancelled = True
         for job in self.running.jobs:
             if job is not None:
-                LOGGER.debug(f"Stopping job {job}")
+                LOGGER.debug(f"Stopping {job}")
                 await job.stop()
 
     async def _process_job(self, job: MurdockJob):
         if job.canceled is True:
-            LOGGER.debug(f"Ignoring canceled job {job}")
+            LOGGER.debug(f"Ignoring canceled {job}")
         else:
-            LOGGER.info(f"Processing job {job} [{asyncio.current_task().get_name()}]")
+            LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")
             await self.job_prepare(job)
             try:
                 await job.execute(notify=self.notify_message_to_clients)
@@ -92,7 +92,7 @@ class Murdock:
                 LOGGER.warning(f"Build job failed:\n{exc}")
                 job.state = "errored"
             await self.job_finalize(job)
-            LOGGER.info(f"Job {job} completed")
+            LOGGER.info(f"{job} completed")
 
     async def job_processing_task(self):
         current_task = asyncio.current_task().get_name()
@@ -173,7 +173,7 @@ class Murdock:
             self.fasttrack_queue.put_nowait(job)
         else:
             self.queue.put_nowait(job)
-        LOGGER.info(f"Job {job} added to queued jobs")
+        LOGGER.info(f"{job} added to queued jobs")
         await self.reload_jobs()
 
     async def cancel_queued_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
@@ -187,7 +187,7 @@ class Murdock:
         return jobs_to_cancel
 
     async def cancel_queued_job(self, job: MurdockJob, reload_jobs=False):
-        LOGGER.debug(f"Canceling job {job}")
+        LOGGER.debug(f"Canceling {job}")
         job.canceled = True
         self.queued.remove(job)
         status = {
@@ -213,7 +213,7 @@ class Murdock:
     async def stop_running_job(
         self, job: MurdockJob, reload_jobs=False, fail=False
     ) -> MurdockJob:
-        LOGGER.debug(f"Stopping job {job}")
+        LOGGER.debug(f"Stopping {job}")
         if fail is True:
             LOGGER.debug(f"Stopping {job} with errored state")
             job.state = "errored"
@@ -233,7 +233,7 @@ class Murdock:
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
-        LOGGER.debug(f"Disable jobs matching job {job}")
+        LOGGER.debug(f"Disable jobs matching {job}")
         disabled_jobs = []
         disabled_jobs += await self.cancel_queued_jobs_matching(job)
         disabled_jobs += await self.stop_running_jobs_matching(job)
@@ -248,19 +248,19 @@ class Murdock:
         modified_jobs = 0
         for matching_job in matching_jobs:
             if matching_job.pr.labels != pull_request.labels:
-                LOGGER.debug(f"Updating job {matching_job} labels")
+                LOGGER.debug(f"Updating {matching_job} labels")
                 matching_job.pr.labels = pull_request.labels
                 modified_jobs += 1
             if matching_job.pr.title != pull_request.title:
-                LOGGER.debug(f"Updating job {matching_job} title")
+                LOGGER.debug(f"Updating {matching_job} title")
                 matching_job.pr.title = pull_request.title
                 modified_jobs += 1
             if matching_job.pr.state != pull_request.state:
-                LOGGER.debug(f"Updating job {matching_job} state")
+                LOGGER.debug(f"Updating {matching_job} state")
                 matching_job.pr.state = pull_request.state
                 modified_jobs += 1
             if matching_job.pr.is_merged != pull_request.is_merged:
-                LOGGER.debug(f"Updating job {matching_job} merged state")
+                LOGGER.debug(f"Updating {matching_job} merged state")
                 matching_job.pr.is_merged = pull_request.is_merged
                 modified_jobs += 1
 
@@ -292,7 +292,7 @@ class Murdock:
         if (job := await self.db.find_job(uid)) is None:
             return
         login = await fetch_user_login(token)
-        LOGGER.info(f"Restarting job {job}")
+        LOGGER.info(f"Restarting {job}")
         config = await fetch_murdock_config(job.commit.sha)
         new_job = MurdockJob(
             job.commit,
@@ -314,7 +314,7 @@ class Murdock:
             )
             for line in job.commit.message.split("\n")
         ):
-            LOGGER.debug(f"Commit message contains skip keywords, skipping job {job}")
+            LOGGER.debug(f"Commit message contains skip keywords, skipping {job}")
             await set_commit_status(
                 job.commit.sha,
                 {
@@ -327,7 +327,7 @@ class Murdock:
         return False
 
     async def schedule_job(self, job: MurdockJob) -> MurdockJob:
-        LOGGER.info(f"Scheduling new job {job}")
+        LOGGER.info(f"Scheduling new {job}")
         # Check if the job should be skipped (using keywords in commit message)
         if await self.handle_skip_job(job) is True:
             return
