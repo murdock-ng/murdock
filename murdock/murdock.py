@@ -30,6 +30,7 @@ from murdock.github import (
     fetch_murdock_config,
 )
 from murdock.database import Database
+from murdock.notify import Notifier
 
 
 ALLOWED_ACTIONS = [
@@ -58,6 +59,8 @@ class Murdock:
         self.queue: asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
         self.db = Database()
+        if GLOBAL_CONFIG.enable_notifications is True:
+            self.notifier = Notifier()
 
     async def init(self):
         await self.db.init()
@@ -150,6 +153,13 @@ class Murdock:
             if job.pr is not None and job.config.pr.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
+        # Notifications must be called before inserting the job in DB
+        # because the logic checks the result of the last matching job in DB.
+        if (
+            job.state in ["passed", "errored"]
+            and GLOBAL_CONFIG.enable_notifications is True
+        ):
+            await self.notifier.notify(job, self.db)
         if job.state in ["passed", "errored"] or (
             job.state == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
         ):

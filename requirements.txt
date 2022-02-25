@@ -2,3 +2,4 @@ fastapi[all]
 motor
 httpx
 PyYaml
+aiosmtplib

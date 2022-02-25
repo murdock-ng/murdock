@@ -23,6 +23,9 @@ from fastapi.staticfiles import StaticFiles
 from murdock.config import (
     GLOBAL_CONFIG,
     DB_CONFIG,
+    NOTIFIER_CONFIG,
+    MAIL_NOTIFIER_CONFIG,
+    MATRIX_NOTIFIER_CONFIG,
     GITHUB_CONFIG,
     CI_CONFIG,
     MurdockSettings,
@@ -43,6 +46,9 @@ LOGGER.debug(
     "Configuration:\n"
     f"\nGLOBAL_CONFIG:\n{json.dumps(GLOBAL_CONFIG.dict(), indent=4)}\n"
     f"\nDB_CONFIG:\n{json.dumps(DB_CONFIG.dict(), indent=4)}\n"
+    f"\nNOTIFIER_CONFIG:\n{json.dumps(NOTIFIER_CONFIG.dict(), indent=4)}\n"
+    f"\nMAIL_NOTIFIER_CONFIG:\n{json.dumps(MAIL_NOTIFIER_CONFIG.dict(), indent=4)}\n"
+    f"\nMATRIX_NOTIFIER_CONFIG:\n{json.dumps(MATRIX_NOTIFIER_CONFIG.dict(), indent=4)}\n"
     f"\nGITHUB_CONFIG:\n{json.dumps(GITHUB_CONFIG.dict(), indent=4)}\n"
     f"\nCI_CONFIG:\n{json.dumps(CI_CONFIG.dict(), indent=4)}\n"
     f"\nMurdock default:\n{json.dumps(MurdockSettings().dict(), indent=4)}\n"

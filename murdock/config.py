@@ -26,6 +26,33 @@ class CISettings(BaseSettings):
     )
 
 
+class MailNotifierSettings(BaseSettings):
+    recipients: List[str] = Field(env="MURDOCK_NOTIFIER_MAIL_RECIPIENTS", default=[])
+    server: str = Field(env="MURDOCK_NOTIFIER_MAIL_SERVER", default="localhost")
+    port: int = Field(env="MURDOCK_NOTIFIER_MAIL_PORT", default=25)
+    use_tls: bool = Field(env="MURDOCK_NOTIFIER_MAIL_USE_TLS", default=True)
+    username: str = Field(env="MURDOCK_NOTIFIER_MAIL_USERNAME", default="")
+    password: str = Field(env="MURDOCK_NOTIFIER_MAIL_PASSWORD", default="")
+
+
+class MatrixNotifierSettings(BaseSettings):
+    room: str = Field(env="MURDOCK_NOTIFIER_MATRIX_ROOM", default="")
+    token: str = Field(env="MURDOCK_NOTIFIER_MATRIX_TOKEN", default="")
+
+
+class NotifierSettings(BaseSettings):
+    pr: List[str] = Field(env="MURDOCK_NOTIFIER_PR_NOTIFIERS", default=["matrix"])
+    branch: List[str] = Field(
+        env="MURDOCK_NOTIFIER_BRANCH_NOTIFIERS", default=["mail", "matrix"]
+    )
+    tag: List[str] = Field(
+        env="MURDOCK_NOTIFIER_TAG_NOTIFIERS", default=["mail", "matrix"]
+    )
+    commit: List[str] = Field(
+        env="MURDOCK_NOTIFIER_COMMIT_NOTIFIERS", default=["matrix"]
+    )
+
+
 class GlobalSettings(BaseSettings):
     base_url: str = Field(env="MURDOCK_BASE_URL", default="http://localhost:8000")
     work_dir: str = Field(env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data")
@@ -46,6 +73,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_COMMIT_STATUS_CONTEXT", default="Murdock"
     )
     store_stopped_jobs: bool = Field(env="MURDOCK_STORE_STOPPED_JOBS", default=True)
+    enable_notifications: bool = Field(env="MURDOCK_NOTIFIER_ENABLE", default=False)
     script_name: str = Field(env="MURDOCK_SCRIPT_NAME", default="run.sh")
 
     @validator("work_dir")
@@ -88,4 +116,7 @@ _ENV_FILE = os.getenv("ENV_FILE", os.path.join(os.path.dirname(__file__), "..", 
 DB_CONFIG = DatabaseSettings(_env_file=_ENV_FILE)
 GITHUB_CONFIG = GithubSettings(_env_file=_ENV_FILE)
 CI_CONFIG = CISettings(_env_file=_ENV_FILE)
+MAIL_NOTIFIER_CONFIG = MailNotifierSettings(_env_file=_ENV_FILE)
+MATRIX_NOTIFIER_CONFIG = MatrixNotifierSettings(_env_file=_ENV_FILE)
+NOTIFIER_CONFIG = NotifierSettings(_env_file=_ENV_FILE)
 GLOBAL_CONFIG = GlobalSettings(_env_file=_ENV_FILE)
