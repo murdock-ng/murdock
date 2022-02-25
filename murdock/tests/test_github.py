@@ -11,6 +11,9 @@ from murdock.models import CommitModel, PullRequestInfo
 from murdock.github import (
     comment_on_pr,
     fetch_commit_info,
+    fetch_branch_info,
+    fetch_tag_info,
+    fetch_user_login,
     set_commit_status,
     fetch_murdock_config,
     MAX_PAGES_COUNT,
@@ -272,6 +275,102 @@ async def test_fetch_commit_info(get, text, code, result):
         headers={
             "Accept": "application/vnd.github.v3+json",
             "Authorization": f"token {GITHUB_CONFIG.api_token}",
+        },
+    )
+    assert fetch_result == result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,code,result",
+    [
+        pytest.param(json.dumps({"details": "error"}), 403, None, id="error"),
+        pytest.param(
+            json.dumps({"commit": {"sha": "123"}}),
+            200,
+            CommitModel(sha="123", tree="456", message="test_message", author="me"),
+            id="success",
+        ),
+    ],
+)
+@mock.patch("httpx.AsyncClient.get")
+@mock.patch("murdock.github.fetch_commit_info")
+async def test_fetch_branch_info(fetch_commit_info, get, text, code, result):
+    response = Response(code, text=text)
+    get.return_value = response
+    fetch_commit_info.return_value = result
+    fetch_result = await fetch_branch_info("test")
+    get.assert_called_with(
+        f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/branches/test",
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": f"token {GITHUB_CONFIG.api_token}",
+        },
+    )
+    if code == 200:
+        fetch_commit_info.assert_called_with("123")
+    else:
+        fetch_commit_info.assert_not_called()
+    assert fetch_result == result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,code,result",
+    [
+        pytest.param(json.dumps({"details": "error"}), 403, None, id="error"),
+        pytest.param(
+            json.dumps({"object": {"sha": "123"}}),
+            200,
+            CommitModel(sha="123", tree="456", message="test_message", author="me"),
+            id="success",
+        ),
+    ],
+)
+@mock.patch("httpx.AsyncClient.get")
+@mock.patch("murdock.github.fetch_commit_info")
+async def test_fetch_tag_info(fetch_commit_info, get, text, code, result):
+    response = Response(code, text=text)
+    get.return_value = response
+    fetch_commit_info.return_value = result
+    fetch_result = await fetch_tag_info("test")
+    get.assert_called_with(
+        f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/git/refs/tags/test",
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": f"token {GITHUB_CONFIG.api_token}",
+        },
+    )
+    if code == 200:
+        fetch_commit_info.assert_called_with("123")
+    else:
+        fetch_commit_info.assert_not_called()
+    assert fetch_result == result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,code,result",
+    [
+        pytest.param(json.dumps({"details": "error"}), 403, None, id="error"),
+        pytest.param(
+            json.dumps({"login": "user"}),
+            200,
+            "user",
+            id="success",
+        ),
+    ],
+)
+@mock.patch("httpx.AsyncClient.get")
+async def test_fetch_user_login(get, text, code, result):
+    response = Response(code, text=text)
+    get.return_value = response
+    fetch_result = await fetch_user_login("token")
+    get.assert_called_with(
+        "https://api.github.com/user",
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": "token token",
         },
     )
     assert fetch_result == result
