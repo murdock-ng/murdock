@@ -76,7 +76,7 @@ exit {run_ret}
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
 async def test_schedule_single_job(
-    insert, status, comment, ret, job_state, comment_on_pr, tmpdir
+    insert, status, comment, ret, job_state, comment_on_pr, tmpdir, mongo
 ):
     commit = CommitModel(
         sha="test_commit", tree="test_tree", message="test message", author="test_user"
@@ -143,9 +143,8 @@ async def test_schedule_single_job(
     ],
 )
 @mock.patch("murdock.murdock.set_commit_status")
-@mock.patch("murdock.database.Database.insert_job")
 async def test_schedule_multiple_jobs(
-    _, __, prnums, num_queued, free_slots, tmpdir, caplog
+    __, prnums, num_queued, free_slots, tmpdir, caplog, mongo
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
@@ -202,7 +201,7 @@ async def test_schedule_multiple_jobs(
 @mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
 @mock.patch("murdock.database.Database.insert_job", mock.AsyncMock())
 @mock.patch("murdock.database.Database.find_jobs")
-async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog):
+async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog, mongo):
     caplog.set_level(logging.DEBUG, logger="murdock")
     find.return_value = []
     scripts_dir = tmpdir.join("scripts").realpath()
