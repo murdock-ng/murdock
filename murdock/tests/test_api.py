@@ -521,6 +521,30 @@ def test_start_manual_branch_job(start_branch_job, result, data, code):
         assert response.json() == result.dict(exclude_none=True)
 
 
+@pytest.mark.parametrize(
+    "result,endpoint,code",
+    [
+        ([test_job_finished], "branch/test", 200),
+        ([], "branch/test", 404),
+        ([test_job_finished], "tag/test", 200),
+        ([], "tag/test", 404),
+        ([test_job_finished], "commit/test", 200),
+        ([], "commit/test", 404),
+        ([test_job_finished], "pr/123", 200),
+        ([], "pr/123", 404),
+    ],
+)
+@mock.patch("murdock.murdock.Murdock.get_jobs")
+def test_last_job(get_jobs, result, endpoint, code):
+    get_jobs.return_value = result
+    response = client.get(f"/job/{endpoint}")
+    assert response.status_code == code
+    if result:
+        assert response.json() == result[0].dict(exclude_none=True)
+    else:
+        assert "No matching job found" in response.json()["detail"]
+
+
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
     "result,data,code",
