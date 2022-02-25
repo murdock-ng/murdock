@@ -503,6 +503,60 @@ def test_get_job(get_job, result):
     assert response.json() == result.dict(exclude_none=True)
 
 
+@pytest.mark.usefixtures("push_allowed")
+@pytest.mark.parametrize(
+    "result,data,code",
+    [
+        (test_job_finished, json.dumps({"branch": "test_branch"}), 200),
+        (None, json.dumps({"branch": "test_branch"}), 404),
+        (None, "invalid", 422),
+    ],
+)
+@mock.patch("murdock.murdock.Murdock.start_branch_job")
+def test_start_manual_branch_job(start_branch_job, result, data, code):
+    start_branch_job.return_value = result
+    response = client.post("/job/branch", data=data)
+    assert response.status_code == code
+    if result is not None:
+        assert response.json() == result.dict(exclude_none=True)
+
+
+@pytest.mark.usefixtures("push_allowed")
+@pytest.mark.parametrize(
+    "result,data,code",
+    [
+        (test_job_finished, json.dumps({"tag": "test_tag"}), 200),
+        (None, json.dumps({"tag": "test_tag"}), 404),
+        (None, "invalid", 422),
+    ],
+)
+@mock.patch("murdock.murdock.Murdock.start_tag_job")
+def test_start_manual_tag_job(start_tag_job, result, data, code):
+    start_tag_job.return_value = result
+    response = client.post("/job/tag", data=data)
+    assert response.status_code == code
+    if result is not None:
+        assert response.json() == result.dict(exclude_none=True)
+
+
+@pytest.mark.usefixtures("push_allowed")
+@pytest.mark.parametrize(
+    "result,data,code",
+    [
+        (test_job_finished, json.dumps({"sha": "test_commit"}), 200),
+        (None, json.dumps({"sha": "test_commit"}), 404),
+        (None, "invalid", 422),
+    ],
+)
+@mock.patch("murdock.murdock.Murdock.start_commit_job")
+def test_start_manual_commit_job(start_commit_job, result, data, code):
+    start_commit_job.return_value = result
+    response = client.post("/job/commit", data=data)
+    assert response.status_code == code
+    if result is not None:
+        assert response.json() == result.dict(exclude_none=True)
+
+
 @mock.patch("murdock.murdock.Murdock.get_job")
 def test_get_job_not_found(get_job):
     get_job.return_value = None
