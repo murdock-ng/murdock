@@ -36,6 +36,8 @@ class MailNotifier:
             )
         except aiosmtplib.errors.SMTPAuthenticationError as exc:
             LOGGER.debug(f"Cannot send email: {exc}")
+        except aiosmtplib.errors.SMTPConnectError as exc:
+            LOGGER.debug(f"Cannot send email: {exc}")
         else:
             LOGGER.debug(f"Notification email sent to '{self.config.recipients}'")
 
