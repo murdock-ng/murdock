@@ -33,7 +33,7 @@ class Database:
         self.db.client.close()
 
     async def insert_job(self, job: MurdockJob):
-        LOGGER.debug(f"Inserting job {job} to database")
+        LOGGER.debug(f"Inserting {job} to database")
         await self.db.job.insert_one(MurdockJob.to_db_entry(job))
 
     async def find_job(self, uid: str) -> MurdockJob:
