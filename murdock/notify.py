@@ -82,7 +82,7 @@ class Notifier:
         if job.pr is not None:
             for notifier_type in self.config.pr:
                 await self._notifiers[notifier_type].notify(job)
-        elif job.ref is not None:
+        elif job.ref is not None and job.ref.startswith("refs/"):
             query = JobQueryModel(ref=job.ref, states="passed errored", limit=1)
             last_matching_jobs = await db.find_jobs(query)
             if last_matching_jobs:
