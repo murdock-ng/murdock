@@ -8,7 +8,14 @@ from unittest import mock
 import pytest
 
 from murdock.murdock import Murdock
-from murdock.models import CommitModel, JobQueryModel, PullRequestInfo
+from murdock.models import (
+    CommitModel,
+    JobQueryModel,
+    PullRequestInfo,
+    ManualJobBranchParamModel,
+    ManualJobTagParamModel,
+    ManualJobCommitParamModel,
+)
 from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
 
 
@@ -49,6 +56,7 @@ exit {run_ret}
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mongo")
 @pytest.mark.parametrize(
     "ret,job_state,comment_on_pr",
     [
@@ -75,8 +83,9 @@ exit {run_ret}
 @mock.patch("murdock.murdock.comment_on_pr")
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
+@mock.patch("murdock.notify.Notifier.notify")
 async def test_schedule_single_job(
-    insert, status, comment, ret, job_state, comment_on_pr, tmpdir, mongo
+    notify, insert, status, comment, ret, job_state, comment_on_pr, tmpdir
 ):
     commit = CommitModel(
         sha="test_commit", tree="test_tree", message="test message", author="test_user"
@@ -108,7 +117,7 @@ async def test_schedule_single_job(
     )
     job.scripts_dir = scripts_dir
     job.work_dir = work_dir
-    murdock = Murdock()
+    murdock = Murdock(enable_notifications=True)
     await murdock.init()
     await murdock.schedule_job(job)
     assert job in murdock.queued.jobs
@@ -121,10 +130,12 @@ async def test_schedule_single_job(
         await murdock.stop_running_job(job)
         await asyncio.sleep(0.1)
         assert job not in murdock.running.jobs
+        notify.assert_not_called()
     else:
         await asyncio.sleep(2)
         insert.assert_called_with(job)
         assert "BUILD" in job.output
+        notify.assert_called_once()
     if comment_on_pr is True:
         comment.assert_called_once()
     else:
@@ -135,6 +146,7 @@ async def test_schedule_single_job(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mongo")
 @pytest.mark.parametrize(
     "prnums,num_queued,free_slots",
     [
@@ -144,7 +156,7 @@ async def test_schedule_single_job(
 )
 @mock.patch("murdock.murdock.set_commit_status")
 async def test_schedule_multiple_jobs(
-    __, prnums, num_queued, free_slots, tmpdir, caplog, mongo
+    __, prnums, num_queued, free_slots, tmpdir, caplog
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
@@ -198,12 +210,10 @@ async def test_schedule_multiple_jobs(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mongo")
 @mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
-@mock.patch("murdock.database.Database.insert_job", mock.AsyncMock())
-@mock.patch("murdock.database.Database.find_jobs")
-async def test_schedule_multiple_jobs_with_fasttracked(find, tmpdir, caplog, mongo):
+async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
-    find.return_value = []
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "run.sh")
@@ -917,3 +927,106 @@ async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
 
     assert f"{len(jobs_to_remove)} jobs removed" in caplog.text
     assert result == jobs_to_remove
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "commit,fasttracked,scheduled",
+    [
+        pytest.param(
+            CommitModel(
+                sha="test_sha",
+                tree="test_tree",
+                message="test message",
+                author="test_user",
+            ),
+            False,
+            True,
+            id="regular-job",
+        ),
+        pytest.param(
+            CommitModel(
+                sha="test_sha",
+                tree="test_tree",
+                message="test message",
+                author="test_user",
+            ),
+            True,
+            True,
+            id="fasttracked-job",
+        ),
+        pytest.param(None, False, False, id="no-job-matching"),
+    ],
+)
+@mock.patch("murdock.murdock.fetch_user_login")
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.murdock.fetch_branch_info")
+@mock.patch("murdock.murdock.Murdock.schedule_job")
+async def test_branch_manual_job(
+    schedule_job,
+    fetch_branch_info,
+    fetch_murdock_config,
+    fetch_user_login,
+    commit,
+    fasttracked,
+    scheduled,
+):
+    fetch_branch_info.return_value = commit
+    fetch_murdock_config.return_value = MurdockSettings()
+    fetch_user_login.return_value = "test_login"
+    murdock = Murdock()
+    job_model = await murdock.start_branch_job(
+        "token", ManualJobBranchParamModel(branch="test", fasttrack=fasttracked)
+    )
+    if scheduled:
+        schedule_job.assert_called_once()
+        assert job_model.commit == commit
+        assert job_model.ref == "refs/heads/test"
+        assert job_model.fasttracked == fasttracked
+    else:
+        schedule_job.assert_not_called()
+        assert job_model is None
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.murdock.fetch_user_login")
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.murdock.fetch_tag_info")
+@mock.patch("murdock.murdock.Murdock.schedule_job")
+async def test_tag_manual_job(
+    schedule_job, fetch_tag_info, fetch_murdock_config, fetch_user_login
+):
+    commit = CommitModel(
+        sha="test_sha", tree="test_tree", message="test message", author="test_user"
+    )
+    fetch_tag_info.return_value = commit
+    fetch_murdock_config.return_value = MurdockSettings()
+    fetch_user_login.return_value = "test_login"
+    murdock = Murdock()
+    job_model = await murdock.start_tag_job("token", ManualJobTagParamModel(tag="test"))
+    schedule_job.assert_called_once()
+    assert job_model.commit == commit
+    assert job_model.ref == "refs/tags/test"
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.murdock.fetch_user_login")
+@mock.patch("murdock.murdock.fetch_murdock_config")
+@mock.patch("murdock.murdock.fetch_commit_info")
+@mock.patch("murdock.murdock.Murdock.schedule_job")
+async def test_commit_manual_job(
+    schedule_job, fetch_commit_info, fetch_murdock_config, fetch_user_login
+):
+    commit = CommitModel(
+        sha="test_sha", tree="test_tree", message="test message", author="test_user"
+    )
+    fetch_commit_info.return_value = commit
+    fetch_murdock_config.return_value = MurdockSettings()
+    fetch_user_login.return_value = "test_login"
+    murdock = Murdock()
+    job_model = await murdock.start_commit_job(
+        "token", ManualJobCommitParamModel(sha="test")
+    )
+    schedule_job.assert_called_once()
+    assert job_model.commit == commit
+    assert job_model.ref == "Commit test"

@@ -50,8 +50,10 @@ class Murdock:
         self,
         num_workers: int = GLOBAL_CONFIG.num_workers,
         cancel_on_update: bool = GLOBAL_CONFIG.cancel_on_update,
+        enable_notifications: bool = GLOBAL_CONFIG.enable_notifications,
     ):
         self.cancel_on_update = cancel_on_update
+        self.enable_notifications = enable_notifications
         self.clients: List[WebSocket] = []
         self.num_workers = num_workers
         self.queued: MurdockJobList = MurdockJobList()
@@ -59,8 +61,7 @@ class Murdock:
         self.queue: asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
         self.db = Database()
-        if GLOBAL_CONFIG.enable_notifications is True:
-            self.notifier = Notifier()
+        self.notifier = Notifier()
 
     async def init(self):
         await self.db.init()
@@ -155,10 +156,7 @@ class Murdock:
                 await comment_on_pr(job)
         # Notifications must be called before inserting the job in DB
         # because the logic checks the result of the last matching job in DB.
-        if (
-            job.state in ["passed", "errored"]
-            and GLOBAL_CONFIG.enable_notifications is True
-        ):
+        if job.state in ["passed", "errored"] and self.enable_notifications is True:
             await self.notifier.notify(job, self.db)
         if job.state in ["passed", "errored"] or (
             job.state == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
