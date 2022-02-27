@@ -4,12 +4,13 @@ from unittest import mock
 
 import pytest
 
+import aiosmtplib
 from httpx import Response
 
 from ..job import MurdockJob
 from ..models import CommitModel, PullRequestInfo
 from ..murdock import Murdock
-from ..notify import Notifier
+from ..notify import Notifier, MailNotifier, MatrixNotifier
 
 
 commit = CommitModel(
@@ -143,6 +144,46 @@ prinfo = PullRequestInfo(
             True,
             id="tag_ep",
         ),
+        pytest.param(
+            MurdockJob(commit, ref="refs/test"),
+            "errored",
+            "errored",
+            False,
+            False,
+            id="none_ee",
+        ),
+        pytest.param(
+            MurdockJob(commit, ref="refs/heads/test"),
+            None,
+            "passed",
+            True,
+            True,
+            id="branch_np",
+        ),
+        pytest.param(
+            MurdockJob(commit, ref="refs/heads/test"),
+            None,
+            "errored",
+            True,
+            True,
+            id="branch_ne",
+        ),
+        pytest.param(
+            MurdockJob(commit, ref="refs/tags/test"),
+            None,
+            "passed",
+            True,
+            True,
+            id="tag_np",
+        ),
+        pytest.param(
+            MurdockJob(commit, ref="refs/tags/test"),
+            None,
+            "errored",
+            True,
+            True,
+            id="tag_ne",
+        ),
     ],
 )
 @mock.patch("httpx.AsyncClient.post")
@@ -155,10 +196,9 @@ async def test_notify(
     murdock = Murdock()
     await murdock.init()
     notifier = Notifier()
-    job.state = previous_state
-    await murdock.db.insert_job(job)
-    search_job = await murdock.db.find_job(job.uid)
-    assert search_job is not None and search_job.commit == job.commit
+    if previous_state is not None:
+        job.state = previous_state
+        await murdock.db.insert_job(job)
     job.state = new_state
     await notifier.notify(job, murdock.db)
     if matrix is True:
@@ -171,3 +211,35 @@ async def test_notify(
         mail_send.assert_called_once()
     else:
         mail_send.assert_not_called()
+
+
+@pytest.mark.asyncio
+@mock.patch("httpx.AsyncClient.post")
+async def test_notify_matrix_error(matrix_post, caplog):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    matrix_post.return_value = Response(401, text=json.dumps({"details": "error"}))
+    job = MurdockJob(commit, ref="Commit 123")
+    matrix_notifier = MatrixNotifier()
+    await matrix_notifier.notify(job)
+    matrix_post.assert_called_once()
+    assert "Cannot send message to matrix room" in caplog.text
+
+
+@pytest.mark.asyncio
+@mock.patch("aiosmtplib.send")
+@pytest.mark.parametrize(
+    "side_effect",
+    [
+        aiosmtplib.errors.SMTPAuthenticationError(530, "error"),
+        aiosmtplib.errors.SMTPConnectError("error"),
+        aiosmtplib.errors.SMTPTimeoutError("error"),
+    ],
+)
+async def test_notify_email_error(mail_send, side_effect, caplog):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    mail_send.side_effect = side_effect
+    job = MurdockJob(commit, ref="Commit 123")
+    mail_notifier = MailNotifier()
+    await mail_notifier.notify(job)
+    mail_send.assert_called_once()
+    assert "Cannot send email" in caplog.text

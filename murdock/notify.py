@@ -30,13 +30,15 @@ class MailNotifier:
                 message,
                 hostname=self.config.server,
                 port=self.config.port,
-                use_tls=self.config.use_tls,
+                start_tls=self.config.use_tls,
                 username=self.config.username,
                 password=self.config.password,
             )
-        except aiosmtplib.errors.SMTPAuthenticationError as exc:
-            LOGGER.debug(f"Cannot send email: {exc}")
-        except aiosmtplib.errors.SMTPConnectError as exc:
+        except (
+            aiosmtplib.errors.SMTPAuthenticationError,
+            aiosmtplib.errors.SMTPConnectError,
+            aiosmtplib.errors.SMTPTimeoutError,
+        ) as exc:
             LOGGER.debug(f"Cannot send email: {exc}")
         else:
             LOGGER.debug(f"Notification email sent to '{self.config.recipients}'")
