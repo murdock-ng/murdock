@@ -1,10 +1,12 @@
 import json
 
+from datetime import datetime
 from email.message import EmailMessage
 
 import httpx
 import aiosmtplib
 
+from murdock.config import GITHUB_CONFIG
 from murdock.database import Database
 from murdock.job import MurdockJob
 from murdock.log import LOGGER
@@ -23,6 +25,7 @@ class MailNotifier:
         message["From"] = "ci@riot-os.org"
         message["To"] = ";".join(self.config.recipients)
         message["Subject"] = title
+        message["Date"] = datetime.now()
         message.set_content(content)
 
         try:
@@ -50,8 +53,31 @@ class MatrixNotifier:
     async def notify(self, job: MurdockJob):
         emoji = "&#x274C;" if job.state == "errored" else "&#x2705;"
         content = f"Murdock job on {job.title} {job.state}: {job.details_url}"
+        commit_short = job.commit.sha[0:7]
+        commit_url = f"https://github.com/{GITHUB_CONFIG.repo}/commit/{job.commit.sha}"
+        if job.pr is not None:
+            pr_url = f"https://github.com/{GITHUB_CONFIG.repo}/pull/{job.pr.number}"
+            job_html_description = (
+                f'PR <a href="{pr_url}" target="_blank" rel="noreferrer noopener">#{job.pr.number}</a> '
+                f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>)'
+            )
+        elif job.ref is not None and job.ref.startswith("refs/tags"):
+            tag_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[10:]}"
+            job_html_description = (
+                f'tag <a href="{tag_url}" target="_blank" rel="noreferrer noopener">{job.ref[10:]}</a> '
+                f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>)'
+            )
+        elif job.ref is not None and job.ref.startswith("refs/heads"):
+            branch_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[11:]}"
+            job_html_description = (
+                f'branch <a href="{branch_url}" target="_blank" rel="noreferrer noopener">{job.ref[11:]}</a> '
+                f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>)'
+            )
+        else:
+            job_html_description = f'commit <a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>'
+
         html_content = (
-            f"{emoji} Murdock job on {job.title} <b>{job.state}</b>: "
+            f"{emoji} Murdock job on {job_html_description} <b>{job.state}</b>: "
             f'<a href="{job.details_url}" target="_blank" rel="noreferrer noopener">{job.details_url}</a>'
         )
         async with httpx.AsyncClient() as client:
