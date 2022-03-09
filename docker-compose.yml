@@ -68,9 +68,8 @@ services:
     command: >
       /bin/sh -c "
         cd /webapp &&
-        npm install && chown -R node:node node_modules &&
-        npm run build &&
-        chown -R node:node build
+        npm install &&
+        npm run build
       "
     profiles: ["setup"]
   webapp:
