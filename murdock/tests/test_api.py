@@ -11,6 +11,7 @@ from httpx import Response
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from ..config import GITHUB_CONFIG
 from ..main import app, _check_push_permissions, _check_admin_permissions
 from ..job import MurdockJob
 from ..models import (
@@ -203,7 +204,7 @@ async def test_check_push_permissions(get, text, code, valid):
     else:
         await _check_push_permissions("token")
     get.assert_called_with(
-        f"https://api.github.com/repos/{os.getenv('GITHUB_REPO')}",
+        f"https://api.github.com/repos/{GITHUB_CONFIG.repo}",
         headers={
             "Accept": "application/vnd.github.v3+json",
             "Authorization": "token token",
