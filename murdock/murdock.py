@@ -137,23 +137,28 @@ class Murdock:
             job.status["status"] = "finished"
         self.running.remove(job)
         LOGGER.debug(f"{job} removed from running jobs")
-        if job.state != "stopped":
+        if job.state == "stopped":
+            status = {
+                "state": "pending",
+                "context": GLOBAL_CONFIG.commit_status_context,
+                "target_url": job.details_url,
+                "description": "Stopped",
+            }
+        else:
             job_state = "success" if job.state == "passed" else "failure"
             job_status_desc = "succeeded" if job.state == "passed" else "failed"
-            await set_commit_status(
-                job.commit.sha,
-                {
-                    "state": job_state,
-                    "context": GLOBAL_CONFIG.commit_status_context,
-                    "description": (
-                        f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
-                    ),
-                    "target_url": job.details_url,
-                },
-            )
+            status = {
+                "state": job_state,
+                "context": GLOBAL_CONFIG.commit_status_context,
+                "description": (
+                    f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
+                ),
+                "target_url": job.details_url,
+            }
             if job.pr is not None and job.config.pr.enable_comments:
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
+        await set_commit_status(job.commit.sha, status)
         # Notifications must be called before inserting the job in DB
         # because the logic checks the result of the last matching job in DB.
         if job.state in ["passed", "errored"] and self.enable_notifications is True:
@@ -218,26 +223,13 @@ class Murdock:
             await self.stop_running_job(job)
         return jobs_to_stop
 
-    async def stop_running_job(
-        self, job: MurdockJob, reload_jobs=False, fail=False
-    ) -> MurdockJob:
+    async def stop_running_job(self, job: MurdockJob, fail=False) -> MurdockJob:
         LOGGER.debug(f"Stopping {job}")
         if fail is True:
             LOGGER.debug(f"Stopping {job} with errored state")
             job.state = "errored"
-            await job.stop()
-            return
 
         await job.stop()
-        status = {
-            "state": "pending",
-            "context": GLOBAL_CONFIG.commit_status_context,
-            "target_url": job.details_url,
-            "description": "Stopped",
-        }
-        await set_commit_status(job.commit.sha, status)
-        if reload_jobs is True:
-            await self.reload_jobs()
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
@@ -446,7 +438,7 @@ class Murdock:
             for job in self.running.search_by_ref(ref):
                 await self.cancel_queued_job(job, reload_jobs=True)
             for job in self.queued.search_by_ref(ref):
-                await self.stop_running_job(job, reload_jobs=True)
+                await self.stop_running_job(job)
             return
         commit = await fetch_commit_info(event["after"])
         if commit is None:
@@ -592,7 +584,7 @@ class Murdock:
                 or "failed_tests" in job.status
             ):
                 LOGGER.debug(f"Failfast enabled and failures detected, stopping {job}")
-                await self.stop_running_job(job, fail=True)
+                job = await self.stop_running_job(job, fail=True)
             data.update({"cmd": "status", "uid": job.uid})
             await self.notify_message_to_clients(json.dumps(data))
         return job

@@ -368,7 +368,7 @@ def test_stop_running_job(search, stop, result, code):
     response = client.delete("/jobs/running/abcdef")
     assert response.status_code == code
     if result is not None:
-        stop.assert_called_with(result, reload_jobs=True)
+        stop.assert_called_with(result)
         assert response.json() == result.model().dict(exclude_none=True)
     else:
         stop.assert_not_called()

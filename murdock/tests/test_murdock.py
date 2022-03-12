@@ -823,7 +823,7 @@ async def test_handle_push_event_ref_removed(
     }
     await murdock.handle_push_event(event)
     cancel.assert_called_with(job, reload_jobs=True)
-    stop.assert_called_with(job, reload_jobs=True)
+    stop.assert_called_with(job)
     fetch_config.assert_not_called()
     fetch_commit.assert_not_called()
     queued.assert_not_called()

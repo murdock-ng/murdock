@@ -222,7 +222,7 @@ async def running_job_stop_handler(
 ):
     if (job := murdock.running.search_by_uid(uid)) is None:
         raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
-    await murdock.stop_running_job(job, reload_jobs=True)
+    await murdock.stop_running_job(job)
     return job.model()
 
 
