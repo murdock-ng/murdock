@@ -546,6 +546,30 @@ def test_last_job(get_jobs, result, endpoint, code):
         assert "No matching job found" in response.json()["detail"]
 
 
+@pytest.mark.parametrize(
+    "jobs,state,code",
+    [
+        ([test_job_finished], "passed", 200),
+        ([test_job_finished], "errored", 200),
+        ([test_job_finished], "running", 200),
+        ([], "", 404),
+        ([], "", 404),
+    ],
+)
+@mock.patch("murdock.murdock.Murdock.get_jobs")
+def test_last_branch_job_badge(get_jobs, jobs, state, code):
+    if jobs:
+        jobs[0].state = state
+    get_jobs.return_value = jobs
+    response = client.get("/job/branch/test/badge")
+    assert response.status_code == code
+    if code == 200:
+        assert 'svg xmlns="http://www.w3.org/2000/svg"' in response.text
+        assert test_job_finished.state in response.text
+    else:
+        assert "No matching job found" in response.json()["detail"]
+
+
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
     "result,data,code",

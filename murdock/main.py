@@ -16,10 +16,13 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.security.api_key import APIKeyHeader, APIKey
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from jinja2 import FileSystemLoader, Environment
+
+from murdock import TEMPLATES_DIR
 from murdock.config import (
     GLOBAL_CONFIG,
     DB_CONFIG,
@@ -325,6 +328,28 @@ async def job_get_last_branch_handler(branch: str):
         )
 
     return jobs[0]
+
+
+@app.get(
+    path="/job/branch/{branch}/badge",
+    response_class=Response,
+    summary="Return the last job badge of the given branch",
+    tags=["jobs"],
+)
+async def job_get_last_branch_badge_handler(branch: str):
+    query = JobQueryModel(branch=branch, states="running errored passed", limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for branch '{branch}'"
+        )
+
+    loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
+    env = Environment(
+        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
+    )
+    env.globals.update(zip=zip)
+    template = env.get_template("badge.svg.j2")
+    return Response(template.render(state=jobs[0].state), media_type="image/svg+xml")
 
 
 @app.post(

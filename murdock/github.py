@@ -1,5 +1,4 @@
 import base64
-import os
 import json
 
 import httpx
@@ -10,6 +9,7 @@ from fastapi.security.api_key import APIKeyHeader
 
 from jinja2 import FileSystemLoader, Environment
 
+from murdock import TEMPLATES_DIR
 from murdock.config import GITHUB_CONFIG, GLOBAL_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
@@ -17,7 +17,6 @@ from murdock.models import CommitModel
 from murdock.config import MurdockSettings
 
 
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 MAX_PAGES_COUNT = 10
 
 

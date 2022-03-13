@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="77" height="20">
+<defs>
+  <style type="text/css">
+    <![CDATA[
+      rect {
+        fill: #555;
+      }
+      .passed {
+        fill: #40a687;
+      }
+      .errored {
+        fill: #bc202a;
+      }
+      .running {
+        fill: #ff7518;
+      }
+    ]]>
+  </style>
+</defs>
+<rect rx="3" width="77" height="20" />
+<rect rx="3" x="24" width="53" height="20" class="{{ state }}" />
+<rect x="24" width="4" height="20" class="{{ state }}" />
+<g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+  <text x="12" y="14">CI</text>
+  <text x="50" y="14">{{ state }}</text>
+</g>
+</svg>
