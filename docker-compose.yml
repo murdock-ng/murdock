@@ -54,6 +54,7 @@ services:
       driver: syslog
       options:
         tag: murdock-app
+    networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   webapp-build:
     image: node:16.9.1
@@ -88,6 +89,7 @@ services:
       driver: syslog
       options:
         tag: murdock-webapp
+    networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo:
     image: mongo:4.2.16
@@ -98,6 +100,7 @@ services:
       driver: syslog
       options:
         tag: murdock-mongo
+    networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo-dev:
     image: mongo:4.2.16
@@ -118,4 +121,5 @@ services:
       driver: syslog
       options:
         tag: murdock-proxy
+    networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
