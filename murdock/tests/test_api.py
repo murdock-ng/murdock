@@ -553,7 +553,6 @@ def test_last_job(get_jobs, result, endpoint, code):
         ([test_job_finished], "errored", 200),
         ([test_job_finished], "running", 200),
         ([], "", 404),
-        ([], "", 404),
     ],
 )
 @mock.patch("murdock.murdock.Murdock.get_jobs")
