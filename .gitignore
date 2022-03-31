@@ -66,4 +66,7 @@ target/
 # local docker-compose envs
 .env*.local
 
+# docker-compose override configuration
+docker-compose.override.yml
+
 build/
