@@ -75,7 +75,7 @@ class Murdock:
         self.db.close()
         for ws in self.clients:
             LOGGER.debug(f"Closing websocket {ws}")
-            ws.close()
+            await ws.close()
         for job in self.queued.jobs:
             LOGGER.debug(f"Canceling {job}")
             job.cancelled = True
