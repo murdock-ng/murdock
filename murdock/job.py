@@ -63,7 +63,7 @@ class MurdockJob:
         )
 
     @staticmethod
-    def create_dir(work_dir: str):
+    def create_dir(work_dir: str) -> None:
         try:
             LOGGER.debug(f"Creating directory '{work_dir}'")
             os.makedirs(work_dir)
@@ -96,7 +96,7 @@ class MurdockJob:
             runtime_format = "%Ss"
         return time.strftime(runtime_format, time.gmtime(self.runtime))
 
-    def model(self):
+    def model(self) -> JobModel:
         return JobModel(
             uid=self.uid,
             commit=self.commit,
@@ -200,7 +200,7 @@ class MurdockJob:
     def __hash__(self) -> int:
         return hash(self.uid)
 
-    async def execute(self, notify=None):
+    async def execute(self, notify=None) -> None:
         MurdockJob.create_dir(self.work_dir)
         script_path = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
         LOGGER.debug(f"Launching run action for {self} (script: {script_path})")
@@ -255,7 +255,7 @@ class MurdockJob:
 
         self.proc = None
 
-    async def stop(self):
+    async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
         if self.proc is not None and self.proc.returncode is None:
             LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")

@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import List
+from typing import List, Optional
 
 from murdock.job import MurdockJob
 from murdock.models import JobQueryModel
@@ -7,19 +7,19 @@ from murdock.models import JobQueryModel
 
 class MurdockJobListBase(ABC):
 
-    _jobs: List[MurdockJob]
+    _jobs: List[Optional[MurdockJob]]
 
     @property
     @abstractclassmethod
-    def jobs(self) -> List[MurdockJob]:
+    def jobs(self) -> List[Optional[MurdockJob]]:
         ...  # pragma: nocover
 
     @abstractclassmethod
-    def add(self, *jobs: MurdockJob):
+    def add(self, *jobs: MurdockJob) -> None:
         ...  # pragma: nocover
 
     @abstractclassmethod
-    def remove(self, job: MurdockJob):
+    def remove(self, job: MurdockJob) -> None:
         ...  # pragma: nocover
 
     def search_by_uid(self, uid: str) -> MurdockJob:
@@ -178,13 +178,13 @@ class MurdockJobList(MurdockJobListBase):
         self._jobs = []
 
     @property
-    def jobs(self) -> List[MurdockJob]:
+    def jobs(self) -> List[Optional[MurdockJob]]:
         return self._jobs
 
-    def add(self, *jobs: MurdockJob):
+    def add(self, *jobs: MurdockJob) -> None:
         self._jobs += jobs
 
-    def remove(self, job: MurdockJob):
+    def remove(self, job: MurdockJob) -> None:
         if job in self._jobs:
             self._jobs.remove(job)
 
@@ -194,7 +194,7 @@ class MurdockJobPool(MurdockJobListBase):
         self._jobs = maxlen * [None]
 
     @property
-    def jobs(self) -> List[MurdockJob]:
+    def jobs(self) -> List[Optional[MurdockJob]]:
         return self._jobs
 
     def add(self, *jobs: MurdockJob):

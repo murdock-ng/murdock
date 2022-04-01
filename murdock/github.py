@@ -1,5 +1,6 @@
 import base64
 import json
+from typing import Optional
 
 import httpx
 import yaml
@@ -111,7 +112,7 @@ async def comment_on_pr(job: MurdockJob):
             LOGGER.info(f"Comment posted on PR #{job.pr.number}")
 
 
-async def fetch_commit_info(commit: str) -> CommitModel:
+async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/commits/{commit}",
@@ -134,7 +135,7 @@ async def fetch_commit_info(commit: str) -> CommitModel:
         )
 
 
-async def fetch_branch_info(branch: str) -> CommitModel:
+async def fetch_branch_info(branch: str) -> Optional[CommitModel]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/branches/{branch}",
@@ -151,7 +152,7 @@ async def fetch_branch_info(branch: str) -> CommitModel:
         return await fetch_commit_info(branch_data["commit"]["sha"])
 
 
-async def fetch_tag_info(tag: str) -> CommitModel:
+async def fetch_tag_info(tag: str) -> Optional[CommitModel]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/git/refs/tags/{tag}",
@@ -168,7 +169,7 @@ async def fetch_tag_info(tag: str) -> CommitModel:
         return await fetch_commit_info(tag_data["object"]["sha"])
 
 
-async def fetch_user_login(token: str) -> str:
+async def fetch_user_login(token: str) -> Optional[str]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             "https://api.github.com/user",

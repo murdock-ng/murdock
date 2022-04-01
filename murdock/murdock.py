@@ -4,7 +4,7 @@ import os
 import re
 import time
 
-from typing import List, Union
+from typing import List, Optional, Union
 
 from fastapi import WebSocket
 
@@ -288,7 +288,7 @@ class Murdock:
         if modified_jobs:
             await self.reload_jobs()
 
-    async def restart_job(self, uid: str, token: str) -> MurdockJob:
+    async def restart_job(self, uid: str, token: str) -> Optional[MurdockJob]:
         if (job := await self.db.find_job(uid)) is None:
             return
         login = await fetch_user_login(token)
@@ -326,7 +326,7 @@ class Murdock:
             return True
         return False
 
-    async def schedule_job(self, job: MurdockJob) -> MurdockJob:
+    async def schedule_job(self, job: MurdockJob) -> Optional[MurdockJob]:
         LOGGER.info(f"Scheduling new {job}")
         # Check if the job should be skipped (using keywords in commit message)
         if await self.handle_skip_job(job) is True:
@@ -529,7 +529,7 @@ class Murdock:
         param: Union[
             ManualJobBranchParamModel, ManualJobTagParamModel, ManualJobCommitParamModel
         ],
-    ) -> JobModel:
+    ) -> Optional[JobModel]:
         if commit is None:
             return
 

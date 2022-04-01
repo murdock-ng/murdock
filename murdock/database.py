@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import List
+from typing import List, Optional
 
 import pymongo
 import motor.motor_asyncio as aiomotor
@@ -36,7 +36,7 @@ class Database:
         LOGGER.debug(f"Inserting {job} to database")
         await self.db.job.insert_one(MurdockJob.to_db_entry(job))
 
-    async def find_job(self, uid: str) -> MurdockJob:
+    async def find_job(self, uid: str) -> Optional[MurdockJob]:
         if not (entry := await self.db.job.find_one({"uid": uid})):
             LOGGER.warning(f"Cannot find job matching uid '{uid}'")
             return
