@@ -24,7 +24,7 @@ main() {
 
     echo "--- Collecting jobs"
     local status='{"status" : {"status": "collecting jobs"}}'
-    /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/jobs/running/${CI_JOB_UID}/status > /dev/null
+    /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/job/${CI_JOB_UID}/status > /dev/null
     sleep ${COLLECTING_JOBS_DELAY}
 
     echo "--- Running jobs"
@@ -47,7 +47,7 @@ main() {
         else
             status='{"status" : {"status": "working", "total": '${NUM_JOBS}', "failed": 0, "passed": '${job}', "eta": "'$((${NUM_JOBS} - ${job}))'"}}'
         fi
-        /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/jobs/running/${CI_JOB_UID}/status > /dev/null
+        /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/job/${CI_JOB_UID}/status > /dev/null
         sleep ${JOB_DELAY}
         echo "---- Job ${job} finished"
         echo
@@ -56,7 +56,7 @@ main() {
     if [ "${retval}" -eq 1 ] && [ "${canceled}" -eq 1 ]
     then
         status='{"status" : {"status": "canceled", "failed_builds": ['${failed_builds}']}}'
-        /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/jobs/running/${CI_JOB_UID}/status > /dev/null
+        /usr/bin/curl -s -d "${status}" -H "Content-Type: application/json" -H "Authorization: ${CI_JOB_TOKEN}" -X PUT ${CI_BASE_URL}/job/${CI_JOB_UID}/status > /dev/null
     fi
 
     echo "--- Build completed (elapsed: $(($(date +%s) - ${start_time}))s, ret=${retval})"

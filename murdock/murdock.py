@@ -494,16 +494,33 @@ class Murdock:
             if query.states is None or "running" in query.states
         ]
 
+    @staticmethod
+    def _remove_job_data(uid):
+        work_dir = os.path.join(GLOBAL_CONFIG.work_dir, uid)
+        MurdockJob.remove_dir(work_dir)
+
     async def remove_finished_jobs(self, query: JobQueryModel) -> List[JobModel]:
         query.limit = -1
         jobs_to_remove = await (self.db.find_jobs(query))
         for job in jobs_to_remove:
-            work_dir = os.path.join(GLOBAL_CONFIG.work_dir, job.uid)
-            MurdockJob.remove_dir(work_dir)
+            Murdock._remove_job_data(job.uid)
         await self.db.delete_jobs(query)
         LOGGER.info(f"{len(jobs_to_remove)} jobs removed")
         await self.reload_jobs()
         return jobs_to_remove
+
+    async def remove_job(self, uid: str) -> Optional[JobModel]:
+        if (job := self.queued.search_by_uid(uid)) is not None:
+            await self.cancel_queued_job(job, reload_jobs=True)
+            return job.model()
+        elif (job := self.running.search_by_uid(uid)) is not None:
+            await self.stop_running_job(job)
+            return job.model()
+        elif (jobs := await self.db.find_jobs(JobQueryModel(uid=uid))) and jobs:
+            Murdock._remove_job_data(uid)
+            await self.db.delete_jobs(JobQueryModel(uid=uid))
+            return jobs[0]
+        return None
 
     async def get_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
         result = self.get_queued_jobs(query)
@@ -511,12 +528,12 @@ class Murdock:
         result += await self.db.find_jobs(query)
         return result
 
-    async def get_job(self, uid: str) -> JobModel:
+    async def get_job(self, uid: str) -> Optional[JobModel]:
         found_job = None
         if (job := self.queued.search_by_uid(uid)) is not None:
-            found_job = MurdockJob.model(job)
+            found_job = job.model()
         elif (job := self.running.search_by_uid(uid)) is not None:
-            found_job = MurdockJob.model(job)
+            found_job = job.model()
         elif jobs := await self.db.find_jobs(JobQueryModel(uid=uid)):
             found_job = jobs[0]
         return found_job

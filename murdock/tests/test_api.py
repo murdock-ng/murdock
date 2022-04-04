@@ -241,53 +241,31 @@ async def test_check_admin_permissions(get, text, code, valid):
     )
 
 
-@pytest.mark.parametrize("result", [[], [test_job_queued.dict(exclude_none=True)]])
-@mock.patch("murdock.murdock.Murdock.get_queued_jobs")
-def test_get_queued_jobs(jobs, result):
-    jobs.return_value = result
-    response = client.get("/jobs/queued")
-    assert response.status_code == 200
-    assert response.json() == result
-
-
 @pytest.mark.usefixtures("push_allowed")
 @pytest.mark.parametrize(
-    "job_queued,code",
+    "job,code",
     [
-        pytest.param(None, 404, id="no_job_queued"),
-        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="one_job_queued"),
+        pytest.param(None, 404, id="no_job"),
+        pytest.param(MurdockJob(commit, pr=prinfo).model(), 200, id="job_found"),
     ],
 )
-@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
-@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
-def test_cancel_queued_job(cancel, search, job_queued, code):
-    search.return_value = job_queued
-    response = client.delete("/jobs/queued/abcdef")
+@mock.patch("murdock.murdock.Murdock.remove_job")
+def test_remove_job(remove, job, code):
+    remove.return_value = job
+    response = client.delete("/job/abcdef")
     assert response.status_code == code
-    if job_queued:
-        cancel.assert_called_with(job_queued, reload_jobs=True)
-        assert response.json() == job_queued.model().dict(exclude_none=True)
+    if job is not None:
+        assert response.json() == job.dict(exclude_none=True)
     else:
-        cancel.assert_not_called()
         assert response.json() == {"detail": "No job with uid 'abcdef' found"}
 
 
 @pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
-def test_cancel_queued_not_allowed(cancel):
-    cancel.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.delete("/jobs/queued/abcdef")
-    cancel.assert_not_called()
+@mock.patch("murdock.murdock.Murdock.remove_job")
+def test_remove_job_not_allowed(remove):
+    remove.return_value = MurdockJob(commit, pr=prinfo).model()
+    response = client.delete("/job/abcdef")
     assert response.status_code == 401
-
-
-@pytest.mark.parametrize("result", [[], [test_job_running.dict(exclude_none=True)]])
-@mock.patch("murdock.murdock.Murdock.get_running_jobs")
-def test_get_running_jobs(jobs, result):
-    jobs.return_value = result
-    response = client.get("/jobs/running")
-    assert response.status_code == 200
-    assert response.json() == result
 
 
 @pytest.mark.parametrize(
@@ -337,61 +315,18 @@ def test_get_running_jobs(jobs, result):
 )
 @mock.patch("murdock.murdock.Murdock.handle_job_status_data")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
-def test_update_running_job_status(
+def test_update_job_status(
     running, commit_status, job_running, job_found, headers, code, expected_response
 ):
     running.return_value = job_running
     commit_status.return_value = job_found
     status = {"status": "test"}
-    response = client.put(
-        "/jobs/running/abcdef/status", json.dumps(status), headers=headers
-    )
+    response = client.put("/job/abcdef/status", json.dumps(status), headers=headers)
     running.assert_called_with("abcdef")
     assert response.status_code == code
     if response.status_code in [200, 404]:
         commit_status.assert_called_with("abcdef", status)
     assert response.json() == expected_response
-
-
-@pytest.mark.usefixtures("push_allowed")
-@pytest.mark.parametrize(
-    "result,code",
-    [
-        pytest.param(None, 404, id="job_not_found"),
-        pytest.param(MurdockJob(commit, pr=prinfo), 200, id="job_found"),
-    ],
-)
-@mock.patch("murdock.murdock.Murdock.stop_running_job")
-@mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
-def test_stop_running_job(search, stop, result, code):
-    search.return_value = result
-    response = client.delete("/jobs/running/abcdef")
-    assert response.status_code == code
-    if result is not None:
-        stop.assert_called_with(result)
-        assert response.json() == result.model().dict(exclude_none=True)
-    else:
-        stop.assert_not_called()
-        assert response.json() == {"detail": "No job with uid 'abcdef' found"}
-
-
-@pytest.mark.usefixtures("push_not_allowed")
-@mock.patch("murdock.murdock.Murdock.stop_running_job")
-def test_stop_running_not_allowed(stop):
-    stop.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.delete("/jobs/running/abcdef")
-    stop.assert_not_called()
-    assert response.status_code == 401
-
-
-@pytest.mark.parametrize("result", [[], [test_job_finished.dict(exclude_none=True)]])
-@mock.patch("murdock.database.Database.find_jobs")
-def test_get_finished_jobs(jobs, result):
-    jobs.return_value = result
-    response = client.get("/jobs/finished")
-    assert response.status_code == 200
-    assert response.json() == result
-    jobs.assert_called_with(JobQueryModel())
 
 
 @pytest.mark.parametrize(
@@ -411,10 +346,14 @@ def test_get_finished_jobs(jobs, result):
         ("?invalid=invalid", JobQueryModel()),
     ],
 )
+@mock.patch("murdock.murdock.Murdock.get_queued_jobs")
+@mock.patch("murdock.murdock.Murdock.get_running_jobs")
 @mock.patch("murdock.database.Database.find_jobs")
-def test_get_finished_jobs_with_query(jobs, query, call_arg):
+def test_get_jobs_with_query(jobs, running, queued, query, call_arg):
+    running.return_value = []
+    queued.return_value = []
     jobs.return_value = [test_job_finished]
-    client.get(f"/jobs/finished/{query}")
+    client.get(f"/jobs{query}")
     jobs.assert_called_with(call_arg)
 
 
@@ -425,7 +364,7 @@ def test_get_finished_jobs_with_query(jobs, query, call_arg):
 @mock.patch("murdock.murdock.Murdock.restart_job")
 def test_restart_job(restart, result, code):
     restart.return_value = result
-    response = client.post("/jobs/finished/123")
+    response = client.post("/job/123")
     assert response.status_code == code
     restart.assert_called_with("123", "token")
     if result is not None:
@@ -438,7 +377,7 @@ def test_restart_job(restart, result, code):
 @mock.patch("murdock.murdock.Murdock.restart_job")
 def test_restart_job_not_allowed(restart):
     restart.return_value = MurdockJob(commit, pr=prinfo)
-    response = client.post("/jobs/finished/123")
+    response = client.post("/job/123")
     restart.assert_not_called()
     assert response.status_code == 401
 
@@ -446,10 +385,10 @@ def test_restart_job_not_allowed(restart):
 @pytest.mark.usefixtures("admin_allowed")
 @pytest.mark.parametrize("result,code", [([], 404), ([test_job_finished], 200)])
 @mock.patch("murdock.murdock.Murdock.remove_finished_jobs")
-def test_delete_job(remove, result, code):
+def test_delete_jobs(remove, result, code):
     remove.return_value = result
     before = "2021-08-16"
-    response = client.delete(f"/jobs/finished?before={before}")
+    response = client.delete(f"/jobs?before={before}")
     assert response.status_code == code
     remove.assert_called_with(JobQueryModel(before=before))
     if result:
@@ -463,7 +402,7 @@ def test_delete_job(remove, result, code):
 def test_delete_job_not_allowed(remove):
     remove.return_value = [test_job_finished]
     before = "2021-08-16"
-    response = client.delete(f"/jobs/finished?before={before}")
+    response = client.delete(f"/jobs?before={before}")
     remove.assert_not_called()
     assert response.status_code == 401
 

@@ -145,50 +145,206 @@ async def _check_admin_permissions(
 
 
 @app.get(
-    path="/jobs/queued",
+    path="/jobs",
     response_model=List[JobModel],
     response_model_exclude_none=True,
-    summary="Return the list of queued jobs",
-    tags=["queued jobs"],
+    summary="Return the list of all jobs",
+    tags=["jobs"],
 )
-async def queued_jobs_handler(query: JobQueryModel = Depends()):
-    return murdock.get_queued_jobs(query)
+async def jobs_handler(query: JobQueryModel = Depends()):
+    return await murdock.get_jobs(query)
 
 
 @app.delete(
-    path="/jobs/queued/{uid}",
+    path="/jobs",
+    response_model=List[JobModel],
+    response_model_exclude_none=True,
+    summary="Removed finished jobs older than 'before' date",
+    tags=["jobs"],
+)
+async def finished_job_delete_handler(
+    before: str, _: APIKey = Depends(_check_admin_permissions)
+):
+    query = JobQueryModel(before=before)
+    if not (jobs := await murdock.remove_finished_jobs(query)):
+        raise HTTPException(status_code=404, detail="Found no finished job to remove")
+    return jobs
+
+
+@app.post(
+    path="/job/branch",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Remove a job from the queue",
-    tags=["queued jobs"],
+    summary="Start a manual job on a branch",
+    tags=["branch job"],
 )
-async def queued_commit_cancel_handler(
-    uid: str, _: APIKey = Depends(_check_push_permissions)
+async def job_start_branch_handler(
+    param: ManualJobBranchParamModel, token: APIKey = Depends(_check_push_permissions)
 ):
-    if (job := murdock.queued.search_by_uid(uid)) is None:
-        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
+    if (job := await murdock.start_branch_job(token, param)) is None:
+        raise HTTPException(status_code=404, detail="No matching branch found")
 
-    await murdock.cancel_queued_job(job, reload_jobs=True)
-    return job.model()
+    return job
 
 
 @app.get(
-    path="/jobs/running",
-    response_model=List[JobModel],
+    path="/job/branch/{branch}",
+    response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the list of running jobs",
-    tags=["running jobs"],
+    summary="Return the last job of the given branch",
+    tags=["branch job"],
 )
-async def running_jobs_handler(query: JobQueryModel = Depends()):
-    return murdock.get_running_jobs(query)
+async def job_get_last_branch_handler(branch: str):
+    query = JobQueryModel(branch=branch, limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for branch '{branch}'"
+        )
+
+    return jobs[0]
+
+
+@app.get(
+    path="/job/branch/{branch}/badge",
+    response_class=Response,
+    summary="Return the last job badge of the given branch",
+    tags=["branch job"],
+)
+async def job_get_last_branch_badge_handler(branch: str):
+    query = JobQueryModel(branch=branch, states="running errored passed", limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for branch '{branch}'"
+        )
+
+    loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
+    env = Environment(
+        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
+    )
+    env.globals.update(zip=zip)
+    template = env.get_template("badge.svg.j2")
+    return Response(template.render(state=jobs[0].state), media_type="image/svg+xml")
+
+
+@app.post(
+    path="/job/tag",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Start a manual job on a tag",
+    tags=["tag job"],
+)
+async def job_start_tag_handler(
+    param: ManualJobTagParamModel, token: APIKey = Depends(_check_push_permissions)
+):
+    if (job := await murdock.start_tag_job(token, param)) is None:
+        raise HTTPException(status_code=404, detail="No matching tag found")
+
+    return job
+
+
+@app.get(
+    path="/job/tag/{tag}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last job of the given tag",
+    tags=["tag job"],
+)
+async def job_get_last_tag_handler(tag: str):
+    query = JobQueryModel(tag=tag, limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for tag '{tag}'"
+        )
+
+    return jobs[0]
+
+
+@app.post(
+    path="/job/commit",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Start a manual job on a tag",
+    tags=["commit job"],
+)
+async def job_start_commit_handler(
+    param: ManualJobCommitParamModel, token: APIKey = Depends(_check_push_permissions)
+):
+    if (job := await murdock.start_commit_job(token, param)) is None:
+        raise HTTPException(status_code=404, detail="No matching commit found")
+
+    return job
+
+
+@app.get(
+    path="/job/commit/{sha}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last job of the given commit",
+    tags=["commit job"],
+)
+async def job_get_last_commit_handler(sha: str):
+    query = JobQueryModel(sha=sha, limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for commit '{sha}'"
+        )
+
+    return jobs[0]
+
+
+@app.get(
+    path="/job/pr/{prnum}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the last job of the given PR number",
+    tags=["pr job"],
+)
+async def job_get_last_prnum_handler(prnum: int):
+    query = JobQueryModel(prnum=prnum, limit=1)
+    if not (jobs := await murdock.get_jobs(query)):
+        raise HTTPException(
+            status_code=404, detail=f"No matching job found for PR #{prnum}"
+        )
+
+    return jobs[0]
+
+
+@app.get(
+    path="/job/{uid}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Return the details of a job",
+    tags=["job"],
+)
+async def job_handler(uid: str):
+    if (job := await murdock.get_job(uid)) is None:
+        raise HTTPException(
+            status_code=404, detail=f"No job matching uid '{uid}' found"
+        )
+    return job
+
+
+@app.post(
+    path="/job/{uid}",
+    response_model=JobModel,
+    response_model_exclude_none=True,
+    summary="Restart a finished job",
+    tags=["job"],
+)
+async def job_restart_handler(
+    uid: str, token: APIKey = Depends(_check_push_permissions)
+):
+    if (job := await murdock.restart_job(uid, str(token))) is None:
+        raise HTTPException(status_code=404, detail=f"Cannot restart job '{uid}'")
+    return job.model()
 
 
 @app.put(
-    path="/jobs/running/{uid}/status",
+    path="/job/{uid}/status",
     response_model=JobModel,
     response_model_exclude_none=True,
     summary="Update the status of a running job",
-    tags=["running jobs"],
+    tags=["job"],
 )
 async def running_job_status_handler(request: Request, uid: str):
     msg = ""
@@ -214,225 +370,17 @@ async def running_job_status_handler(request: Request, uid: str):
 
 
 @app.delete(
-    path="/jobs/running/{uid}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Stop a running job",
-    tags=["running jobs"],
-)
-async def running_job_stop_handler(
-    uid: str, _: APIKey = Depends(_check_push_permissions)
-):
-    if (job := murdock.running.search_by_uid(uid)) is None:
-        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
-    await murdock.stop_running_job(job)
-    return job.model()
-
-
-@app.get(
-    path="/jobs/finished",
-    response_model=List[JobModel],
-    response_model_exclude_none=True,
-    summary="Return the list of finished jobs sorted by end time, reversed",
-    tags=["finished jobs"],
-)
-async def finished_jobs_handler(query: JobQueryModel = Depends()):
-    return await murdock.db.find_jobs(query)
-
-
-@app.post(
-    path="/jobs/finished/{uid}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Restart a finished job",
-    tags=["finished jobs"],
-)
-async def finished_job_restart_handler(
-    uid: str, token: APIKey = Depends(_check_push_permissions)
-):
-    if (job := await murdock.restart_job(uid, str(token))) is None:
-        raise HTTPException(status_code=404, detail=f"Cannot restart job '{uid}'")
-    return job.model()
-
-
-@app.delete(
-    path="/jobs/finished",
-    response_model=List[JobModel],
-    response_model_exclude_none=True,
-    summary="Removed finished jobs older than 'before' date",
-    tags=["finished jobs"],
-)
-async def finished_job_delete_handler(
-    before: str, _: APIKey = Depends(_check_admin_permissions)
-):
-    query = JobQueryModel(before=before)
-    if not (jobs := await murdock.remove_finished_jobs(query)):
-        raise HTTPException(status_code=404, detail="Found no finished job to remove")
-    return jobs
-
-
-@app.get(
-    path="/jobs",
-    response_model=List[JobModel],
-    response_model_exclude_none=True,
-    summary="Return the list of all jobs",
-    tags=["jobs"],
-)
-async def jobs_handler(query: JobQueryModel = Depends()):
-    return await murdock.get_jobs(query)
-
-
-@app.get(
     path="/job/{uid}",
     response_model=JobModel,
     response_model_exclude_none=True,
-    summary="Return the details of a job",
-    tags=["jobs"],
+    summary="Remove a job",
+    tags=["job"],
 )
-async def job_handler(uid: str):
-    if (job := await murdock.get_job(uid)) is None:
-        raise HTTPException(
-            status_code=404, detail=f"No job matching uid '{uid}' found"
-        )
-    return job
-
-
-@app.post(
-    path="/job/branch",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Start a manual job on a branch",
-    tags=["jobs"],
-)
-async def job_start_branch_handler(
-    param: ManualJobBranchParamModel, token: APIKey = Depends(_check_push_permissions)
-):
-    if (job := await murdock.start_branch_job(token, param)) is None:
-        raise HTTPException(status_code=404, detail="No matching branch found")
+async def job_remove_handler(uid: str, _: APIKey = Depends(_check_push_permissions)):
+    if (job := await murdock.remove_job(uid)) is None:
+        raise HTTPException(status_code=404, detail=f"No job with uid '{uid}' found")
 
     return job
-
-
-@app.get(
-    path="/job/branch/{branch}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Return the last job of the given branch",
-    tags=["jobs"],
-)
-async def job_get_last_branch_handler(branch: str):
-    query = JobQueryModel(branch=branch, limit=1)
-    if not (jobs := await murdock.get_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"No matching job found for branch '{branch}'"
-        )
-
-    return jobs[0]
-
-
-@app.get(
-    path="/job/branch/{branch}/badge",
-    response_class=Response,
-    summary="Return the last job badge of the given branch",
-    tags=["jobs"],
-)
-async def job_get_last_branch_badge_handler(branch: str):
-    query = JobQueryModel(branch=branch, states="running errored passed", limit=1)
-    if not (jobs := await murdock.get_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"No matching job found for branch '{branch}'"
-        )
-
-    loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
-    env = Environment(
-        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
-    )
-    env.globals.update(zip=zip)
-    template = env.get_template("badge.svg.j2")
-    return Response(template.render(state=jobs[0].state), media_type="image/svg+xml")
-
-
-@app.post(
-    path="/job/tag",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Start a manual job on a tag",
-    tags=["jobs"],
-)
-async def job_start_tag_handler(
-    param: ManualJobTagParamModel, token: APIKey = Depends(_check_push_permissions)
-):
-    if (job := await murdock.start_tag_job(token, param)) is None:
-        raise HTTPException(status_code=404, detail="No matching tag found")
-
-    return job
-
-
-@app.get(
-    path="/job/tag/{tag}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Return the last job of the given tag",
-    tags=["jobs"],
-)
-async def job_get_last_tag_handler(tag: str):
-    query = JobQueryModel(tag=tag, limit=1)
-    if not (jobs := await murdock.get_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"No matching job found for tag '{tag}'"
-        )
-
-    return jobs[0]
-
-
-@app.post(
-    path="/job/commit",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Start a manual job on a tag",
-    tags=["jobs"],
-)
-async def job_start_commit_handler(
-    param: ManualJobCommitParamModel, token: APIKey = Depends(_check_push_permissions)
-):
-    if (job := await murdock.start_commit_job(token, param)) is None:
-        raise HTTPException(status_code=404, detail="No matching commit found")
-
-    return job
-
-
-@app.get(
-    path="/job/commit/{sha}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Return the last job of the given commit",
-    tags=["jobs"],
-)
-async def job_get_last_commit_handler(sha: str):
-    query = JobQueryModel(sha=sha, limit=1)
-    if not (jobs := await murdock.get_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"No matching job found for commit '{sha}'"
-        )
-
-    return jobs[0]
-
-
-@app.get(
-    path="/job/pr/{prnum}",
-    response_model=JobModel,
-    response_model_exclude_none=True,
-    summary="Return the last job of the given PR number",
-    tags=["jobs"],
-)
-async def job_get_last_prnum_handler(prnum: int):
-    query = JobQueryModel(prnum=prnum, limit=1)
-    if not (jobs := await murdock.get_jobs(query)):
-        raise HTTPException(
-            status_code=404, detail=f"No matching job found for PR #{prnum}"
-        )
-
-    return jobs[0]
 
 
 @app.websocket("/ws/status")
