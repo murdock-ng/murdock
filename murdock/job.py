@@ -35,7 +35,7 @@ class MurdockJob:
         self.user_env: dict = user_env
         self.uid: str = uuid.uuid4().hex
         self.config = config
-        self.state = None
+        self.state: Optional[str] = None
         self.proc: Optional[Process] = None
         self.output: str = ""
         self.commit: CommitModel = commit

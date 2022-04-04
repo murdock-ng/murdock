@@ -88,7 +88,7 @@ class Murdock:
         if job.canceled is True:
             LOGGER.debug(f"Ignoring canceled {job}")
         else:
-            LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")
+            LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")  # type: ignore[union-attr]
             await self.job_prepare(job)
             try:
                 await job.execute(notify=self.notify_message_to_clients)
@@ -155,7 +155,11 @@ class Murdock:
                 ),
                 "target_url": job.details_url,
             }
-            if job.pr is not None and job.config.pr.enable_comments:
+            if (
+                job.pr is not None
+                and job.config is not None
+                and job.config.pr.enable_comments
+            ):
                 LOGGER.info(f"Posting comment on PR #{job.pr.number}")
                 await comment_on_pr(job)
         await set_commit_status(job.commit.sha, status)
@@ -290,7 +294,7 @@ class Murdock:
 
     async def restart_job(self, uid: str, token: str) -> Optional[MurdockJob]:
         if (job := await self.db.find_job(uid)) is None:
-            return
+            return job
         login = await fetch_user_login(token)
         LOGGER.info(f"Restarting {job}")
         config = await fetch_murdock_config(job.commit.sha)
@@ -307,12 +311,13 @@ class Murdock:
         return new_job
 
     async def handle_skip_job(self, job: MurdockJob) -> bool:
-        if any(
-            (
-                line
-                and re.match(rf"^({'|'.join(job.config.commit.skip_keywords)})$", line)
+        if (
+            job.config is not None
+            and job.config.commit is not None
+            and any(
+                skip_keyword in job.commit.message
+                for skip_keyword in job.config.commit.skip_keywords
             )
-            for line in job.commit.message.split("\n")
         ):
             LOGGER.debug(f"Commit message contains skip keywords, skipping {job}")
             await set_commit_status(
@@ -330,7 +335,7 @@ class Murdock:
         LOGGER.info(f"Scheduling new {job}")
         # Check if the job should be skipped (using keywords in commit message)
         if await self.handle_skip_job(job) is True:
-            return
+            return None
 
         if self.cancel_on_update is True:
             # Similar jobs are already queued or running => cancel/stop them
@@ -421,7 +426,7 @@ class Murdock:
 
     @staticmethod
     def handle_ref(ref: str, rules: List[str]) -> bool:
-        return (
+        return bool(
             "*" in rules
             or ref in rules
             or (rules and any(re.match(expr, ref) is not None for expr in rules))
@@ -482,7 +487,7 @@ class Murdock:
                 for job in self.queued.search_with_query(query)
                 if query.states is None or "queued" in query.states
             ],
-            key=lambda job: job.fasttracked,
+            key=lambda job: job.fasttracked,  # type: ignore[return-value,arg-type]
         )
 
     def get_running_jobs(
@@ -548,7 +553,7 @@ class Murdock:
         ],
     ) -> Optional[JobModel]:
         if commit is None:
-            return
+            return None
 
         login = await fetch_user_login(token)
 
@@ -571,13 +576,15 @@ class Murdock:
 
     async def start_branch_job(
         self, token, param: ManualJobBranchParamModel
-    ) -> JobModel:
+    ) -> Optional[JobModel]:
         LOGGER.debug(f"Starting manual job on branch {param.branch}")
         commit = await fetch_branch_info(param.branch)
         ref = f"refs/heads/{param.branch}"
         return await self.start_job(ref, commit, token, param)
 
-    async def start_tag_job(self, token, param: ManualJobTagParamModel) -> JobModel:
+    async def start_tag_job(
+        self, token, param: ManualJobTagParamModel
+    ) -> Optional[JobModel]:
         LOGGER.debug(f"Starting manual job on tag {param.tag}")
         commit = await fetch_tag_info(param.tag)
         ref = f"refs/tags/{param.tag}"
@@ -585,7 +592,7 @@ class Murdock:
 
     async def start_commit_job(
         self, token, param: ManualJobCommitParamModel
-    ) -> JobModel:
+    ) -> Optional[JobModel]:
         LOGGER.debug(f"Starting manual job on commit {param.sha}")
         commit = await fetch_commit_info(param.sha)
         ref = f"Commit {param.sha}"
@@ -595,10 +602,14 @@ class Murdock:
         job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
-            if job.config.failfast is True and (
-                "failed_jobs" in job.status
-                or "failed_builds" in job.status
-                or "failed_tests" in job.status
+            if (
+                job.config is not None
+                and job.config.failfast is True
+                and (
+                    "failed_jobs" in job.status
+                    or "failed_builds" in job.status
+                    or "failed_tests" in job.status
+                )
             ):
                 LOGGER.debug(f"Failfast enabled and failures detected, stopping {job}")
                 job = await self.stop_running_job(job, fail=True)

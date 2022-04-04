@@ -48,7 +48,12 @@ async def check_permissions(
 
 
 async def comment_on_pr(job: MurdockJob):
-    if job.pr is None or job.config.pr.enable_comments is False:
+    if (
+        job.pr is None
+        or job.config is None
+        or job.config.pr is None
+        or job.config.pr.enable_comments is False
+    ):
         return
     loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
     env = Environment(
@@ -123,7 +128,7 @@ async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
         )
         if response.status_code != 200:
             LOGGER.debug(f"Failed to fetch commit: {response} {response.json()}")
-            return
+            return None
 
         commit_data = response.json()
 
@@ -146,7 +151,7 @@ async def fetch_branch_info(branch: str) -> Optional[CommitModel]:
         )
         if response.status_code != 200:
             LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
-            return
+            return None
 
         branch_data = response.json()
         return await fetch_commit_info(branch_data["commit"]["sha"])
@@ -163,7 +168,7 @@ async def fetch_tag_info(tag: str) -> Optional[CommitModel]:
         )
         if response.status_code != 200:
             LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
-            return
+            return None
 
         tag_data = response.json()
         return await fetch_commit_info(tag_data["object"]["sha"])
@@ -180,7 +185,7 @@ async def fetch_user_login(token: str) -> Optional[str]:
         )
         if response.status_code != 200:
             LOGGER.debug(f"Failed to fetch user info: {response} {response.json()}")
-            return
+            return None
 
         user_data = response.json()
         return user_data["login"]
@@ -189,7 +194,7 @@ async def fetch_user_login(token: str) -> Optional[str]:
 async def set_commit_status(commit: str, status: dict):
     if GLOBAL_CONFIG.enable_commit_status is False:
         LOGGER.debug("Skipping commit status update")
-        return
+        return None
 
     LOGGER.debug(f"Setting commit {commit[0:7]} status to '{status['description']}'")
     async with httpx.AsyncClient() as client:

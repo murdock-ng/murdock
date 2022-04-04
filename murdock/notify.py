@@ -1,5 +1,6 @@
 import json
 
+from abc import ABC, abstractmethod
 from datetime import datetime
 from email.message import EmailMessage
 
@@ -14,7 +15,13 @@ from murdock.models import JobQueryModel
 from murdock.config import MAIL_NOTIFIER_CONFIG, MATRIX_NOTIFIER_CONFIG, NOTIFIER_CONFIG
 
 
-class MailNotifier:
+class NotifierBase(ABC):
+    @abstractmethod
+    async def notify(self, job: MurdockJob):
+        ...  # pragma: no cover
+
+
+class MailNotifier(NotifierBase):
     config = MAIL_NOTIFIER_CONFIG
 
     async def notify(self, job: MurdockJob):
@@ -47,7 +54,7 @@ class MailNotifier:
             LOGGER.debug(f"Notification email sent to '{self.config.recipients}'")
 
 
-class MatrixNotifier:
+class MatrixNotifier(NotifierBase):
     config = MATRIX_NOTIFIER_CONFIG
 
     async def notify(self, job: MurdockJob):
