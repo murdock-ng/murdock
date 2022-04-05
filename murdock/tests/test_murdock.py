@@ -894,6 +894,58 @@ async def test_handle_job_status_data(notify, search, job_found, data, called):
 @mock.patch("murdock.database.Database.find_jobs")
 @mock.patch("murdock.database.Database.delete_jobs")
 @mock.patch("murdock.job.MurdockJob.remove_dir")
+@mock.patch("murdock.murdock.Murdock.stop_running_job")
+@mock.patch("murdock.murdock.Murdock.cancel_queued_job")
+async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs):
+    murdock = Murdock()
+    job_queued = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test queued message",
+            author="user",
+        )
+    )
+    job_running = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test running message",
+            author="user",
+        )
+    )
+    job_finished = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test finished message",
+            author="user",
+        )
+    )
+    murdock.queued.add(job_queued)
+    murdock.running.add(job_running)
+    find_jobs.return_value = [job_finished.model()]
+
+    job = await murdock.remove_job(job_queued.uid)
+    queued.assert_called_with(job_queued, reload_jobs=True)
+    assert job_queued == job
+    job = await murdock.remove_job(job_running.uid)
+    running.assert_called_with(job_running)
+    assert job_running == job
+    job = await murdock.remove_job(job_finished.uid)
+    remove_dir.assert_called_once()
+    delete_jobs.assert_called_with(JobQueryModel(uid=job_finished.uid))
+    assert job_finished == job
+
+    find_jobs.return_value = []
+    job_none = await murdock.remove_job("abcdef")
+    assert job_none is None
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.database.Database.find_jobs")
+@mock.patch("murdock.database.Database.delete_jobs")
+@mock.patch("murdock.job.MurdockJob.remove_dir")
 async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
     murdock = Murdock()
     query = JobQueryModel(before="2021-11-24")
@@ -927,6 +979,49 @@ async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
 
     assert f"{len(jobs_to_remove)} jobs removed" in caplog.text
     assert result == jobs_to_remove
+
+
+@pytest.mark.asyncio
+@mock.patch("murdock.database.Database.find_jobs")
+async def test_get_job(find_jobs):
+    murdock = Murdock()
+    job_queued = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test queued message",
+            author="user",
+        )
+    )
+    job_running = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test running message",
+            author="user",
+        )
+    )
+    job_finished = MurdockJob(
+        CommitModel(
+            sha="test_commit",
+            tree="test_tree",
+            message="test finished message",
+            author="user",
+        )
+    )
+    murdock.queued.add(job_queued)
+    murdock.running.add(job_running)
+    find_jobs.return_value = [job_finished.model()]
+    job = await murdock.get_job(job_queued.uid)
+    assert job_queued.model() == job
+    job = await murdock.get_job(job_running.uid)
+    assert job_running.model() == job
+    job = await murdock.get_job(job_finished.uid)
+    assert job_finished.model() == job
+
+    find_jobs.return_value = []
+    job_none = await murdock.get_job("abcdef")
+    assert job_none is None
 
 
 @pytest.mark.asyncio
