@@ -30,28 +30,27 @@ class MurdockJob:
         triggered_by: Optional[str] = None,
         user_env: Optional[dict] = None,
     ):
-        self.trigger: str = trigger
-        self.triggered_by: str = triggered_by
-        self.user_env: dict = user_env
+        self.trigger: Optional[str] = trigger
+        self.triggered_by: Optional[str] = triggered_by
+        self.user_env: Optional[dict] = user_env
         self.uid: str = uuid.uuid4().hex
         self.config = config
         self.state: Optional[str] = None
         self.proc: Optional[Process] = None
         self.output: str = ""
         self.commit: CommitModel = commit
-        self.ref: str = ref
-        self.pr: PullRequestInfo = pr
+        self.ref: Optional[str] = ref
+        self.pr: Optional[PullRequestInfo] = pr
         self.creation_time: float = time.time()
         self.start_time: float = 0
         self.stop_time: float = 0
         self.canceled: bool = False
         self.status: dict = {"status": ""}
-        if self.pr is not None:
-            self.fasttracked: bool = any(
-                label in CI_CONFIG.fasttrack_labels for label in pr.labels
-            )
-        else:
-            self.fasttracked: bool = False
+        self.fasttracked: bool = (
+            any(label in CI_CONFIG.fasttrack_labels for label in self.pr.labels)
+            if self.pr is not None
+            else False
+        )  # type: ignore[union-attr]
         self.token: str = secrets.token_urlsafe(32)
         self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
         self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
@@ -213,7 +212,7 @@ class MurdockJob:
             stderr=asyncio.subprocess.STDOUT,
         )
         while True:
-            data = await self.proc.stdout.readline()
+            data = await self.proc.stdout.readline()  # type: ignore[union-attr]
             if not data:
                 break
             line = data.decode()

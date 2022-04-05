@@ -12,10 +12,7 @@ from murdock.models import CommitModel, JobModel, JobQueryModel, PullRequestInfo
 
 
 class Database:
-
-    db = None
-
-    async def init(self):
+    def __init__(self):
         LOGGER.info("Initializing database connection")
         conn = aiomotor.AsyncIOMotorClient(
             f"mongodb://{DB_CONFIG.host}:{DB_CONFIG.port}",
@@ -23,6 +20,8 @@ class Database:
             io_loop=asyncio.get_event_loop(),
         )
         self.db = conn[DB_CONFIG.name]
+
+    async def init(self):
         await self.db.job.create_index([("uid", 1)], unique=True, name="job_uid")
         await self.db.job.create_index(
             [("creation_time", pymongo.ASCENDING)], name="job_creation_time"
@@ -39,21 +38,12 @@ class Database:
     async def find_job(self, uid: str) -> Optional[MurdockJob]:
         if not (entry := await self.db.job.find_one({"uid": uid})):
             LOGGER.warning(f"Cannot find job matching uid '{uid}'")
-            return
+            return None
 
         commit = CommitModel(**entry["commit"])
-        if "prinfo" in entry:
-            prinfo = PullRequestInfo(**entry["prinfo"])
-        else:
-            prinfo = None
-        if "ref" in entry:
-            ref = entry["ref"]
-        else:
-            ref = None
-        if "user_env" in entry:
-            user_env = entry["user_env"]
-        else:
-            user_env = None
+        prinfo = PullRequestInfo(**entry["prinfo"]) if "prinfo" in entry else None
+        ref = entry["ref"] if "ref" in entry else None
+        user_env = entry["user_env"] if "user_env" in entry else None
 
         return MurdockJob(commit, pr=prinfo, ref=ref, user_env=user_env)
 

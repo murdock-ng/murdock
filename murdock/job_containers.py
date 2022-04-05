@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from murdock.job import MurdockJob
 from murdock.models import JobQueryModel
@@ -9,9 +9,9 @@ class MurdockJobListBase(ABC):
 
     _jobs: List[Optional[MurdockJob]]
 
-    @property
+    @property  # type: ignore[misc]
     @abstractclassmethod
-    def jobs(self) -> List[Optional[MurdockJob]]:
+    def jobs(self) -> Sequence[Optional[MurdockJob]]:
         ...  # pragma: nocover
 
     @abstractclassmethod
@@ -22,10 +22,11 @@ class MurdockJobListBase(ABC):
     def remove(self, job: MurdockJob) -> None:
         ...  # pragma: nocover
 
-    def search_by_uid(self, uid: str) -> MurdockJob:
+    def search_by_uid(self, uid: str) -> Optional[MurdockJob]:
         for job in self._jobs:
             if job is not None and job.uid == uid:
                 return job
+        return None
 
     def search_by_pr_number(self, prnum: int) -> List[MurdockJob]:
         return self.search_with_query(JobQueryModel(prnum=prnum))
@@ -34,12 +35,12 @@ class MurdockJobListBase(ABC):
         return self.search_with_query(JobQueryModel(ref=ref))
 
     def search_matching(self, job: MurdockJob) -> List[MurdockJob]:
-        return (
-            job.pr is not None
-            and self.search_by_pr_number(job.pr.number)
-            or job.ref is not None
-            and self.search_by_ref(job.ref)
-        )
+        result = []
+        if job.pr is not None:
+            result += self.search_by_pr_number(job.pr.number)
+        if job.ref is not None:
+            result += self.search_by_ref(job.ref)
+        return result
 
     def search_with_query(self, query: JobQueryModel) -> List[MurdockJob]:
         jobs = {job for job in self.jobs if job is not None}
@@ -59,9 +60,9 @@ class MurdockJobListBase(ABC):
 
         if query.uid is not None:
             if (job_found := self.search_by_uid(query.uid)) is not None:
-                uid_job = {job_found}
+                uid_job = set([job_found])
             else:
-                uid_job = {}
+                uid_job = set()
         if query.is_pr is not None:
             if query.is_pr is True:
                 is_pr_jobs = {
@@ -137,23 +138,35 @@ class MurdockJobListBase(ABC):
             branch_jobs = {
                 job
                 for job in self.jobs
-                if (job.ref is not None and job.ref == f"refs/heads/{query.branch}")
+                if job is not None
+                and job.ref is not None
+                and job.ref == f"refs/heads/{query.branch}"
             }
         if query.tag is not None:
             tag_jobs = {
                 job
                 for job in self.jobs
-                if job.ref is not None and job.ref == f"refs/tags/{query.tag}"
+                if job is not None
+                and job.ref is not None
+                and job.ref == f"refs/tags/{query.tag}"
             }
         if query.ref is not None:
             ref_jobs = {
-                job for job in self.jobs if job.ref is not None and job.ref == query.ref
+                job
+                for job in self.jobs
+                if job is not None and job.ref is not None and job.ref == query.ref
             }
         if query.sha is not None:
-            sha_jobs = {job for job in self.jobs if job.commit.sha == query.sha}
+            sha_jobs = {
+                job
+                for job in self.jobs
+                if job is not None and job.commit.sha == query.sha
+            }
         if query.author is not None:
             author_jobs = {
-                job for job in self.jobs if job.commit.author == query.author
+                job
+                for job in self.jobs
+                if job is not None and job.commit.author == query.author
             }
         return sorted(
             list(
@@ -191,7 +204,7 @@ class MurdockJobList(MurdockJobListBase):
 
 class MurdockJobPool(MurdockJobListBase):
     def __init__(self, maxlen: int):
-        self._jobs = maxlen * [None]
+        self._jobs = maxlen * [None]  # type: ignore[assignment]
 
     @property
     def jobs(self) -> List[Optional[MurdockJob]]:

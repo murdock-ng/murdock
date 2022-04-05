@@ -251,6 +251,8 @@ class Murdock:
         matching_jobs += self.running.search_by_pr_number(pull_request.number)
         modified_jobs = 0
         for matching_job in matching_jobs:
+            if matching_job.pr is None:
+                continue
             if matching_job.pr.labels != pull_request.labels:
                 LOGGER.debug(f"Updating {matching_job} labels")
                 matching_job.pr.labels = pull_request.labels
@@ -418,7 +420,7 @@ class Murdock:
             if event["label"][
                 "name"
             ] == CI_CONFIG.ready_label and self.queued.search_by_pr_number(
-                job.pr.number
+                pull_request.number
             ):
                 return
 
@@ -598,7 +600,9 @@ class Murdock:
         ref = f"Commit {param.sha}"
         return await self.start_job(ref, commit, token, param)
 
-    async def handle_job_status_data(self, uid: str, data: dict) -> MurdockJob:
+    async def handle_job_status_data(
+        self, uid: str, data: dict
+    ) -> Optional[MurdockJob]:
         job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
             job.status = data["status"]
