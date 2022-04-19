@@ -64,9 +64,11 @@ target/
 .mypy_cache/
 
 # local docker-compose envs
+.env
 .env*.local
 
 # docker-compose override configuration
 docker-compose.override.yml
 
 build/
+murdock-html/
