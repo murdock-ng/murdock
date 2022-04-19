@@ -1,7 +1,16 @@
-# murdock
+# Murdock
 
-A simple CI (continuous integration) server written in Python.
-Developed for RIOT (riot-os.org).
+A simple continuous integration server written in Python.
+
+## Features
+
+- Highly configurable
+- REST API compatible with OpenAPI
+- Per-repo fine tuning via .murdock.yml
+- Live status of CI jobs via websockets
+- Can comment results on pull-request
+
+And many more not listed here.
 
 # Requirements
 
