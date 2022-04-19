@@ -55,7 +55,7 @@ This image should derive from `riot/murdock` to be sure Murdock is installed.
 Build the React application:
 
 ```
-$ docker-compose run webapp-build
+$ docker-compose run frontend-build
 ```
 
 Launch Murdock and MongoDb services:

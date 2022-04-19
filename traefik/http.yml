@@ -10,13 +10,13 @@ http:
         PathPrefix(`/ws`) ||
         PathPrefix(`/openapi.json`)
       service: murdock
-    to-webapp:
+    to-frontend:
       middlewares:
         - "replace-regex"
       rule: >
         PathPrefix(`/`) ||
         PathPrefix(`/static`)
-      service: webapp
+      service: frontend
   middlewares:
     replace-regex:
       replacePathRegex:
@@ -24,11 +24,11 @@ http:
         replacement: "/"
 
   services:
-    webapp:
+    frontend:
       loadBalancer:
         servers:
-        - url: http://murdock-webapp:3000
+        - url: http://murdock-frontend:3000
     murdock:
       loadBalancer:
         servers:
-        - url: http://murdock-app:8000
+        - url: http://murdock-api:8000

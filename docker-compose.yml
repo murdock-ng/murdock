@@ -10,7 +10,7 @@ services:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
     image: ${MURDOCK_DOCKER_IMAGE}
-    container_name: murdock-app
+    container_name: murdock-api
     environment:
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
@@ -53,13 +53,13 @@ services:
     logging:
       driver: syslog
       options:
-        tag: murdock-app
+        tag: murdock-api
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
-  webapp-build:
+  frontend-build:
     image: node:16.9.1
     volumes:
-      - ${MURDOCK_HTML_DIR}:/webapp
+      - ${MURDOCK_HTML_DIR}:/frontend
     environment:
       - REACT_APP_MURDOCK_HTTP_BASE_URL=${MURDOCK_BASE_URL}
       - REACT_APP_MURDOCK_WS_URL=${MURDOCK_WS_URL}
@@ -68,27 +68,27 @@ services:
       - REACT_APP_GITHUB_REPO=${GITHUB_REPO}
     command: >
       /bin/sh -c "
-        cd /webapp &&
+        cd /frontend &&
         npm install &&
         npm run build
       "
     profiles: ["setup"]
-  webapp:
+  frontend:
     user: ${MURDOCK_USER_UID}:${MURDOCK_USER_GID}
     build:
-      context: webapp/.
+      context: frontend/.
       args:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
-    image: murdock-webapp
-    container_name: murdock-webapp
+    image: murdockng/murdock-frontend
+    container_name: murdock-frontend
     volumes:
-      - ./webapp:/var/lib/murdock/webapp
-      - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/webapp/build
+      - ./frontend:/var/lib/murdock/frontend
+      - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/frontend/build
     logging:
       driver: syslog
       options:
-        tag: murdock-webapp
+        tag: murdock-frontend
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo:

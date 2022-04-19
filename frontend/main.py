@@ -4,7 +4,7 @@ from starlette.staticfiles import StaticFiles
 
 
 routes = [
-    Mount("/", app=StaticFiles(directory="webapp/build", html=True), name="app"),
+    Mount("/", app=StaticFiles(directory="frontend/build", html=True), name="app"),
 ]
 
 app = Starlette(routes=routes)
