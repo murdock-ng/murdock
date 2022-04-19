@@ -10,7 +10,7 @@ services:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
     image: ${MURDOCK_DOCKER_IMAGE}
-    container_name: murdock-api
+    container_name: murdock-api-${MURDOCK_PROJECT}
     environment:
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
@@ -18,7 +18,7 @@ services:
         - MURDOCK_API_TOKEN
         - MURDOCK_NUM_WORKERS
         - MURDOCK_SCRIPT_NAME
-        - MURDOCK_DB_HOST=mongodb
+        - MURDOCK_DB_HOST=mongodb-${MURDOCK_PROJECT}
         - MURDOCK_DB_PORT=27017
         - MURDOCK_DB_NAME
         - MURDOCK_GITHUB_APP_CLIENT_ID
@@ -53,7 +53,7 @@ services:
     logging:
       driver: syslog
       options:
-        tag: murdock-api
+        tag: murdock-api-${MURDOCK_PROJECT}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   frontend-build:
@@ -81,25 +81,25 @@ services:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
     image: murdockng/murdock-frontend
-    container_name: murdock-frontend
+    container_name: murdock-frontend-${MURDOCK_PROJECT}
     volumes:
       - ./frontend:/var/lib/murdock/frontend
       - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/frontend/build
     logging:
       driver: syslog
       options:
-        tag: murdock-frontend
+        tag: murdock-frontend-${MURDOCK_PROJECT}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo:
     image: mongo:4.2.16
-    container_name: mongodb
+    container_name: mongodb-${MURDOCK_PROJECT}
     volumes:
       - ${MONGODB_BD_DATA_DIR}:/data/db
     logging:
       driver: syslog
       options:
-        tag: murdock-mongo
+        tag: murdock-mongo-${MURDOCK_PROJECT}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo-dev:
@@ -112,14 +112,16 @@ services:
     profiles: ["dev"]
   proxy:
     image: traefik:v2.5
-    container_name: murdock-proxy
+    container_name: murdock-proxy-${MURDOCK_PROJECT}
     ports:
       - ${MURDOCK_PORT}:8081
     volumes:
       - ${PWD}/traefik:/etc/traefik
+    environment:
+      - MURDOCK_PROJECT
     logging:
       driver: syslog
       options:
-        tag: murdock-proxy
+        tag: murdock-proxy-${MURDOCK_PROJECT}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always

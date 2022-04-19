@@ -27,8 +27,8 @@ http:
     frontend:
       loadBalancer:
         servers:
-        - url: http://murdock-frontend:3000
+        - url: http://murdock-frontend-{{ env "MURDOCK_PROJECT" }}:3000
     murdock:
       loadBalancer:
         servers:
-        - url: http://murdock-api:8000
+        - url: http://murdock-api-{{ env "MURDOCK_PROJECT" }}:8000
