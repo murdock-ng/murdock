@@ -1,3 +1,6 @@
+[![CI][ci-badge]][ci-link]
+[![Coverage][coverage-badge]][coverage-link]
+
 # Murdock
 
 A simple continuous integration server written in Python.
@@ -91,3 +94,9 @@ Run the tests:
 ```
 $ tox
 ```
+
+
+[ci-badge]: https://github.com/murdock-ng/murdock/workflows/CI/badge.svg
+[ci-link]: https://github.com/murdock-ng/murdock/actions?query=workflow%3ACI+branch%3Amaster
+[coverage-badge]: https://codecov.io/gh/murdock-ng/murdock/branch/main/graph/badge.svg?token=86RDZ29XKQ
+[coverage-link]: https://codecov.io/gh/murdock-ng/murdock
