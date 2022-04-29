@@ -20,7 +20,7 @@ And many more not listed here.
 Murdock is fully written in Python (requires >= 3.9) and is based on the
 [FastAPI](https://fastapi.tiangolo.com/) framework for the REST API.
 In order to keep the history of completed jobs, they are stored in a
-[MongoDb](https://www.mongodb.com/) database.
+[MongoDB](https://www.mongodb.com/) database.
 
 We recommend that you use
 [docker-compose](https://docs.docker.com/compose/#compose-documentation) to
@@ -41,9 +41,10 @@ $ make
 
 This command will copy the provided [.env.example](.env.example) file to a
 default .env so that it contains good defaults, then clone the
-[murdock-html](https://github.com/murdock-ng/murdock-html), build the frontend
-web application and finally launch the Docker services (mongo database, web
-frontend and Murdock API server).
+[murdock-html](https://github.com/murdock-ng/murdock-html) repository, build
+the frontend web application and finally launch the Docker services (mongo
+database, web frontend and Murdock API server).
+Once deployed, by default, the UI is available at http://localhost:8000.
 
 # Development
 
@@ -56,7 +57,7 @@ Install all Murdock dependencies:
 $ python3 -m pip install -r requirements.txt
 ```
 
-Launch the MongoDb service:
+Launch the MongoDB service:
 
 ```
 $ docker-compose up mongo-dev
@@ -86,7 +87,7 @@ full test suite can be launched using [Tox](https://tox.readthedocs.io):
 Install Tox:
 
 ```
-$ python 3 -m pip install tox
+$ python3 -m pip install tox
 ```
 
 Run the tests:
