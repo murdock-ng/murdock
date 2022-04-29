@@ -25,6 +25,7 @@ main() {
     do
         echo "---- Job ${job} started "
         sleep ${JOB_DELAY}
+        echo "I am job ${job}" > job_${job}.txt
         echo "---- Job ${job} finished "
         echo
     done

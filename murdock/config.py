@@ -56,9 +56,22 @@ class NotifierSettings(BaseSettings):
 class GlobalSettings(BaseSettings):
     base_url: str = Field(env="MURDOCK_BASE_URL", default="http://localhost:8000")
     work_dir: str = Field(env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data")
+    host_work_dir: str = Field(env="MURDOCK_HOST_WORK_DIR", default="/tmp/murdock-data")
     scripts_dir: str = Field(
         env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
     )
+    script_name: str = Field(env="MURDOCK_SCRIPT_NAME", default="run.sh")
+    run_in_docker: bool = Field(env="MURDOCK_RUN_IN_DOCKER", default=False)
+    docker_user_uid: int = Field(env="MURDOCK_USER_UID", default=1000)
+    docker_user_gid: int = Field(env="MURDOCK_USER_GID", default=1000)
+    docker_script_image: str = Field(
+        env="MURDOCK_DOCKER_SCRIPTS_IMAGE", default="ubuntu:latest"
+    )
+    docker_network: str = Field(env="MURDOCK_DOCKER_NETWORK", default="default")
+    docker_api_url: str = Field(
+        env="MURDOCK_DOCKER_API_URL", default="http://murdock-api-default:8000"
+    )
+    docker_volumes: dict = Field(env="MURDOCK_DOCKER_VOLUMES", default=dict())
     accepted_events: List[str] = Field(
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
@@ -74,7 +87,6 @@ class GlobalSettings(BaseSettings):
     )
     store_stopped_jobs: bool = Field(env="MURDOCK_STORE_STOPPED_JOBS", default=True)
     enable_notifications: bool = Field(env="MURDOCK_NOTIFIER_ENABLE", default=False)
-    script_name: str = Field(env="MURDOCK_SCRIPT_NAME", default="run.sh")
 
     @validator("work_dir")
     def work_dir_exists(cls, path):

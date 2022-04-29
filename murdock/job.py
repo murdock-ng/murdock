@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import secrets
+import shlex
 import shutil
 import signal
 import time
@@ -133,6 +134,13 @@ class MurdockJob:
             "CI_BUILD_TREE": self.commit.tree,
         }
 
+        if GLOBAL_CONFIG.run_in_docker is True:
+            _env.update(
+                {
+                    "CI_DOCKER_API_URL": GLOBAL_CONFIG.docker_api_url,
+                }
+            )
+
         if self.config.env is not None:
             _env.update(self.config.env)
 
@@ -201,12 +209,40 @@ class MurdockJob:
 
     async def execute(self, notify=None) -> None:
         MurdockJob.create_dir(self.work_dir)
-        script_path = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
-        LOGGER.debug(f"Launching run action for {self} (script: {script_path})")
+        if GLOBAL_CONFIG.run_in_docker is True:
+            env_to_docker = " ".join(
+                [f"--env {key}='{value}'" for key, value in self.env.items()]
+            )
+            volumes = GLOBAL_CONFIG.docker_volumes.copy()
+            host_job_work_dir = os.path.join(GLOBAL_CONFIG.host_work_dir, self.uid)
+            volumes.update({host_job_work_dir: "/murdock"})
+            volumes_to_docker = " ".join(
+                [f"--volume {key}:'{value}'" for key, value in volumes.items()]
+            )
+            docker_network = (
+                f"murdock_{GLOBAL_CONFIG.docker_network}"
+                if GLOBAL_CONFIG.docker_network == "default"
+                else GLOBAL_CONFIG.docker_network
+            )
+            command = "/usr/bin/docker"
+            args = shlex.split(
+                f"run --rm --network {docker_network} "
+                f"--user {GLOBAL_CONFIG.docker_user_uid}:{GLOBAL_CONFIG.docker_user_gid} "
+                f"{env_to_docker} {volumes_to_docker} "
+                f"--name murdock-job-{self.uid} --workdir /murdock "
+                f"{GLOBAL_CONFIG.docker_script_image}"
+            )
+        else:
+            command = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
+            args = []
+        LOGGER.debug(
+            f"Launching run action for {self} (command: {command} {' '.join(args)})"
+        )
         self.proc = await asyncio.create_subprocess_exec(
-            script_path,
-            cwd=self.work_dir,
-            env=self.env,
+            command,
+            *args,
+            cwd=self.work_dir if GLOBAL_CONFIG.run_in_docker is False else None,
+            env=self.env if GLOBAL_CONFIG.run_in_docker is False else None,
             start_new_session=True,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -256,13 +292,15 @@ class MurdockJob:
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
+        stop_signal = signal.SIGKILL if GLOBAL_CONFIG.run_in_docker else signal.SIGINT
+
         if self.proc is not None and self.proc.returncode is None:
-            LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
-            os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
+            LOGGER.debug(f"Send signal {stop_signal} to {self}")
+            os.killpg(os.getpgid(self.proc.pid), stop_signal)
             try:
                 await asyncio.wait_for(self.proc.wait(), timeout=5.0)
             except asyncio.TimeoutError:
-                LOGGER.debug(f"Couldn't stop {self} with {signal.SIGINT}")
+                LOGGER.debug(f"Couldn't stop {self} with {stop_signal}")
         if not GLOBAL_CONFIG.store_stopped_jobs:
             LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)

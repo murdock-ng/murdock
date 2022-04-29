@@ -1,12 +1,12 @@
-FROM python:3.9-slim
+FROM ubuntu:latest
 
 LABEL maintainer="alexandre.abadie@inria.fr"
 
 # Install tools required by the build.sh script
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        colorized-logs \
-        curl \
+        python3-pip \
+        docker.io \
         && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

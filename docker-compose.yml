@@ -2,14 +2,13 @@ version: "3.9"
 
 services:
   murdock:
-    user: ${MURDOCK_USER_UID}:${MURDOCK_USER_GID}
-    init: true
+    user: ${MURDOCK_USER_UID}:${MURDOCK_DOCKER_GID}
     build:
       context: .
       args:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
-    image: ${MURDOCK_DOCKER_IMAGE}
+    image: murdockng/murdock:latest
     container_name: murdock-api-${MURDOCK_PROJECT}
     environment:
         - MURDOCK_LOG_LEVEL
@@ -17,7 +16,14 @@ services:
         - MURDOCK_USE_JOB_TOKEN
         - MURDOCK_API_TOKEN
         - MURDOCK_NUM_WORKERS
-        - MURDOCK_SCRIPT_NAME
+        - MURDOCK_RUN_IN_DOCKER=1
+        - MURDOCK_USER_UID
+        - MURDOCK_USER_GID
+        - MURDOCK_DOCKER_SCRIPTS_IMAGE
+        - MURDOCK_DOCKER_NETWORK
+        - MURDOCK_DOCKER_VOLUMES
+        - MURDOCK_HOST_SCRIPTS_DIR=${MURDOCK_SCRIPTS_DIR}
+        - MURDOCK_HOST_WORK_DIR=${MURDOCK_WORK_DIR}
         - MURDOCK_DB_HOST=mongodb-${MURDOCK_PROJECT}
         - MURDOCK_DB_PORT=27017
         - MURDOCK_DB_NAME
@@ -45,11 +51,10 @@ services:
         - CI_READY_LABEL
         - CI_FASTTRACK_LABELS
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
       - ./murdock:/var/lib/murdock/murdock
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
-      - ${MURDOCK_SSH_DIR}:/var/lib/murdock/.ssh:ro
-      - ${MURDOCK_GITCACHE_DIR}:/.gitcache
     logging:
       driver: syslog
       options:
