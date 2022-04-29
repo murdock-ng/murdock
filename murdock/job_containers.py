@@ -1,4 +1,4 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import List, Optional, Sequence
 
 from murdock.job import MurdockJob
@@ -9,16 +9,15 @@ class MurdockJobListBase(ABC):
 
     _jobs: List[Optional[MurdockJob]]
 
-    @property  # type: ignore[misc]
-    @abstractclassmethod
+    @abstractproperty
     def jobs(self) -> Sequence[Optional[MurdockJob]]:
         ...  # pragma: nocover
 
-    @abstractclassmethod
+    @abstractmethod
     def add(self, *jobs: MurdockJob) -> None:
         ...  # pragma: nocover
 
-    @abstractclassmethod
+    @abstractmethod
     def remove(self, job: MurdockJob) -> None:
         ...  # pragma: nocover
 
@@ -191,7 +190,7 @@ class MurdockJobList(MurdockJobListBase):
         self._jobs = []
 
     @property
-    def jobs(self) -> List[Optional[MurdockJob]]:
+    def jobs(self) -> Sequence[Optional[MurdockJob]]:
         return self._jobs
 
     def add(self, *jobs: MurdockJob) -> None:
@@ -207,17 +206,17 @@ class MurdockJobPool(MurdockJobListBase):
         self._jobs = maxlen * [None]  # type: ignore[assignment]
 
     @property
-    def jobs(self) -> List[Optional[MurdockJob]]:
+    def jobs(self) -> Sequence[Optional[MurdockJob]]:
         return self._jobs
 
-    def add(self, *jobs: MurdockJob):
+    def add(self, *jobs: MurdockJob) -> None:
         for job in jobs:
             for index, current in enumerate(self.jobs):
                 if current is None:
                     self._jobs[index] = job
                     break
 
-    def remove(self, job: MurdockJob):
+    def remove(self, job: MurdockJob) -> None:
         for index, current in enumerate(self.jobs):
             if current == job:
                 self._jobs[index] = None
