@@ -207,7 +207,7 @@ class MurdockJob:
     def __hash__(self) -> int:
         return hash(self.uid)
 
-    async def execute(self, notify=None) -> None:
+    async def exec(self, notify=None) -> None:
         MurdockJob.create_dir(self.work_dir)
         if GLOBAL_CONFIG.run_in_docker is True:
             env_to_docker = " ".join(
