@@ -1,20 +1,17 @@
-import asyncio
 import json
 import os
 import secrets
-import shlex
 import shutil
-import signal
 import time
 import uuid
 
-from typing import Optional
-from asyncio.subprocess import Process
+from typing import Callable, Optional
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
 from murdock.models import PullRequestInfo, CommitModel, JobModel
 from murdock.config import MurdockSettings
+from murdock.task import Task
 
 
 UNSAFE_ENVS = ["CI_JOB_TOKEN", "CI_SCRIPTS_DIR"]
@@ -26,7 +23,7 @@ class MurdockJob:
         commit: CommitModel,
         ref: Optional[str] = None,
         pr: Optional[PullRequestInfo] = None,
-        config: Optional[MurdockSettings] = MurdockSettings(),
+        config: MurdockSettings = MurdockSettings(),
         trigger: Optional[str] = "api",
         triggered_by: Optional[str] = None,
         user_env: Optional[dict] = None,
@@ -37,8 +34,9 @@ class MurdockJob:
         self.uid: str = uuid.uuid4().hex
         self.config = config
         self.state: Optional[str] = None
-        self.proc: Optional[Process] = None
+        self.current_task: Optional[Task] = None
         self.output: str = ""
+        self.notify = lambda _: None  # Notify do nothing by default
         self.commit: CommitModel = commit
         self.ref: Optional[str] = ref
         self.pr: Optional[PullRequestInfo] = pr
@@ -207,72 +205,32 @@ class MurdockJob:
     def __hash__(self) -> int:
         return hash(self.uid)
 
-    async def exec(self, notify=None) -> None:
+    async def extend_job_output(self, line):
+        self.output += line
+        if self.notify is not None:
+            await self.notify(
+                json.dumps({"cmd": "output", "uid": self.uid, "line": line})
+            )
+
+    async def exec(self, notify: Callable) -> None:
         MurdockJob.create_dir(self.work_dir)
-        if GLOBAL_CONFIG.run_in_docker is True:
-            env_to_docker = " ".join(
-                [f"--env {key}='{value}'" for key, value in self.env.items()]
+
+        self.notify = notify
+        for index, task_setting in enumerate(self.config.tasks):
+            self.current_task = Task(
+                index + 1,
+                task_setting,
+                self.uid,
+                self.env,
+                self.extend_job_output,
+                self.scripts_dir,
+                self.work_dir,
             )
-            volumes = GLOBAL_CONFIG.docker_volumes.copy()
-            host_job_work_dir = os.path.join(GLOBAL_CONFIG.host_work_dir, self.uid)
-            volumes.update({host_job_work_dir: "/murdock"})
-            volumes_to_docker = " ".join(
-                [f"--volume {key}:'{value}'" for key, value in volumes.items()]
-            )
-            docker_network = (
-                f"murdock_{GLOBAL_CONFIG.docker_network}"
-                if GLOBAL_CONFIG.docker_network == "default"
-                else GLOBAL_CONFIG.docker_network
-            )
-            command = "/usr/bin/docker"
-            args = shlex.split(
-                f"run --rm --network {docker_network} "
-                f"--user {GLOBAL_CONFIG.docker_user_uid}:{GLOBAL_CONFIG.docker_user_gid} "
-                f"{env_to_docker} {volumes_to_docker} "
-                f"--name murdock-job-{self.uid} --workdir /murdock "
-                f"{GLOBAL_CONFIG.docker_script_image}"
-            )
-        else:
-            command = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
-            args = []
-        LOGGER.debug(
-            f"Launching run action for {self} (command: {command} {' '.join(args)})"
-        )
-        self.proc = await asyncio.create_subprocess_exec(
-            command,
-            *args,
-            cwd=self.work_dir if GLOBAL_CONFIG.run_in_docker is False else None,
-            env=self.env if GLOBAL_CONFIG.run_in_docker is False else None,
-            start_new_session=True,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        while True:
-            data = await self.proc.stdout.readline()  # type: ignore[union-attr]
-            if not data:
+            state = await self.current_task.exec()
+            self.state = state
+            # self.output += self.current_task.output
+            if state in ["stopped", "errored"]:
                 break
-            line = data.decode()
-            self.output += line
-            if notify is not None:
-                await notify(
-                    json.dumps({"cmd": "output", "uid": self.uid, "line": line})
-                )
-        await self.proc.wait()
-        if self.proc.returncode == 0:
-            self.state = "passed"
-        elif (
-            self.proc.returncode
-            in [
-                int(signal.SIGINT) * -1,
-                int(signal.SIGKILL) * -1,
-                int(signal.SIGTERM) * -1,
-            ]
-            and self.state == "running"
-        ):
-            self.state = "stopped"
-        else:
-            self.state = "errored"
-        LOGGER.debug(f"{self} {self.state} (ret: {self.proc.returncode})")
 
         # Store job output in text file
         output_text_path = os.path.join(self.work_dir, "output.txt")
@@ -288,19 +246,12 @@ class MurdockJob:
         if os.path.exists(output_text_path):
             self.output_text_url = output_text_url
 
-        self.proc = None
+        self.current_task = None
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
-        stop_signal = signal.SIGKILL if GLOBAL_CONFIG.run_in_docker else signal.SIGINT
-
-        if self.proc is not None and self.proc.returncode is None:
-            LOGGER.debug(f"Send signal {stop_signal} to {self}")
-            os.killpg(os.getpgid(self.proc.pid), stop_signal)
-            try:
-                await asyncio.wait_for(self.proc.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
-                LOGGER.debug(f"Couldn't stop {self} with {stop_signal}")
+        if self.current_task is not None:
+            await self.current_task.stop()
         if not GLOBAL_CONFIG.store_stopped_jobs:
             LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)

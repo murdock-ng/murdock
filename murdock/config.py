@@ -115,12 +115,20 @@ class CommitSettings(BaseSettings):
     skip_keywords: List[str] = Field(default=[])
 
 
+class TaskSettings(BaseSettings):
+    name: Optional[str] = Field(default=None)
+    image: Optional[str] = Field(default=None)
+    command: Optional[str] = Field(default=None)
+    env: dict = Field(default=dict())
+
+
 class MurdockSettings(BaseSettings):
     push: PushSettings = Field(default=PushSettings())
     pr: PRSettings = Field(default=PRSettings())
     commit: CommitSettings = Field(default=CommitSettings())
     env: Optional[dict] = Field(default=None)
     failfast: Optional[bool] = Field(default=False)
+    tasks: List[TaskSettings] = Field(default=[TaskSettings()])
 
 
 _ENV_FILE = os.getenv("ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env"))

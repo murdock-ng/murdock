@@ -91,7 +91,7 @@ class Murdock:
             LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")  # type: ignore[union-attr]
             await self.job_prepare(job)
             try:
-                await job.exec(notify=self.notify_message_to_clients)
+                await job.exec(self.notify_message_to_clients)
             except Exception as exc:
                 LOGGER.warning(f"Build job failed:\n{exc}")
                 job.state = "errored"
