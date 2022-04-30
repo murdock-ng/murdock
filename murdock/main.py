@@ -57,7 +57,7 @@ LOGGER.debug(
     f"\nMurdock default:\n{json.dumps(MurdockSettings().dict(), indent=4)}\n"
 )
 
-murdock = Murdock()
+murdock = Murdock(repository=GITHUB_CONFIG.repo)
 app = FastAPI(
     debug=GLOBAL_CONFIG.log_level == "DEBUG",
     on_startup=[murdock.init],

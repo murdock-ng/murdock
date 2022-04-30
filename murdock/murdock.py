@@ -48,6 +48,7 @@ ALLOWED_ACTIONS = [
 class Murdock:
     def __init__(
         self,
+        repository: Optional[str] = None,
         num_workers: int = GLOBAL_CONFIG.num_workers,
         cancel_on_update: bool = GLOBAL_CONFIG.cancel_on_update,
         enable_notifications: bool = GLOBAL_CONFIG.enable_notifications,
@@ -55,6 +56,7 @@ class Murdock:
         self.cancel_on_update = cancel_on_update
         self.enable_notifications = enable_notifications
         self.clients: List[WebSocket] = []
+        self.repository: Optional[str] = repository
         self.num_workers = num_workers
         self.queued: MurdockJobList = MurdockJobList()
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
@@ -352,13 +354,19 @@ class Murdock:
         action = event["action"]
         if action not in ALLOWED_ACTIONS:
             return f"Unsupported action '{action}'"
+        if (
+            self.repository is not None
+            and event["repository"]["full_name"] != self.repository
+        ):
+            return "Invalid repo"
         LOGGER.info(f"Handle pull request event '{action}'")
         pr_data = event["pull_request"]
         sender = event["sender"]["login"]
         commit = await fetch_commit_info(pr_data["head"]["sha"])
         if commit is None:
-            LOGGER.error("Cannot fetch commit information, aborting")
-            return
+            error_msg = "Cannot fetch commit information"
+            LOGGER.error(f"{error_msg}, aborting")
+            return error_msg
         config = await fetch_murdock_config(commit.sha)
         pull_request = PullRequestInfo(
             title=pr_data["title"],
@@ -435,6 +443,11 @@ class Murdock:
         )
 
     async def handle_push_event(self, event: dict):
+        if (
+            self.repository is not None
+            and event["repository"]["full_name"] != self.repository
+        ):
+            return "Invalid repo"
         sender = event["sender"]["login"]
         ref = event["ref"]
         ref_type, ref_name = ref.split("/", 2)[-2:]

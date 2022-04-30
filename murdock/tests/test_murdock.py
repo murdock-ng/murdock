@@ -621,6 +621,13 @@ async def test_handle_pr_event_labeled_action(
 
 
 @pytest.mark.asyncio
+async def test_handle_pr_event_unsupported_repo(caplog):
+    murdock = Murdock(repository="unsupported_repo")
+    event = {"action": "labeled", "repository": {"full_name": "unsupported"}}
+    assert await murdock.handle_pull_request_event(event) == "Invalid repo"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "ref,ref_type,ref_name",
     [
@@ -829,6 +836,13 @@ async def test_handle_push_event_ref_removed(
     queued.assert_not_called()
     assert f"Handle push event on ref '{branch}'" not in caplog.text
     assert "Scheduling new job" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_handle_push_event_unsupported_repo(caplog):
+    murdock = Murdock(repository="unsupported_repo")
+    event = {"repository": {"full_name": "unsupported"}}
+    assert await murdock.handle_push_event(event) == "Invalid repo"
 
 
 @pytest.mark.asyncio
