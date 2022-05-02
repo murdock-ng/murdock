@@ -132,13 +132,13 @@ class MurdockJob:
             "CI_BUILD_TREE": self.commit.tree,
         }
 
+        _env.update(GLOBAL_CONFIG.custom_env)
+
         if self.config.env is not None:
             _env.update(self.config.env)
 
         if self.user_env is not None:
             _env.update(self.user_env)
-
-        _env.update(GLOBAL_CONFIG.custom_env)
 
         if self.pr is not None:
             _env.update(
