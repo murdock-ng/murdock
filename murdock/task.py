@@ -51,11 +51,6 @@ class Task:
         volumes_to_docker = " ".join(
             [f"--volume {key}:'{value}'" for key, value in volumes.items()]
         )
-        docker_network = (
-            f"murdock_{GLOBAL_CONFIG.docker_network}"
-            if GLOBAL_CONFIG.docker_network == "default"
-            else GLOBAL_CONFIG.docker_network
-        )
         docker_image = (
             GLOBAL_CONFIG.docker_default_image
             if self.config.image is None
