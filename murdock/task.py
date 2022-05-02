@@ -64,7 +64,7 @@ class Task:
         docker_cmd = "" if self.config.command is None else self.config.command
         command = "/usr/bin/docker"
         args = shlex.split(
-            f"run --rm --network {docker_network} "
+            f"run --rm --network container:murdock-api-{GLOBAL_CONFIG.project} "
             f"--user {GLOBAL_CONFIG.docker_user_uid}:{GLOBAL_CONFIG.docker_user_gid} "
             f"{env_to_docker} {volumes_to_docker} "
             f"--name murdock-job-{self.job_uid} --workdir /murdock "

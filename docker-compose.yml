@@ -11,15 +11,14 @@ services:
     image: murdockng/murdock:latest
     container_name: murdock-api-${MURDOCK_PROJECT}
     environment:
+        - MURDOCK_PROJECT
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
         - MURDOCK_NUM_WORKERS
         - MURDOCK_RUN_IN_DOCKER=1
         - MURDOCK_USER_UID
         - MURDOCK_USER_GID
-        - MURDOCK_DOCKER_API_URL
         - MURDOCK_DOCKER_DEFAULT_TASK_IMAGE
-        - MURDOCK_DOCKER_NETWORK
         - MURDOCK_DOCKER_VOLUMES
         - MURDOCK_HOST_WORK_DIR=${MURDOCK_WORK_DIR}
         - MURDOCK_DB_HOST=mongodb-${MURDOCK_PROJECT}
@@ -50,6 +49,7 @@ services:
         - CI_FASTTRACK_LABELS
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /usr/bin/docker:/usr/bin/docker
       - ./murdock:/var/lib/murdock/murdock
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts

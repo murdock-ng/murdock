@@ -132,13 +132,6 @@ class MurdockJob:
             "CI_BUILD_TREE": self.commit.tree,
         }
 
-        if GLOBAL_CONFIG.run_in_docker is True:
-            _env.update(
-                {
-                    "CI_DOCKER_API_URL": GLOBAL_CONFIG.docker_api_url,
-                }
-            )
-
         if self.config.env is not None:
             _env.update(self.config.env)
 

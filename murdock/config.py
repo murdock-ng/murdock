@@ -54,6 +54,7 @@ class NotifierSettings(BaseSettings):
 
 
 class GlobalSettings(BaseSettings):
+    project: str = Field(env="MURDOCK_PROJECT", default="default")
     base_url: str = Field(env="MURDOCK_BASE_URL", default="http://localhost:8000")
     work_dir: str = Field(env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data")
     host_work_dir: str = Field(env="MURDOCK_HOST_WORK_DIR", default="/tmp/murdock-data")
@@ -66,10 +67,6 @@ class GlobalSettings(BaseSettings):
     docker_user_gid: int = Field(env="MURDOCK_USER_GID", default=1000)
     docker_default_image: str = Field(
         env="MURDOCK_DOCKER_DEFAULT_TASK_IMAGE", default="ubuntu:latest"
-    )
-    docker_network: str = Field(env="MURDOCK_DOCKER_NETWORK", default="default")
-    docker_api_url: str = Field(
-        env="MURDOCK_DOCKER_API_URL", default="http://murdock-api-default:8000"
     )
     docker_volumes: dict = Field(env="MURDOCK_DOCKER_VOLUMES", default=dict())
     accepted_events: List[str] = Field(
