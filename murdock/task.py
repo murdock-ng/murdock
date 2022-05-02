@@ -117,12 +117,13 @@ class Task:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )
+            self.stopped = True
         else:
             if self.proc is not None and self.proc.returncode is None:
+                self.stopped = True
                 LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
                 try:
                     await asyncio.wait_for(self.proc.wait(), timeout=5.0)
                 except asyncio.TimeoutError:
                     LOGGER.debug(f"Couldn't stop {self} with {signal.SIGINT}")
-        self.stopped = True

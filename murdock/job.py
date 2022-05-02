@@ -221,8 +221,8 @@ class MurdockJob:
             )
             state = await self.current_task.exec()
             self.state = state
-            # self.output += self.current_task.output
             if state in ["stopped", "errored"]:
+                LOGGER.info(f"{self.current_task} {state}")
                 break
 
         # Store job output in text file
