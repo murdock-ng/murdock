@@ -48,16 +48,24 @@ ALLOWED_ACTIONS = [
 class Murdock:
     def __init__(
         self,
+        base_url: str = GLOBAL_CONFIG.base_url,
         repository: Optional[str] = None,
+        work_dir: str = GLOBAL_CONFIG.work_dir,
         num_workers: int = GLOBAL_CONFIG.num_workers,
+        commit_status_context: str = GLOBAL_CONFIG.commit_status_context,
         cancel_on_update: bool = GLOBAL_CONFIG.cancel_on_update,
+        store_stopped_jobs: bool = GLOBAL_CONFIG.store_stopped_jobs,
         enable_notifications: bool = GLOBAL_CONFIG.enable_notifications,
     ):
-        self.cancel_on_update = cancel_on_update
-        self.enable_notifications = enable_notifications
-        self.clients: List[WebSocket] = []
+        self.base_url: str = base_url
         self.repository: Optional[str] = repository
-        self.num_workers = num_workers
+        self.work_dir: str = work_dir
+        self.commit_status_context: str = commit_status_context
+        self.cancel_on_update: bool = cancel_on_update
+        self.store_stopped_jobs: bool = store_stopped_jobs
+        self.enable_notifications: bool = enable_notifications
+        self.clients: List[WebSocket] = []
+        self.num_workers: int = num_workers
         self.queued: MurdockJobList = MurdockJobList()
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
@@ -126,7 +134,7 @@ class Murdock:
             job.commit.sha,
             {
                 "state": "pending",
-                "context": GLOBAL_CONFIG.commit_status_context,
+                "context": self.commit_status_context,
                 "description": "The job has started",
                 "target_url": job.details_url,
             },
@@ -142,7 +150,7 @@ class Murdock:
         if job.state == "stopped":
             status = {
                 "state": "pending",
-                "context": GLOBAL_CONFIG.commit_status_context,
+                "context": self.commit_status_context,
                 "target_url": job.details_url,
                 "description": "Stopped",
             }
@@ -151,7 +159,7 @@ class Murdock:
             job_status_desc = "succeeded" if job.state == "passed" else "failed"
             status = {
                 "state": job_state,
-                "context": GLOBAL_CONFIG.commit_status_context,
+                "context": self.commit_status_context,
                 "description": (
                     f"The job {(job_status_desc)}. " f"runtime: {job.runtime_human}"
                 ),
@@ -170,7 +178,7 @@ class Murdock:
         if job.state in ["passed", "errored"] and self.enable_notifications is True:
             await self.notifier.notify(job, self.db)
         if job.state in ["passed", "errored"] or (
-            job.state == "stopped" and GLOBAL_CONFIG.store_stopped_jobs
+            job.state == "stopped" and self.store_stopped_jobs
         ):
             await self.db.insert_job(job)
         await self.reload_jobs()
@@ -180,9 +188,9 @@ class Murdock:
             job.commit.sha,
             {
                 "state": "pending",
-                "context": GLOBAL_CONFIG.commit_status_context,
+                "context": self.commit_status_context,
                 "description": "The job has been queued",
-                "target_url": GLOBAL_CONFIG.base_url,
+                "target_url": self.base_url,
             },
         )
         all_busy = all(running is not None for running in self.running.jobs)
@@ -211,8 +219,8 @@ class Murdock:
         self.queued.remove(job)
         status = {
             "state": "pending",
-            "context": GLOBAL_CONFIG.commit_status_context,
-            "target_url": GLOBAL_CONFIG.base_url,
+            "context": self.commit_status_context,
+            "target_url": self.base_url,
             "description": "Canceled",
         }
         await set_commit_status(job.commit.sha, status)
@@ -328,7 +336,7 @@ class Murdock:
                 job.commit.sha,
                 {
                     "state": "pending",
-                    "context": GLOBAL_CONFIG.commit_status_context,
+                    "context": self.commit_status_context,
                     "description": "The job was skipped.",
                 },
             )
@@ -406,8 +414,8 @@ class Murdock:
             await self.disable_jobs_matching(job)
             status = {
                 "state": "pending",
-                "context": GLOBAL_CONFIG.commit_status_context,
-                "target_url": GLOBAL_CONFIG.base_url,
+                "context": self.commit_status_context,
+                "target_url": self.base_url,
                 "description": f'"{CI_CONFIG.ready_label}" label not set',
             }
             await set_commit_status(job.commit.sha, status)
@@ -514,16 +522,15 @@ class Murdock:
             if query.states is None or "running" in query.states
         ]
 
-    @staticmethod
-    def _remove_job_data(uid):
-        work_dir = os.path.join(GLOBAL_CONFIG.work_dir, uid)
+    def _remove_job_data(self, uid):
+        work_dir = os.path.join(self.work_dir, uid)
         MurdockJob.remove_dir(work_dir)
 
     async def remove_finished_jobs(self, query: JobQueryModel) -> List[JobModel]:
         query.limit = -1
         jobs_to_remove = await (self.db.find_jobs(query))
         for job in jobs_to_remove:
-            Murdock._remove_job_data(job.uid)
+            self._remove_job_data(job.uid)
         await self.db.delete_jobs(query)
         LOGGER.info(f"{len(jobs_to_remove)} jobs removed")
         await self.reload_jobs()
@@ -537,7 +544,7 @@ class Murdock:
             await self.stop_running_job(job)
             return job.model()
         elif (jobs := await self.db.find_jobs(JobQueryModel(uid=uid))) and jobs:
-            Murdock._remove_job_data(uid)
+            self._remove_job_data(uid)
             await self.db.delete_jobs(JobQueryModel(uid=uid))
             return jobs[0]
         return None

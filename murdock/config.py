@@ -64,8 +64,8 @@ class GlobalSettings(BaseSettings):
     run_in_docker: bool = Field(env="MURDOCK_RUN_IN_DOCKER", default=False)
     docker_user_uid: int = Field(env="MURDOCK_USER_UID", default=1000)
     docker_user_gid: int = Field(env="MURDOCK_USER_GID", default=1000)
-    docker_script_image: str = Field(
-        env="MURDOCK_DOCKER_SCRIPTS_IMAGE", default="ubuntu:latest"
+    docker_default_image: str = Field(
+        env="MURDOCK_DOCKER_DEFAULT_TASK_IMAGE", default="ubuntu:latest"
     )
     docker_network: str = Field(env="MURDOCK_DOCKER_NETWORK", default="default")
     docker_api_url: str = Field(

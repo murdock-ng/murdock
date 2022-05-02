@@ -20,12 +20,14 @@ class Task:
         extend_job_output: Callable,
         scripts_dir: str,
         work_dir: str,
+        run_in_docker: bool = GLOBAL_CONFIG.run_in_docker,
     ):
         self.index = index
         self.config = config
         self.job_uid = job_uid
         self.scripts_dir = scripts_dir
         self.work_dir = work_dir
+        self.run_in_docker = run_in_docker
         task_env = job_env.copy()
         task_env.update(config.env)
         self.env = task_env
@@ -55,7 +57,7 @@ class Task:
             else GLOBAL_CONFIG.docker_network
         )
         docker_image = (
-            GLOBAL_CONFIG.docker_script_image
+            GLOBAL_CONFIG.docker_default_image
             if self.config.image is None
             else self.config.image
         )
@@ -72,7 +74,7 @@ class Task:
 
     async def exec(self):
         await self.extend_job_output(f"-- Running {self} --\n")
-        if GLOBAL_CONFIG.run_in_docker is True:
+        if self.run_in_docker is True:
             command, args = self._docker_cmd_args()
         else:
             command = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
@@ -81,8 +83,8 @@ class Task:
         self.proc = await asyncio.create_subprocess_exec(
             command,
             *args,
-            cwd=self.work_dir if GLOBAL_CONFIG.run_in_docker is False else None,
-            env=self.env if GLOBAL_CONFIG.run_in_docker is False else None,
+            cwd=self.work_dir if self.run_in_docker is False else None,
+            env=self.env if self.run_in_docker is False else None,
             start_new_session=True,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -120,7 +122,7 @@ class Task:
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
-        stop_signal = signal.SIGKILL if GLOBAL_CONFIG.run_in_docker else signal.SIGINT
+        stop_signal = signal.SIGKILL if self.run_in_docker else signal.SIGINT
 
         if self.proc is not None and self.proc.returncode is None:
             LOGGER.debug(f"Send signal {stop_signal} to {self}")
