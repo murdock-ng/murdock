@@ -91,7 +91,7 @@ class Task:
             if not data:
                 break
             line = data.decode()
-            await self.extend_job_output(line)
+            await self.extend_job_output(line.replace("\r", "\n"))
         await self.proc.wait()
 
         if self.proc.returncode == 0:
