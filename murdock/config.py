@@ -73,6 +73,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
     num_workers: int = Field(env="MURDOCK_NUM_WORKERS", default=1)
+    custom_env: dict = Field(env="MURDOCK_CUSTOM_ENV", default=dict())
     log_level: str = Field(env="MURDOCK_LOG_LEVEL", default="INFO")
     max_finished_length_default: int = Field(
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25

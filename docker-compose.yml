@@ -15,6 +15,7 @@ services:
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
         - MURDOCK_NUM_WORKERS
+        - MURDOCK_CUSTOM_ENV
         - MURDOCK_RUN_IN_DOCKER=1
         - MURDOCK_USER_UID
         - MURDOCK_USER_GID

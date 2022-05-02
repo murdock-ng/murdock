@@ -138,6 +138,8 @@ class MurdockJob:
         if self.user_env is not None:
             _env.update(self.user_env)
 
+        _env.update(GLOBAL_CONFIG.custom_env)
+
         if self.pr is not None:
             _env.update(
                 {
