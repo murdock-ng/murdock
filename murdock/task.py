@@ -33,6 +33,7 @@ class Task:
         self.env = task_env
         self.extend_job_output = extend_job_output
         self.proc: Optional[Process] = None
+        self.stopped: bool = False
 
     def __repr__(self):
         return (
@@ -95,15 +96,7 @@ class Task:
 
         if self.proc.returncode == 0:
             state = "passed"
-        elif (
-            self.proc.returncode
-            in [
-                int(signal.SIGINT) * -1,
-                int(signal.SIGKILL) * -1,
-                int(signal.SIGTERM) * -1,
-            ]
-            and state == "running"
-        ):
+        elif self.stopped is True:
             state = "stopped"
         else:
             state = "errored"
@@ -117,12 +110,19 @@ class Task:
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
-        stop_signal = signal.SIGKILL if self.run_in_docker else signal.SIGINT
-
-        if self.proc is not None and self.proc.returncode is None:
-            LOGGER.debug(f"Send signal {stop_signal} to {self}")
-            os.killpg(os.getpgid(self.proc.pid), stop_signal)
-            try:
-                await asyncio.wait_for(self.proc.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
-                LOGGER.debug(f"Couldn't stop {self} with {stop_signal}")
+        if self.run_in_docker:
+            await asyncio.create_subprocess_exec(
+                "/usr/bin/docker",
+                *shlex.split(f"stop --time 5 murdock-job-{self.job_uid}"),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+        else:
+            if self.proc is not None and self.proc.returncode is None:
+                LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
+                try:
+                    await asyncio.wait_for(self.proc.wait(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    LOGGER.debug(f"Couldn't stop {self} with {signal.SIGINT}")
+        self.stopped = True
