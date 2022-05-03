@@ -5,7 +5,7 @@ import shutil
 import time
 import uuid
 
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
@@ -50,6 +50,7 @@ class MurdockJob:
             if self.pr is not None
             else False
         )  # type: ignore[union-attr]
+        self.artifacts: Optional[List[str]] = None
         self.token: str = secrets.token_urlsafe(32)
         self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
         self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
@@ -112,6 +113,7 @@ class MurdockJob:
             triggered_by=self.triggered_by,
             env=self.safe_env,
             user_env=self.user_env,
+            artifacts=self.artifacts,
         )
 
     @staticmethod
@@ -133,9 +135,7 @@ class MurdockJob:
         }
 
         _env.update(GLOBAL_CONFIG.custom_env)
-
-        if self.config.env is not None:
-            _env.update(self.config.env)
+        _env.update(self.config.env)
 
         if self.user_env is not None:
             _env.update(self.user_env)
@@ -242,6 +242,17 @@ class MurdockJob:
             self.output_text_url = output_text_url
 
         self.current_task = None
+
+        # Processing artifacts if any
+        artifacts: List[str] = []
+        for artifact in self.config.artifacts:
+            artifact_path = os.path.join(self.work_dir, artifact)
+            if os.path.exists(artifact_path):
+                artifacts += os.path.join(
+                    GLOBAL_CONFIG.base_url, self.http_dir, artifact
+                )
+        if artifacts:
+            self.artifacts = artifacts
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")

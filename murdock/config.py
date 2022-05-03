@@ -124,8 +124,9 @@ class MurdockSettings(BaseSettings):
     push: PushSettings = Field(default=PushSettings())
     pr: PRSettings = Field(default=PRSettings())
     commit: CommitSettings = Field(default=CommitSettings())
-    env: Optional[dict] = Field(default=None)
-    failfast: Optional[bool] = Field(default=False)
+    env: dict = Field(default=dict())
+    failfast: bool = Field(default=False)
+    artifacts: List[str] = Field(default=[])
     tasks: List[TaskSettings] = Field(default=[TaskSettings()])
 
 

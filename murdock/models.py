@@ -1,6 +1,6 @@
 from datetime import datetime
 from datetime import time as dtime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -137,6 +137,14 @@ class JobModel(BaseModel):
     user_env: Optional[dict] = Field(
         None,
         title="User defined dictionnary of environment variables atteched to the job",
+    )
+    artifacts: Optional[List[str]] = Field(
+        None,
+        title=(
+            "List of job artifacts. Can be files or directory. If a directory "
+            "is provided, it must contain an index.html that can be rendered "
+            "by the web UI."
+        ),
     )
 
 
