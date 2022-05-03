@@ -61,6 +61,8 @@ class Task:
         command = "/usr/bin/docker"
         args = shlex.split(
             "run --rm --stop-signal SIGINT "
+            f"--cpus={GLOBAL_CONFIG.docker_cpu_limit} "
+            f"--memory={GLOBAL_CONFIG.docker_mem_limit} "
             f"--network container:murdock-api-{GLOBAL_CONFIG.project} "
             f"--user {GLOBAL_CONFIG.docker_user_uid}:{GLOBAL_CONFIG.docker_user_gid} "
             f"{env_to_docker} {volumes_to_docker} "

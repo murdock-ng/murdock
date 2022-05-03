@@ -69,6 +69,8 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_DOCKER_DEFAULT_TASK_IMAGE", default="ubuntu:latest"
     )
     docker_volumes: dict = Field(env="MURDOCK_DOCKER_VOLUMES", default=dict())
+    docker_cpu_limit: float = Field(env="MURDOCK_DOCKER_CPU_LIMIT", default=1.0)
+    docker_mem_limit: str = Field(env="MURDOCK_DOCKER_MEM_LIMIT", default="1g")
     accepted_events: List[str] = Field(
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
