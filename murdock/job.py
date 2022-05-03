@@ -248,9 +248,7 @@ class MurdockJob:
         for artifact in self.config.artifacts:
             artifact_path = os.path.join(self.work_dir, artifact)
             if os.path.exists(artifact_path):
-                artifacts.append(
-                    os.path.join(GLOBAL_CONFIG.base_url, self.http_dir, artifact)
-                )
+                artifacts.append(artifact)
         if artifacts:
             self.artifacts = artifacts
 
