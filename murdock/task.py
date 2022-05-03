@@ -69,7 +69,6 @@ class Task:
         return command, args
 
     async def exec(self):
-        await self.extend_job_output(f"-- Running {self} --\n")
         if self.run_in_docker is True:
             command, args = self._docker_cmd_args()
         else:
@@ -102,7 +101,6 @@ class Task:
             state = "errored"
 
         LOGGER.debug(f"{self} {state} (ret: {self.proc.returncode})")
-        await self.extend_job_output(f"-- {self} completed ({state}) --\n")
 
         self.proc = None
 

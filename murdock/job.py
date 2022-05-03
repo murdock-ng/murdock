@@ -221,7 +221,11 @@ class MurdockJob:
                 self.scripts_dir,
                 self.work_dir,
             )
+            if len(self.config.tasks) > 1:
+                self.output += f"-- Running {self.current_task} --\n"
             state = await self.current_task.exec()
+            if len(self.config.tasks) > 1:
+                self.output += f"-- {self.current_task} completed ({state}) --\n"
             self.state = state
             if state in ["stopped", "errored"]:
                 LOGGER.info(f"{self.current_task} {state}")
