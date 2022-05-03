@@ -60,10 +60,12 @@ class Task:
         docker_cmd = "" if self.config.command is None else self.config.command
         command = "/usr/bin/docker"
         args = shlex.split(
-            f"run --rm --network container:murdock-api-{GLOBAL_CONFIG.project} "
+            "run --rm --stop-signal SIGINT "
+            f"--network container:murdock-api-{GLOBAL_CONFIG.project} "
             f"--user {GLOBAL_CONFIG.docker_user_uid}:{GLOBAL_CONFIG.docker_user_gid} "
             f"{env_to_docker} {volumes_to_docker} "
-            f"--name murdock-job-{self.job_uid} --workdir /murdock "
+            f"--name murdock-job-{self.job_uid} "
+            "--workdir /murdock "
             f"{docker_image} {docker_cmd}"
         )
         return command, args
@@ -108,6 +110,8 @@ class Task:
 
     async def stop(self) -> None:
         LOGGER.debug(f"{self} immediate stop requested")
+        if self.proc is not None:
+            self.stopped = True
         if self.run_in_docker:
             await asyncio.create_subprocess_exec(
                 "/usr/bin/docker",
@@ -115,10 +119,8 @@ class Task:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )
-            self.stopped = True
         else:
             if self.proc is not None and self.proc.returncode is None:
-                self.stopped = True
                 LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
                 try:
