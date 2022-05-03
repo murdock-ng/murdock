@@ -69,14 +69,16 @@ Launch the `uvicorn` server with the `--reload` option:
 $ uvicorn murdock.main:app --reload --reload-dir murdock
 ```
 
-To configure the application, you can specify environment variables
-(the `GITHUB_*` vars are required):
+The murdock application can be configured by setting environment variables:
 - to the command line
 - in a .env file (see [.env.example](.env.example) for a settings overview)
-- in a `.env.local` and add `ENV_FILE=.env.local` to the command line. See the
-[.env](.env) as example.
+- in a `.env.local` and add `ENV_FILE=.env.local` to the command line. Again,
+see the [.env.example](.env.example) as example.
 
-To get a complete list of configuration options, check the
+The `.env` files can also be used as-is when deploying with docker-compose using
+the `--env-file <.env filename>` option.
+
+To get a complete list of the configuration options, check the
 [Murdock config code](murdock/config.py).
 
 # Testing
