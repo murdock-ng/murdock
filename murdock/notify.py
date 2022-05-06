@@ -67,7 +67,7 @@ class MatrixNotifier(NotifierBase):
             job_html_description = (
                 f'PR <a href="{pr_url}" target="_blank" rel="noreferrer noopener">#{job.pr.number}</a> '
                 f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>) '
-                f"by @{job.pr.user}"
+                f'by <a href="https://matrix.to/#/@{job.pr.user}:matrix.org">@{job.pr.user}</a>'
             )
         elif job.ref is not None and job.ref.startswith("refs/tags"):
             tag_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[10:]}"
