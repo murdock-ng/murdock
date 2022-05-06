@@ -59,14 +59,15 @@ class MatrixNotifier(NotifierBase):
 
     async def notify(self, job: MurdockJob):
         emoji = "&#x274C;" if job.state == "errored" else "&#x2705;"
-        content = f"Murdock job on {job.title} {job.state}: {job.details_url}"
+        content = f"{job.title} {job.state}: {job.details_url}"
         commit_short = job.commit.sha[0:7]
         commit_url = f"https://github.com/{GITHUB_CONFIG.repo}/commit/{job.commit.sha}"
         if job.pr is not None:
             pr_url = f"https://github.com/{GITHUB_CONFIG.repo}/pull/{job.pr.number}"
             job_html_description = (
                 f'PR <a href="{pr_url}" target="_blank" rel="noreferrer noopener">#{job.pr.number}</a> '
-                f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>)'
+                f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>) '
+                f"by @{job.pr.user}"
             )
         elif job.ref is not None and job.ref.startswith("refs/tags"):
             tag_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[10:]}"
@@ -84,7 +85,7 @@ class MatrixNotifier(NotifierBase):
             job_html_description = f'commit <a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>'
 
         html_content = (
-            f"{emoji} Murdock job on {job_html_description} <b>{job.state}</b>: "
+            f"{emoji} {job_html_description} <b>{job.state}</b>: "
             f'<a href="{job.details_url}" target="_blank" rel="noreferrer noopener">{job.details_url}</a>'
         )
         async with httpx.AsyncClient() as client:
