@@ -3,6 +3,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from email.message import EmailMessage
+from typing import Optional
 
 import httpx
 import aiosmtplib
@@ -57,6 +58,22 @@ class MailNotifier(NotifierBase):
 class MatrixNotifier(NotifierBase):
     config = MATRIX_NOTIFIER_CONFIG
 
+    async def _get_member_id(self, author: str) -> Optional[str]:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://matrix.org/_matrix/client/v3/rooms/%21{self.config.room[1:]}"
+                f"/joined_members?access_token={self.config.token}",
+            )
+            if response.status_code != 200:
+                LOGGER.debug(
+                    f"Cannot fetch members of room '{self.config.room}': {response} {response.json()}"
+                )
+                return None
+        for member_id, info in response.json()["joined"].items():
+            if info["display_name"] == author:
+                return member_id
+        return None
+
     async def notify(self, job: MurdockJob):
         emoji = "&#x274C;" if job.state == "errored" else "&#x2705;"
         content = f"{job.title} {job.state}: {job.details_url}"
@@ -64,10 +81,14 @@ class MatrixNotifier(NotifierBase):
         commit_url = f"https://github.com/{GITHUB_CONFIG.repo}/commit/{job.commit.sha}"
         if job.pr is not None:
             pr_url = f"https://github.com/{GITHUB_CONFIG.repo}/pull/{job.pr.number}"
+            matrix_id = await self._get_member_id(job.pr.user)
+            author = f"@{job.pr.user}"
+            if matrix_id is not None:
+                author = f'<a href="https://matrix.to/#/{matrix_id}">@{job.pr.user}</a>'
             job_html_description = (
                 f'PR <a href="{pr_url}" target="_blank" rel="noreferrer noopener">#{job.pr.number}</a> '
                 f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>) '
-                f'by <a href="https://matrix.to/#/@{job.pr.user}:matrix.org">@{job.pr.user}</a>'
+                f"by {author}"
             )
         elif job.ref is not None and job.ref.startswith("refs/tags"):
             tag_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[10:]}"
