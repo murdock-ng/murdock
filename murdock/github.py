@@ -133,7 +133,7 @@ async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
         commit_data = response.json()
         author = (
             commit_data["commit"]["author"]["name"]
-            if "author" not in commit_data
+            if commit_data["author"] is None
             else commit_data["author"]["login"]
         )
 

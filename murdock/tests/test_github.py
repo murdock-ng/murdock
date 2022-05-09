@@ -272,6 +272,7 @@ async def test_comment_on_pr(
                         "tree": {"sha": "456"},
                         "author": {"name": "me"},
                     },
+                    "author": None,
                 }
             ),
             200,
