@@ -270,13 +270,13 @@ async def test_comment_on_pr(
                     "commit": {
                         "message": "test_message",
                         "tree": {"sha": "456"},
+                        "author": {"name": "me"},
                     },
-                    "author": {"name": "me"},
                 }
             ),
             200,
             CommitModel(sha="123", tree="456", message="test_message", author="me"),
-            id="success with no commit login",
+            id="success with no github author",
         ),
     ],
 )
