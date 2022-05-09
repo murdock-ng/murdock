@@ -263,6 +263,21 @@ async def test_comment_on_pr(
             CommitModel(sha="123", tree="456", message="test_message", author="me"),
             id="success",
         ),
+        pytest.param(
+            json.dumps(
+                {
+                    "sha": "123",
+                    "commit": {
+                        "message": "test_message",
+                        "tree": {"sha": "456"},
+                    },
+                    "author": {"name": "me"},
+                }
+            ),
+            200,
+            CommitModel(sha="123", tree="456", message="test_message", author="me"),
+            id="success with no commit login",
+        ),
     ],
 )
 @mock.patch("httpx.AsyncClient.get")

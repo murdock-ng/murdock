@@ -131,12 +131,17 @@ async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
             return None
 
         commit_data = response.json()
+        author = (
+            commit_data["author"]["login"]
+            if "login" in commit_data["author"]
+            else commit_data["author"]["name"]
+        )
 
         return CommitModel(
             sha=commit_data["sha"],
             tree=commit_data["commit"]["tree"]["sha"],
             message=commit_data["commit"]["message"],
-            author=commit_data["author"]["login"],
+            author=author,
         )
 
 
