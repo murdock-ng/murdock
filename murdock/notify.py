@@ -84,7 +84,7 @@ class MatrixNotifier(NotifierBase):
             matrix_id = await self._get_member_id(job.pr.user)
             author = f"@{job.pr.user}"
             if matrix_id is not None:
-                author = f'<a href="https://matrix.org/#/{matrix_id}">{job.pr.user}</a>'
+                author = f'<a href="https://matrix.to/#/{matrix_id}">@{job.pr.user}</a>'
             job_html_description = (
                 f'PR <a href="{pr_url}" target="_blank" rel="noreferrer noopener">#{job.pr.number}</a> '
                 f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>) '
