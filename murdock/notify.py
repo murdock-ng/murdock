@@ -109,7 +109,7 @@ class MatrixNotifier(NotifierBase):
 
         state_color = "green" if job_state == "PASSED" else "red"
         html_content = (
-            f'{emoji} Job <b style="color:{state_color};">{job.state}</b> - {job_html_description}: '
+            f'{emoji} <b><font color="{state_color}">{job_state}</font></b> - {job_html_description}: '
             f'<a href="{job.details_url}" target="_blank" rel="noreferrer noopener">{job.details_url}</a>'
         )
         async with httpx.AsyncClient() as client:
