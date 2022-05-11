@@ -75,8 +75,10 @@ class MatrixNotifier(NotifierBase):
         return None
 
     async def notify(self, job: MurdockJob):
-        emoji = "&#x274C;" if job.state == "errored" else "&#x2705;"
-        content = f"{job.title} {job.state}: {job.details_url}"
+        job_state_mapping = {"passed": "PASSED", "errored": "FAILED"}
+        job_state = job_state_mapping[job.state] if job.state is not None else "unknown"
+        emoji = "&#x2705;" if job_state == "PASSED" else "&#x274C;"
+        content = f"Job {job.state} - {job.title}: {job.details_url}"
         commit_short = job.commit.sha[0:7]
         commit_url = f"https://github.com/{GITHUB_CONFIG.repo}/commit/{job.commit.sha}"
         if job.pr is not None:
@@ -105,8 +107,9 @@ class MatrixNotifier(NotifierBase):
         else:
             job_html_description = f'commit <a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>'
 
+        state_color = "green" if job_state == "PASSED" else "red"
         html_content = (
-            f"{emoji} {job_html_description} <b>{job.state}</b>: "
+            f'{emoji} Job <b style="color:{state_color};">{job.state}</b> - {job_html_description}: '
             f'<a href="{job.details_url}" target="_blank" rel="noreferrer noopener">{job.details_url}</a>'
         )
         async with httpx.AsyncClient() as client:
