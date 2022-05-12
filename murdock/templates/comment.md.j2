@@ -38,3 +38,7 @@
 
 </details>
 {% endif %}
+{% if job.config.pr.comment_footer %}
+
+{{ job.config.pr.comment_footer }}
+{% endif %}
