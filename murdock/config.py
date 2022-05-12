@@ -109,6 +109,7 @@ class PushSettings(BaseSettings):
 class PRSettings(BaseSettings):
     enable_comments: bool = Field(default=False)
     sticky_comment: bool = Field(default=False)
+    comment_footer: Optional[str] = Field(default=None)
 
 
 class CommitSettings(BaseSettings):
