@@ -6,6 +6,7 @@ import time
 
 from typing import List, Optional, Union
 
+import websockets
 from fastapi import WebSocket
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG
@@ -497,8 +498,16 @@ class Murdock:
         if ws in self.clients:
             self.clients.remove(ws)
 
+    async def _send_text_safe(self, client: WebSocket, msg: str):
+        try:
+            client.send_text(msg)
+        except websockets.exceptions.ConnectionClosedError as exc:
+            LOGGER.warning(f"Could send msg to websocket client: {exc}")
+
     async def notify_message_to_clients(self, msg: str):
-        await asyncio.gather(*[client.send_text(msg) for client in self.clients])
+        await asyncio.gather(
+            *[self._send_text_safe(client, msg) for client in self.clients]
+        )
 
     async def reload_jobs(self):
         await self.notify_message_to_clients(json.dumps({"cmd": "reload"}))
