@@ -500,9 +500,10 @@ class Murdock:
 
     async def _send_text_safe(self, client: WebSocket, msg: str):
         try:
-            client.send_text(msg)
+            await client.send_text(msg)
         except websockets.exceptions.ConnectionClosedError as exc:
             LOGGER.warning(f"Could send msg to websocket client: {exc}")
+            await asyncio.sleep(0.1)
 
     async def notify_message_to_clients(self, msg: str):
         await asyncio.gather(
