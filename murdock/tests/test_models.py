@@ -39,6 +39,9 @@ test_date_after = datetime.strptime("2021-08-18", "%Y-%m-%d")
         (JobQueryModel(states="invalid"), {"state": {"$in": ["invalid"]}}),
         (JobQueryModel(states="passed"), {"state": {"$in": ["passed"]}}),
         (JobQueryModel(states="errored"), {"state": {"$in": ["errored"]}}),
+        (JobQueryModel(prstates="open"), {"prinfo.state": {"$in": ["open"]}}),
+        (JobQueryModel(prstates="closed"), {"prinfo.state": {"$in": ["closed"]}}),
+        (JobQueryModel(prstates="open closed"), {"prinfo.state": {"$in": ["open", "closed"]}}),
         (
             JobQueryModel(after="2021-08-18"),
             {"creation_time": {"$gte": test_date_after.timestamp()}},

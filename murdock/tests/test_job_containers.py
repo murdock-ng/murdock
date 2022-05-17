@@ -70,6 +70,7 @@ test_job2 = MurdockJob(
         base_commit="test_base_commit",
         base_full_name="test_base_full_name",
         mergeable=True,
+        state="open",
         labels=["test"],
     ),
 )
@@ -86,6 +87,7 @@ test_job3 = MurdockJob(
         base_commit="test_base_commit",
         base_full_name="test_base_full_name",
         mergeable=True,
+        state="closed",
         labels=["test"],
     ),
 )
@@ -209,6 +211,9 @@ def test_list_search_matching(job, result):
             },
             [test_job2],
         ),
+        ({"is_pr": True, "prstates": "open"}, [test_job2]),
+        ({"is_pr": True, "prstates": "closed"}, [test_job3]),
+        ({"is_pr": True, "prstates": "open closed"}, [test_job3, test_job2]),
     ],
 )
 def test_list_search_with_query(query, result):

@@ -198,6 +198,10 @@ class JobQueryModel(BaseModel):
         None,
         title="PR number",
     )
+    prstates: Optional[str] = Field(
+        None,
+        title="space separated list of pr states (open, closed)",
+    )
     branch: Optional[str] = Field(
         None,
         title="Name of the branch",
@@ -260,6 +264,8 @@ class JobQueryModel(BaseModel):
             _query.update({"state": {"$in": self.states.split(" ")}})
         if self.prnum is not None:
             _query.update({"prinfo.number": self.prnum})
+        if self.prstates is not None:
+            _query.update({"prinfo.state": {"$in": self.prstates.split(" ")}})
         if self.branch is not None:
             _query.update({"ref": f"refs/heads/{self.branch}"})
         if self.tag is not None:

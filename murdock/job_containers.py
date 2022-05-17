@@ -48,6 +48,7 @@ class MurdockJobListBase(ABC):
         is_branch_jobs = jobs
         is_tag_jobs = jobs
         prnum_jobs = jobs
+        prstates_jobs = jobs
         branch_jobs = jobs
         tag_jobs = jobs
         ref_jobs = jobs
@@ -133,6 +134,16 @@ class MurdockJobListBase(ABC):
                     and job.pr.number == query.prnum
                 )
             }
+        if query.prstates is not None:
+            prstates_jobs = {
+                job
+                for job in self.jobs
+                if (
+                    job is not None
+                    and job.pr is not None
+                    and job.pr.state in query.prstates.split(" ")
+                )
+            }
         if query.branch is not None:
             branch_jobs = {
                 job
@@ -174,6 +185,7 @@ class MurdockJobListBase(ABC):
                 .intersection(is_branch_jobs)
                 .intersection(is_tag_jobs)
                 .intersection(prnum_jobs)
+                .intersection(prstates_jobs)
                 .intersection(branch_jobs)
                 .intersection(tag_jobs)
                 .intersection(ref_jobs)
