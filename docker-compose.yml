@@ -9,9 +9,9 @@ services:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
     image: murdockng/murdock:latest
-    container_name: murdock-api-${MURDOCK_PROJECT}
+    container_name: murdock-api-${COMPOSE_PROJECT_NAME}
     environment:
-        - MURDOCK_PROJECT
+        - MURDOCK_PROJECT=${COMPOSE_PROJECT_NAME}
         - MURDOCK_LOG_LEVEL
         - MURDOCK_BASE_URL
         - MURDOCK_NUM_WORKERS
@@ -24,7 +24,7 @@ services:
         - MURDOCK_DOCKER_CPU_LIMIT
         - MURDOCK_DOCKER_MEM_LIMIT
         - MURDOCK_HOST_WORK_DIR=${MURDOCK_WORK_DIR}
-        - MURDOCK_DB_HOST=mongodb-${MURDOCK_PROJECT}
+        - MURDOCK_DB_HOST=mongodb-${COMPOSE_PROJECT_NAME}
         - MURDOCK_DB_PORT=27017
         - MURDOCK_DB_NAME
         - MURDOCK_GITHUB_APP_CLIENT_ID
@@ -59,7 +59,7 @@ services:
     logging:
       driver: syslog
       options:
-        tag: murdock-api-${MURDOCK_PROJECT}
+        tag: murdock-api-${COMPOSE_PROJECT_NAME}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   frontend-build:
@@ -87,25 +87,25 @@ services:
         UID: ${MURDOCK_USER_UID}
         GID: ${MURDOCK_USER_GID}
     image: murdockng/murdock-frontend
-    container_name: murdock-frontend-${MURDOCK_PROJECT}
+    container_name: murdock-frontend-${COMPOSE_PROJECT_NAME}
     volumes:
       - ./frontend:/var/lib/murdock/frontend
       - ${MURDOCK_HTML_DIR}/build:/var/lib/murdock/frontend/build
     logging:
       driver: syslog
       options:
-        tag: murdock-frontend-${MURDOCK_PROJECT}
+        tag: murdock-frontend-${COMPOSE_PROJECT_NAME}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo:
     image: mongo:4.2.16
-    container_name: mongodb-${MURDOCK_PROJECT}
+    container_name: mongodb-${COMPOSE_PROJECT_NAME}
     volumes:
       - ${MONGODB_BD_DATA_DIR}:/data/db
     logging:
       driver: syslog
       options:
-        tag: murdock-mongo-${MURDOCK_PROJECT}
+        tag: murdock-mongo-${COMPOSE_PROJECT_NAME}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
   mongo-dev:
@@ -118,16 +118,16 @@ services:
     profiles: ["dev"]
   proxy:
     image: traefik:v2.5
-    container_name: murdock-proxy-${MURDOCK_PROJECT}
+    container_name: murdock-proxy-${COMPOSE_PROJECT_NAME}
     ports:
       - ${MURDOCK_PORT}:8081
     volumes:
       - ${PWD}/traefik:/etc/traefik
     environment:
-      - MURDOCK_PROJECT
+      - MURDOCK_PROJECT=${COMPOSE_PROJECT_NAME}
     logging:
       driver: syslog
       options:
-        tag: murdock-proxy-${MURDOCK_PROJECT}
+        tag: murdock-proxy-${COMPOSE_PROJECT_NAME}
     networks: [$MURDOCK_DOCKER_NETWORK]
     restart: always
