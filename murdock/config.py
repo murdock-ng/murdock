@@ -85,6 +85,7 @@ class GlobalSettings(BaseSettings):
     commit_status_context: str = Field(
         env="MURDOCK_COMMIT_STATUS_CONTEXT", default="Murdock"
     )
+    enable_pr_comment: bool = Field(env="MURDOCK_ENABLE_PR_COMMENT", default=True)
     store_stopped_jobs: bool = Field(env="MURDOCK_STORE_STOPPED_JOBS", default=True)
     enable_notifications: bool = Field(env="MURDOCK_NOTIFIER_ENABLE", default=False)
 

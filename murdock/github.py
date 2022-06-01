@@ -48,6 +48,10 @@ async def check_permissions(
 
 
 async def comment_on_pr(job: MurdockJob):
+    if GLOBAL_CONFIG.enable_pr_comment is False:
+        LOGGER.debug("Skipping pr comment")
+        return
+
     if (
         job.pr is None
         or job.config is None
