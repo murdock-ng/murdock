@@ -2,6 +2,9 @@ import asyncio
 import json
 import logging
 import os
+
+from datetime import datetime
+
 from murdock.job import MurdockJob
 from unittest import mock
 
@@ -957,42 +960,38 @@ async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs):
 
 
 @pytest.mark.asyncio
-@mock.patch("murdock.database.Database.find_jobs")
-@mock.patch("murdock.database.Database.delete_jobs")
-@mock.patch("murdock.job.MurdockJob.remove_dir")
-async def test_remove_jobs(remove_dir, delete_jobs, find_jobs, caplog):
+@pytest.mark.usefixtures("mongo")
+async def test_remove_jobs():
     murdock = Murdock()
-    query = JobQueryModel(before="2021-11-24")
-    jobs_to_remove = [
-        MurdockJob(
-            CommitModel(
-                sha="test_commit_1",
-                tree="test_tree",
-                message="test message 1",
-                author="test_user",
-            )
-        ),
-        MurdockJob(
-            CommitModel(
-                sha="test_commit 2",
-                tree="test_tree",
-                message="test message 2",
-                author="test_user",
-            )
-        ),
-    ]
-    find_jobs.return_value = jobs_to_remove
-    result = await murdock.remove_finished_jobs(query)
-
-    find_jobs.assert_called_once()
-    find_jobs.assert_called_with(JobQueryModel(before="2021-11-24", limit=-1))
-    delete_jobs.assert_called_once()
-    delete_jobs.assert_called_with(JobQueryModel(before="2021-11-24", limit=-1))
-
-    assert remove_dir.call_count == len(jobs_to_remove)
-
-    assert f"{len(jobs_to_remove)} jobs removed" in caplog.text
-    assert result == jobs_to_remove
+    await murdock.init()
+    job1 = MurdockJob(
+        CommitModel(
+            sha="test_commit1",
+            tree="test_tree",
+            message="test message 1",
+            author="test_user",
+        )
+    )
+    job2 = MurdockJob(
+        CommitModel(
+            sha="test_commit2",
+            tree="test_tree",
+            message="test message 2",
+            author="test_user",
+        )
+    )
+    await murdock.db.insert_job(job1)
+    await murdock.db.insert_job(job2)
+    query = JobQueryModel(
+        before=datetime.strftime(
+            datetime.fromtimestamp(job1.creation_time),
+            "%Y-%m-%d"
+        )
+    )
+    found_jobs = await murdock.db.find_jobs(query)
+    assert len(found_jobs) == 2
+    deleted_jobs = await murdock.remove_finished_jobs(query)
+    assert found_jobs == deleted_jobs
 
 
 @pytest.mark.asyncio

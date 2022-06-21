@@ -537,7 +537,7 @@ class Murdock:
         MurdockJob.remove_dir(work_dir)
 
     async def remove_finished_jobs(self, query: JobQueryModel) -> List[JobModel]:
-        query.limit = -1
+        query.limit = await (self.db.count_jobs(query))
         jobs_to_remove = await (self.db.find_jobs(query))
         for job in jobs_to_remove:
             self._remove_job_data(job.uid)
