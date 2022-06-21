@@ -980,16 +980,12 @@ async def test_remove_jobs():
             author="test_user",
         )
     )
+    job1.creation_time = datetime.strptime("2022-01-01", "%Y-%m-%d").timestamp()
     await murdock.db.insert_job(job1)
     await murdock.db.insert_job(job2)
-    query = JobQueryModel(
-        before=datetime.strftime(
-            datetime.fromtimestamp(job1.creation_time),
-            "%Y-%m-%d"
-        )
-    )
+    query = JobQueryModel(before="2022-06-01")
     found_jobs = await murdock.db.find_jobs(query)
-    assert len(found_jobs) == 2
+    assert len(found_jobs) == 1
     deleted_jobs = await murdock.remove_finished_jobs(query)
     assert found_jobs == deleted_jobs
 
