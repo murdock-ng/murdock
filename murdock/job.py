@@ -128,6 +128,7 @@ class MurdockJob:
     def env(self):
         _env = {
             "CI_SCRIPTS_DIR": GLOBAL_CONFIG.scripts_dir,
+            "CI_MURDOCK_PROJECT": GLOBAL_CONFIG.project,
             "CI_BASE_URL": GLOBAL_CONFIG.base_url,
             "CI_JOB_UID": self.uid,
             "CI_JOB_TOKEN": self.token,

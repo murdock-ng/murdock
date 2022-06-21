@@ -171,6 +171,7 @@ def test_basic(capsys, pr, ref, config, out, env):
     env.update(
         {
             "CI_SCRIPTS_DIR": "/tmp",
+            "CI_MURDOCK_PROJECT": "default",
             "CI_BASE_URL": "http://localhost:8000",
             "CI_BUILD_TREE": "test_tree",
             "CI_JOB_TOKEN": job.token,
@@ -256,6 +257,7 @@ def test_queued_model():
             "CI_BASE_URL": "http://localhost:8000",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_MURDOCK_PROJECT": "default",
             "CI_PULL_COMMIT": "test_commit",
             "CI_PULL_LABELS": "test",
             "CI_PULL_NR": "123",
@@ -291,6 +293,7 @@ def test_running_model():
             "CI_BUILD_TREE": "test_tree",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_MURDOCK_PROJECT": "default",
             "CI_PULL_COMMIT": "test_commit",
             "CI_PULL_LABELS": "test",
             "CI_PULL_NR": "123",
@@ -330,6 +333,7 @@ def test_to_db_entry():
             "CI_BUILD_TREE": "test_tree",
             "CI_JOB_UID": job.uid,
             "CI_MERGE_COMMIT": "test_merge_commit",
+            "CI_MURDOCK_PROJECT": "default",
             "CI_PULL_COMMIT": "test_commit",
             "CI_PULL_LABELS": "test",
             "CI_PULL_NR": "123",
