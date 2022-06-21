@@ -112,25 +112,28 @@ class MatrixNotifier(NotifierBase):
             f'{emoji} <b><font color="{state_color}">{job_state}</font></b> - {job_html_description}: '
             f'<a href="{job.details_url}" target="_blank" rel="noreferrer noopener">{job.details_url}</a>'
         )
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"https://matrix.org/_matrix/client/v3/rooms/%21{self.config.room[1:]}"
-                f"/send/m.room.message?access_token={self.config.token}",
-                content=json.dumps(
-                    {
-                        "msgtype": "m.text",
-                        "format": "org.matrix.custom.html",
-                        "body": content,
-                        "formatted_body": html_content,
-                    }
-                ),
-            )
-            if response.status_code != 200:
-                LOGGER.debug(
-                    f"Cannot send message to matrix room '{self.config.room}': {response} {response.json()}"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"https://matrix.org/_matrix/client/v3/rooms/%21{self.config.room[1:]}"
+                    f"/send/m.room.message?access_token={self.config.token}",
+                    content=json.dumps(
+                        {
+                            "msgtype": "m.text",
+                            "format": "org.matrix.custom.html",
+                            "body": content,
+                            "formatted_body": html_content,
+                        }
+                    ),
                 )
-                return
-            LOGGER.debug(f"Notification posted on Matrix room '{self.config.room}'")
+                if response.status_code != 200:
+                    LOGGER.debug(
+                        f"Cannot send message to matrix room '{self.config.room}': {response} {response.json()}"
+                    )
+                    return
+                LOGGER.debug(f"Notification posted on Matrix room '{self.config.room}'")
+        except httpx.ReadTimeout as exc:
+            LOGGER.warning(f"Failed to post on Matrix room '{self.config.room}': {exc}")
 
 
 class Notifier:

@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 
 import aiosmtplib
-from httpx import Response
+from httpx import Response, ReadTimeout
 
 from ..job import MurdockJob
 from ..models import CommitModel, PullRequestInfo
@@ -223,6 +223,18 @@ async def test_notify_matrix_error(matrix_post, caplog):
     await matrix_notifier.notify(job)
     matrix_post.assert_called_once()
     assert "Cannot send message to matrix room" in caplog.text
+
+
+@pytest.mark.asyncio
+@mock.patch("httpx.AsyncClient.post")
+async def test_notify_matrix_timeout_error(matrix_post, caplog):
+    caplog.set_level(logging.DEBUG, logger="murdock")
+    matrix_post.side_effect = ReadTimeout("error")
+    job = MurdockJob(commit, ref="Commit 123")
+    matrix_notifier = MatrixNotifier()
+    await matrix_notifier.notify(job)
+    matrix_post.assert_called_once()
+    assert "Failed to post on Matrix room" in caplog.text
 
 
 @pytest.mark.asyncio
