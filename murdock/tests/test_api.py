@@ -152,7 +152,7 @@ def test_github_webhook(
         headers={
             "X-Hub-Signature-256": "sha256=c9f5bb344fb71f91afbac48f5afcd8421a3d0fbdddb3857a521e155cea75a43e",
             "X-Github-Event": event_type,
-            "Content-Type:": "application/vnd.github.v3+json",
+            "Content-Type": "application/vnd.github.v3+json",
         },
     )
     if event == {"event": "test_data"} and event_type == "pull_request":
