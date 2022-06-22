@@ -166,9 +166,7 @@ async def finished_job_delete_handler(
     before: str, _: APIKey = Depends(_check_admin_permissions)
 ):
     query = JobQueryModel(before=before)
-    if not (jobs := await murdock.remove_finished_jobs(query)):
-        raise HTTPException(status_code=404, detail="Found no finished job to remove")
-    return jobs
+    return await murdock.remove_finished_jobs(query)
 
 
 @app.post(
