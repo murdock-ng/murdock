@@ -383,18 +383,15 @@ def test_restart_job_not_allowed(restart):
 
 
 @pytest.mark.usefixtures("admin_allowed")
-@pytest.mark.parametrize("result,code", [([], 404), ([test_job_finished], 200)])
+@pytest.mark.parametrize("result", [[], [test_job_finished]])
 @mock.patch("murdock.murdock.Murdock.remove_finished_jobs")
-def test_delete_jobs(remove, result, code):
+def test_delete_jobs(remove, result):
     remove.return_value = result
     before = "2021-08-16"
     response = client.delete(f"/jobs?before={before}")
-    assert response.status_code == code
+    assert response.status_code == 200
     remove.assert_called_with(JobQueryModel(before=before))
-    if result:
-        assert response.json() == [job.dict(exclude_none=True) for job in result]
-    else:
-        assert response.json() == {"detail": "Found no finished job to remove"}
+    assert response.json() == [job.dict(exclude_none=True) for job in result]
 
 
 @pytest.mark.usefixtures("admin_not_allowed")
