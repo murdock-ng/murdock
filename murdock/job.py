@@ -148,7 +148,6 @@ class MurdockJob:
                     "CI_PULL_REPO": GITHUB_CONFIG.repo,
                     "CI_PULL_NR": str(self.pr.number),
                     "CI_PULL_URL": self.pr.url,
-                    "CI_PULL_TITLE": self.pr.title,
                     "CI_PULL_USER": self.pr.user,
                     "CI_BASE_REPO": self.pr.base_repo,
                     "CI_BASE_BRANCH": self.pr.base_branch,
