@@ -61,7 +61,11 @@ async def comment_on_pr(job: MurdockJob):
         return
     loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
     env = Environment(
-        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
+        loader=loader,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        keep_trailing_newline=True,
+        autoescape=True,
     )
     env.globals.update(zip=zip)
     template = env.get_template("comment.md.j2")
@@ -234,9 +238,8 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
             return MurdockSettings()
 
         try:
-            content = yaml.load(
+            content = yaml.safe_load(
                 base64.b64decode(response.json()["content"]).decode(),
-                Loader=yaml.FullLoader,
             )
         except yaml.YAMLError as exc:
             LOGGER.warning(f"Cannot parse config file: {exc}")

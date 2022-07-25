@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from typing import List, Optional
 from pydantic import BaseSettings, Field, validator
@@ -57,7 +58,10 @@ class GlobalSettings(BaseSettings):
     project: str = Field(env="MURDOCK_PROJECT", default="default")
     base_url: str = Field(env="MURDOCK_BASE_URL", default="http://localhost:8000")
     work_dir: str = Field(env="MURDOCK_WORK_DIR", default="/var/lib/murdock-data")
-    host_work_dir: str = Field(env="MURDOCK_HOST_WORK_DIR", default="/tmp/murdock-data")
+    host_work_dir: str = Field(
+        env="MURDOCK_HOST_WORK_DIR",
+        default=os.path.join(tempfile.gettempdir(), "murdock-data"),
+    )
     scripts_dir: str = Field(
         env="MURDOCK_SCRIPTS_DIR", default="/var/lib/murdock-scripts"
     )

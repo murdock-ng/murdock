@@ -217,7 +217,11 @@ async def job_get_last_branch_badge_handler(branch: str):
 
     loader = FileSystemLoader(searchpath=TEMPLATES_DIR)
     env = Environment(
-        loader=loader, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True
+        loader=loader,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        keep_trailing_newline=True,
+        autoescape=True,
     )
     env.globals.update(zip=zip)
     template = env.get_template("badge.svg.j2")
