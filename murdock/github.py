@@ -4,6 +4,7 @@ from typing import Optional
 
 import httpx
 import yaml
+import pydantic
 
 from fastapi import HTTPException, Security
 from fastapi.security.api_key import APIKeyHeader
@@ -248,4 +249,7 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
         if not content:
             return MurdockSettings()
 
-        return MurdockSettings(**content)
+        try:
+            return MurdockSettings(**content)
+        except pydantic.error_wrappers.ValidationError:
+            return MurdockSettings()

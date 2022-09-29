@@ -443,6 +443,16 @@ async def test_set_commit_status(post, caplog, code, text, status):
         pytest.param(
             json.dumps(
                 {
+                    "content": "YnJhbmNoZXM6CiAgLSB0ZXN0CmFydGlmYWN0czoKICAtIG91dHB1dC50eHQ="
+                }
+            ),
+            200,
+            {},
+            id="config_found_invalid_fields",
+        ),
+        pytest.param(
+            json.dumps(
+                {
                     "content": (
                         "cHVzaDoKICB0YWdzOgogICAgLSAndihcZCtcLik/KFxkK1wuKT8oXCp8X"
                         "GQrKScKICBicmFuY2hlczoKICAgIC0gd2ViaG9va19wdXNoZXMKCnByOg"
