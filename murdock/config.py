@@ -111,9 +111,15 @@ class PushSettings(BaseSettings):
     tags: List[str] = Field(default=[])
 
 
+class ArtifactCommentSettings(BaseSettings):
+    name: str = Field()
+    readable_name: Optional[str] = Field(default=None)
+
+
 class PRSettings(BaseSettings):
     enable_comments: bool = Field(default=False)
     sticky_comment: bool = Field(default=False)
+    comment_artifacts: List[ArtifactCommentSettings] = Field(default=[])
     comment_footer: Optional[str] = Field(default=None)
 
 

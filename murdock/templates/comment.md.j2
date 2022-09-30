@@ -38,6 +38,19 @@
 
 </details>
 {% endif %}
+{% if job.config.pr.comment_artifacts and job.artifacts %}
+
+#### Artifacts
+{% for artifact in job.config.pr.comment_artifacts %}
+{% if artifact.name in job.artifacts %}
+{% if artifact.readable_name %}
+- [{{ artifact.readable_name }}]({{ base_url }}/{{ job.http_dir }}/{{ artifact.name }})
+{% else %}
+- [{{ artifact.name }}]({{ base_url }}/{{ job.http_dir }}/{{ artifact.name }})
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
 {% if job.config.pr.comment_footer %}
 
 {{ job.config.pr.comment_footer }}

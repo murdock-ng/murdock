@@ -70,7 +70,7 @@ async def comment_on_pr(job: MurdockJob):
     )
     env.globals.update(zip=zip)
     template = env.get_template("comment.md.j2")
-    context = {"job": job}
+    context = {"job": job, "base_url": GLOBAL_CONFIG.base_url}
     issues_comments_url = (
         f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
         f"/issues/{job.pr.number}/comments"
