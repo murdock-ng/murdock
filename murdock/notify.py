@@ -48,6 +48,7 @@ class MailNotifier(NotifierBase):
         except (
             aiosmtplib.errors.SMTPAuthenticationError,
             aiosmtplib.errors.SMTPConnectError,
+            aiosmtplib.errors.SMTPServerDisconnected,
             aiosmtplib.errors.SMTPTimeoutError,
         ) as exc:
             LOGGER.debug(f"Cannot send email: {exc}")

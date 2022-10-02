@@ -245,6 +245,7 @@ async def test_notify_matrix_timeout_error(matrix_post, caplog):
         aiosmtplib.errors.SMTPAuthenticationError(530, "error"),
         aiosmtplib.errors.SMTPConnectError("error"),
         aiosmtplib.errors.SMTPTimeoutError("error"),
+        aiosmtplib.errors.SMTPServerDisconnected("error"),
     ],
 )
 async def test_notify_email_error(mail_send, side_effect, caplog):
