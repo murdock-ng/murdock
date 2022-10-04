@@ -75,7 +75,7 @@ def job():
             [
                 {
                     "application": "test_build_app",
-                    "board": "test_build_board",
+                    "target": "test_build_board",
                     "toolchain": "test_build_toolchain",
                     "runtime": "23",
                 }
@@ -92,7 +92,7 @@ def job():
             [
                 {
                     "application": "test_run_app",
-                    "board": "test_run_board",
+                    "target": "test_run_board",
                     "toolchain": "test_run_toolchain",
                     "runtime": 42.0,
                 }
@@ -198,14 +198,14 @@ def test_comment(
     if failed_builds is not None:
         for test in failed_builds:
             assert test["application"] in rendered_comment
-            assert test["board"] in rendered_comment
+            assert test["target"] in rendered_comment
             assert test["toolchain"] in rendered_comment
             assert f"{float(test['runtime']):0.2f}" in rendered_comment
 
     if failed_tests is not None:
         for test in failed_tests:
             assert test["application"] in rendered_comment
-            assert test["board"] in rendered_comment
+            assert test["target"] in rendered_comment
             assert test["toolchain"] in rendered_comment
             assert f"{float(test['runtime']):0.2f}" in rendered_comment
 
