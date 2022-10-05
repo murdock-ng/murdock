@@ -18,7 +18,7 @@
 | ----------- | ------ | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_builds %}
 {% if "application" in failure and "target" in failure and "toolchain" in failure and "runtime" in failure and "worker" in failure %}
-| [{{ failure.application }}]({{ job.output_url }}/compile/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.toolchain }} |
+| [{{ failure.application }}]({{ job.output_url }}/builds/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.toolchain }} |
 {% endif %}
 {% endfor %}
 
@@ -32,7 +32,7 @@
 | ----------- | ------ | :---------: | :-----------: | :------: |
 {% for failure in job.status.failed_tests %}
 {% if "application" in failure and "target" in failure and "toolchain" in failure and "runtime" in failure and "worker" in failure %}
-| [{{ failure.application }}](({{ job.output_url }}/compile/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt)) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.toolchain }} |
+| [{{ failure.application }}]({{ job.output_url }}/tests/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.toolchain }} |
 {% endif %}
 {% endfor %}
 
