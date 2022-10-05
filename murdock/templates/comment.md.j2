@@ -21,12 +21,11 @@
 {% if "more build failures" not in failure.application %}
 | [{{ failure.application }}]({{ job.output_url }}/builds/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.worker }} |
 {% else %}
+
+[{{ failure.application }}]({{ job.details_url }})
 {% endif %}
 {% endif %}
 {% endfor %}
-{% if "more build failures" not in job.status.failed_builds[-1].application %}
-[{{ job.status.failed_builds[-1].application }}]({{ job.details_url }})
-{% endif %}
 
 </details>
 {% endif %}
@@ -40,6 +39,9 @@
 {% if "application" in failure and "target" in failure and "toolchain" in failure and "runtime" in failure and "worker" in failure %}
 {% if "more test failures" not in failure.application %}
 | [{{ failure.application }}]({{ job.output_url }}/tests/{{ failure.application }}/{{ failure.target }}:{{ failure.toolchain }}.txt) | {{ failure.target }} | {{ failure.toolchain }} | {{ '%0.2f'| format(failure.runtime|float) }} | {{ failure.worker }} |
+{% else %}
+
+[{{ failure.application }}]({{ job.details_url }})
 {% endif %}
 {% endif %}
 {% endfor %}
