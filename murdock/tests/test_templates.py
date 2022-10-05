@@ -62,6 +62,7 @@ def job():
                 "failed": "We failed here too :(",
                 "total": "Totally correct!",
                 "runtime_human": "55.3",
+                "worker": "test_worker",
             },
             None,
             None,
@@ -78,6 +79,7 @@ def job():
                     "target": "test_build_board",
                     "toolchain": "test_build_toolchain",
                     "runtime": "23",
+                    "worker": "test_worker",
                 }
             ],
             None,
@@ -95,6 +97,7 @@ def job():
                     "target": "test_run_board",
                     "toolchain": "test_run_toolchain",
                     "runtime": 42.0,
+                    "worker": "test_worker",
                 }
             ],
             None,
