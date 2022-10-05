@@ -25,6 +25,7 @@
 {% endfor %}
 {% for failure in job.status.failed_builds|sort(attribute="application") %}
 {% if "application" in failure and "more build failures" in failure.application %}
+
 [{{ failure.application }}]({{ job.details_url }})
 {% endif %}
 {% endfor %}
@@ -46,6 +47,7 @@
 {% endfor %}
 {% for failure in job.status.failed_tests|sort(attribute="application") %}
 {% if "application" in failure and "more test failures" in failure.application %}
+
 [{{ failure.application }}]({{ job.details_url }})
 {% endif %}
 {% endfor %}
