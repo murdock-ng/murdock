@@ -100,13 +100,27 @@ class Murdock:
             LOGGER.debug(f"Ignoring canceled {job}")
         else:
             LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")  # type: ignore[union-attr]
-            await self.job_prepare(job)
+            try:
+                await self.job_prepare(job)
+            except Exception as exc:
+                message = f"The {job} prepare step failed:\n{exc}"
+                LOGGER.warning(message)
+                await job.extend_job_output(f"\n\n{message}")
+                job.state = "errored"
             try:
                 await job.exec(self.notify_message_to_clients)
             except Exception as exc:
-                LOGGER.warning(f"Build job failed:\n{exc}")
+                message = f"The {job} failed:\n{exc}"
+                LOGGER.warning(message)
+                await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
-            await self.job_finalize(job)
+            try:
+                await self.job_finalize(job)
+            except Exception as exc:
+                message = f"The {job} finalize step failed:\n{exc}"
+                LOGGER.warning(message)
+                await job.extend_job_output(f"\n\n{message}")
+                job.state = "errored"
             LOGGER.info(f"{job} completed")
 
     async def job_processing_task(self):
