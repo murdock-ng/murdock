@@ -60,16 +60,22 @@ class MatrixNotifier(NotifierBase):
     config = MATRIX_NOTIFIER_CONFIG
 
     async def _get_member_id(self, author: str) -> Optional[str]:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://matrix.org/_matrix/client/v3/rooms/%21{self.config.room[1:]}"
-                f"/joined_members?access_token={self.config.token}",
-            )
-            if response.status_code != 200:
-                LOGGER.debug(
-                    f"Cannot fetch members of room '{self.config.room}': {response} {response.json()}"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://matrix.org/_matrix/client/v3/rooms/%21{self.config.room[1:]}"
+                    f"/joined_members?access_token={self.config.token}",
                 )
-                return None
+                if response.status_code != 200:
+                    LOGGER.debug(
+                        f"Cannot fetch members of room '{self.config.room}': {response} {response.json()}"
+                    )
+                    return None
+        except httpx.ReadTimeout as exc:
+            LOGGER.warning(
+                f"Failed to get Matrix member id for author '{author}': {exc}"
+            )
+            return None
         for member_id, info in response.json()["joined"].items():
             if info["display_name"] == author:
                 return member_id
