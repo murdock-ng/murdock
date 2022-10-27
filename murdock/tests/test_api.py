@@ -348,7 +348,7 @@ def test_update_job_status(
 )
 @mock.patch("murdock.murdock.Murdock.get_queued_jobs")
 @mock.patch("murdock.murdock.Murdock.get_running_jobs")
-@mock.patch("murdock.database.Database.find_jobs")
+@mock.patch("murdock.database.mongodb.MongoDatabase.find_jobs")
 def test_get_jobs_with_query(jobs, running, queued, query, call_arg):
     running.return_value = []
     queued.return_value = []

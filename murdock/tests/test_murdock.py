@@ -34,7 +34,7 @@ from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
         ({}, GLOBAL_CONFIG.num_workers),
     ],
 )
-@mock.patch("murdock.database.Database.init")
+@mock.patch("murdock.database.mongodb.MongoDatabase.init")
 @mock.patch("murdock.murdock.Murdock.job_processing_task")
 @pytest.mark.usefixtures("clear_prometheus_registry")
 async def test_init(task, db_init, params, expected):
