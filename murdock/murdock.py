@@ -32,7 +32,7 @@ from murdock.github import (
     set_commit_status,
     fetch_murdock_config,
 )
-from murdock.database import Database
+from murdock.database import database_from_env
 from murdock.notify import Notifier
 
 
@@ -73,7 +73,7 @@ class Murdock:
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
-        self.db = Database()
+        self.db = database_from_env()
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
 

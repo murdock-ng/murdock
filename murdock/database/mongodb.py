@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import pymongo
 import motor.motor_asyncio as aiomotor
@@ -9,9 +9,10 @@ from murdock.config import DB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.models import CommitModel, JobModel, JobQueryModel, PullRequestInfo
+from murdock.database import Database
 
 
-class Database:
+class MongoDatabase(Database):
     def __init__(self):
         LOGGER.info("Initializing database connection")
         conn = aiomotor.AsyncIOMotorClient(
@@ -55,7 +56,7 @@ class Database:
         )
         return [MurdockJob.finished_model(job) for job in jobs]
 
-    async def update_jobs(self, query: JobQueryModel, field, value) -> int:
+    async def update_jobs(self, query: JobQueryModel, field: str, value: Any) -> int:
         return (
             await self.db.job.update_many(
                 query.to_mongodb_query(), {"$set": {field: value}}

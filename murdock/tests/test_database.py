@@ -1,6 +1,6 @@
 import pytest
 
-from ..database import Database
+from ..database.mongodb import MongoDatabase as Database
 from ..job import MurdockJob
 from ..models import CommitModel, PullRequestInfo, JobQueryModel
 
