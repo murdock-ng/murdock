@@ -35,6 +35,7 @@ from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
 )
 @mock.patch("murdock.database.Database.init")
 @mock.patch("murdock.murdock.Murdock.job_processing_task")
+@pytest.mark.usefixtures("clear_prometheus_registry")
 async def test_init(task, db_init, params, expected):
     murdock = Murdock(**params)
     await murdock.init()
@@ -388,7 +389,7 @@ async def test_handle_pr_event_action(
     allowed,
     queued_called,
     caplog,
-    murdock
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -1060,7 +1061,7 @@ async def test_branch_manual_job(
     commit,
     fasttracked,
     scheduled,
-    murdock
+    murdock,
 ):
     fetch_branch_info.return_value = commit
     fetch_murdock_config.return_value = MurdockSettings()

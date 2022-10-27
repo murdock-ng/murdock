@@ -6,10 +6,10 @@ import pytest
 
 import aiosmtplib
 from httpx import Response, ReadTimeout
+from prometheus_client import REGISTRY
 
 from ..job import MurdockJob
 from ..models import CommitModel, PullRequestInfo
-from ..murdock import Murdock
 from ..notify import Notifier, MailNotifier, MatrixNotifier
 
 
@@ -29,6 +29,14 @@ prinfo = PullRequestInfo(
     mergeable=True,
     labels=["test"],
 )
+
+
+# Flush the prometheus collector registry between tests
+@pytest.fixture(autouse=True)
+def clear_prometheus_registry():
+    collectors = list(REGISTRY._collector_to_names.keys())
+    for collector in collectors:
+        REGISTRY.unregister(collector)
 
 
 @pytest.mark.asyncio
@@ -189,7 +197,15 @@ prinfo = PullRequestInfo(
 @mock.patch("httpx.AsyncClient.post")
 @mock.patch("aiosmtplib.send")
 async def test_notify(
-    mail_send, matrix_post, job, previous_state, new_state, matrix, mail, caplog, murdock
+    mail_send,
+    matrix_post,
+    job,
+    previous_state,
+    new_state,
+    matrix,
+    mail,
+    caplog,
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     matrix_post.return_value = Response(200, text=json.dumps({"details": "ok"}))
