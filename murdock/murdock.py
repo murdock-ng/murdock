@@ -9,6 +9,7 @@ from typing import List, Optional, Union
 import websockets
 from fastapi import WebSocket
 from prometheus_fastapi_instrumentator import Instrumentator
+import prometheus_client
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
@@ -76,7 +77,17 @@ class Murdock:
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
 
+        self.job_queue_counter = prometheus_client.Counter(
+            "murdock_job_queued", "Murdock CI jobs queued"
+        )
+        self.job_status_counter = prometheus_client.Counter(
+            "murdock_job_result", "Murdock CI jobs results", ["status"]
+        )
+
     async def init(self):
+        # Initialize counter labels
+        for status in ["passed", "errored", "stopped", "canceled"]:
+            self.job_status_counter.labels(status)
         await self.db.init()
         for index in range(self.num_workers):
             asyncio.create_task(
@@ -198,6 +209,7 @@ class Murdock:
             job.state == "stopped" and self.store_stopped_jobs
         ):
             await self.db.insert_job(job)
+        self.job_status_counter.labels(status=job.state).inc()
         await self.reload_jobs()
 
     async def add_job_to_queue(self, job: MurdockJob):
@@ -218,6 +230,7 @@ class Murdock:
         else:
             self.queue.put_nowait(job)
         LOGGER.info(f"{job} added to queued jobs")
+        self.job_queue_counter.inc()
         await self.reload_jobs()
 
     async def cancel_queued_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
@@ -241,6 +254,7 @@ class Murdock:
             "description": "Canceled",
         }
         await set_commit_status(job.commit.sha, status)
+        self.job_status_counter.labels(status="canceled").inc()
         if reload_jobs is True:
             await self.reload_jobs()
 
@@ -261,6 +275,7 @@ class Murdock:
             job.state = "errored"
 
         await job.stop()
+        self.job_status_counter.labels(status="stopped").inc()
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
