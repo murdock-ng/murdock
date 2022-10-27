@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 
 import websockets
 from fastapi import WebSocket
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG
 from murdock.log import LOGGER
@@ -73,6 +74,7 @@ class Murdock:
         self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
         self.db = Database()
         self.notifier = Notifier()
+        self.instrumentator = Instrumentator()
 
     async def init(self):
         await self.db.init()

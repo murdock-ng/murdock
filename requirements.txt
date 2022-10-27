@@ -3,3 +3,4 @@ motor
 httpx
 PyYaml
 aiosmtplib
+prometheus-fastapi-instrumentator
