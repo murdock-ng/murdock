@@ -60,7 +60,6 @@ LOGGER.debug(
 murdock = Murdock(repository=GITHUB_CONFIG.repo)
 app = FastAPI(
     debug=GLOBAL_CONFIG.log_level == "DEBUG",
-    on_startup=[murdock.init],
     on_shutdown=[murdock.shutdown],
     title="Murdock API",
     description="This is the Murdock API",
@@ -80,6 +79,12 @@ app.mount(
     StaticFiles(directory=GLOBAL_CONFIG.work_dir, html=True, check_dir=False),
     name="results",
 )
+
+
+@app.on_event("startup")
+async def startup():
+    murdock.instrumentator.instrument(app).expose(app)
+    await murdock.init()
 
 
 @app.post("/github/webhook", include_in_schema=False)
