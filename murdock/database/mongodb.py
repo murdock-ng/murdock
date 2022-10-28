@@ -29,7 +29,7 @@ class MongoDatabase(Database):
             [("creation_time", pymongo.ASCENDING)], name="job_creation_time"
         )
 
-    def close(self):
+    async def close(self):
         LOGGER.info("Closing database connection")
         self.db.client.close()
 

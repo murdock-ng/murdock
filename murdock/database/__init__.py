@@ -16,7 +16,7 @@ class Database(abc.ABC):
         """Initialize the database backend."""
 
     @abc.abstractmethod
-    def close(self):
+    async def close(self):
         """Close all database connections."""
 
     @abc.abstractmethod
@@ -76,6 +76,12 @@ def database(database_type: str) -> Database:
         from murdock.database import mongodb
 
         return mongodb.MongoDatabase()
+
+    elif database_type == "postgresql":
+        from murdock.database import postgresql
+
+        return postgresql.PostgresDatabase()
+
     raise ValueError(f"Invalid database type specified: {database_type!r}")
 
 
