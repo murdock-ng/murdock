@@ -1,6 +1,7 @@
 import os
 import logging
 import datetime
+import uuid
 
 import pytest
 
@@ -68,7 +69,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             prinfo,
             None,
             MurdockSettings(),
-            "job 1234567 - PR #123 (test_co)\n",
+            "job 6465798 - PR #123 (test_co)\n",
             {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
@@ -86,7 +87,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             prinfo,
             None,
             MurdockSettings(env={"TEST_ENV": "42"}),
-            "job 1234567 - PR #123 (test_co)\n",
+            "job 6465798 - PR #123 (test_co)\n",
             {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
@@ -105,7 +106,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             prinfo_not_mergeable,
             None,
             MurdockSettings(),
-            "job 1234567 - PR #123 (test_co)\n",
+            "job 6465798 - PR #123 (test_co)\n",
             {
                 "CI_PULL_COMMIT": "test_commit",
                 "CI_PULL_REPO": "test/repo",
@@ -122,7 +123,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             None,
             "refs/heads/test_branch",
             MurdockSettings(),
-            "job 1234567 - branch test_branch (test_co)\n",
+            "job 6465798 - branch test_branch (test_co)\n",
             {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "refs/heads/test_branch",
@@ -134,7 +135,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             None,
             "refs/heads/test_branch",
             MurdockSettings(env={"TEST_ENV": "42"}),
-            "job 1234567 - branch test_branch (test_co)\n",
+            "job 6465798 - branch test_branch (test_co)\n",
             {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "refs/heads/test_branch",
@@ -147,7 +148,7 @@ test_job = MurdockJob(commit, pr=prinfo)
             None,
             "refs/tags/test_tag",
             MurdockSettings(env={"TEST_ENV": "42"}),
-            "job 1234567 - tag test_tag (test_co)\n",
+            "job 6465798 - tag test_tag (test_co)\n",
             {
                 "CI_BUILD_COMMIT": "test_commit",
                 "CI_BUILD_REF": "refs/tags/test_tag",
@@ -156,12 +157,12 @@ test_job = MurdockJob(commit, pr=prinfo)
                 "TEST_ENV": "42",
             },
         ),
-        (None, None, MurdockSettings(), "job 1234567 - commit test_co\n", {}),
+        (None, None, MurdockSettings(), "job 6465798 - commit test_co\n", {}),
     ],
 )
 def test_basic(capsys, pr, ref, config, out, env):
     job = MurdockJob(commit, pr=pr, ref=ref, config=config)
-    job.uid = "123456789"
+    job.uid = "6465798f3e104b0ab23adf5554647e63"
     print(job)
     output = capsys.readouterr()
     assert output.out == out
