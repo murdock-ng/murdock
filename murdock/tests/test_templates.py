@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timezone
 
 import pytest
 
@@ -174,7 +175,9 @@ def test_comment(
     context = {"job": job, "base_url": base_url}
     if summary is not None:
         if "runtime_human" in summary:
-            job.stop_time = float(summary["runtime_human"])
+            job.set_stop_time(
+                datetime.fromtimestamp(float(summary["runtime_human"]), tz=timezone.utc)
+            )
         job.status.update(summary)
     if failed_tests is not None:
         job.status["failed_tests"] = failed_tests

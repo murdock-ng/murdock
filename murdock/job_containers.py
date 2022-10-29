@@ -193,7 +193,7 @@ class MurdockJobListBase(ABC):
                 .intersection(author_jobs)
             ),
             reverse=True,
-            key=lambda job: job.creation_time,
+            key=lambda job: job.creation_time.timestamp(),
         )
 
 
