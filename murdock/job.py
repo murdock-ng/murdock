@@ -5,6 +5,7 @@ import shutil
 import time
 import uuid
 
+from datetime import datetime, timedelta, timezone
 from typing import Callable, List, Optional
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
@@ -40,9 +41,9 @@ class MurdockJob:
         self.commit: CommitModel = commit
         self.ref: Optional[str] = ref
         self.pr: Optional[PullRequestInfo] = pr
-        self.creation_time: float = time.time()
-        self.start_time: float = 0
-        self.stop_time: float = 0
+        self.creation_time: datetime = datetime.now(timezone.utc)
+        self._start_time: datetime = datetime.fromtimestamp(0, tz=timezone.utc)
+        self._stop_time: datetime = datetime.fromtimestamp(0, tz=timezone.utc)
         self.canceled: bool = False
         self.status: dict = {"status": ""}
         self.fasttracked: bool = (
@@ -80,28 +81,37 @@ class MurdockJob:
             LOGGER.debug(f"Directory '{work_dir}' doesn't exist, cannot remove")
 
     @property
-    def runtime(self) -> float:
+    def start_time(self) -> datetime:
+        return self._start_time
+
+    @property
+    def stop_time(self) -> datetime:
+        return self._stop_time
+
+    @property
+    def runtime(self) -> timedelta:
         return self.stop_time - self.start_time
 
     @property
     def runtime_human(self) -> str:
-        if self.runtime > 86400:
+        runtime = self.runtime.total_seconds()
+        if runtime > 86400:
             runtime_format = "%dd:%Hh:%Mm:%Ss"
-        elif self.runtime > 3600:
+        elif runtime > 3600:
             runtime_format = "%Hh:%Mm:%Ss"
-        elif self.runtime > 60:
+        elif runtime > 60:
             runtime_format = "%Mm:%Ss"
         else:
             runtime_format = "%Ss"
-        return time.strftime(runtime_format, time.gmtime(self.runtime))
+        return time.strftime(runtime_format, time.gmtime(runtime))
 
     def model(self) -> JobModel:
         return JobModel(
             uid=self.uid,
             commit=self.commit,
-            creation_time=self.creation_time,
-            start_time=self.start_time,
-            runtime=self.runtime,
+            creation_time=self.creation_time.timestamp(),
+            start_time=self.start_time.timestamp(),
+            runtime=self.runtime.total_seconds(),
             state=self.state,
             output=self.output,
             output_text_url=self.output_text_url,
@@ -199,6 +209,16 @@ class MurdockJob:
 
     def __hash__(self) -> int:
         return hash(self.uid)
+
+    def set_start_time(self, start_time: datetime):
+        if start_time.tzinfo is None:
+            raise ValueError("Incomplete time object, no time zone defined")
+        self._start_time = start_time
+
+    def set_stop_time(self, stop_time: datetime):
+        if stop_time.tzinfo is None:
+            raise ValueError("Incomplete time object, no time zone defined")
+        self._stop_time = stop_time
 
     async def extend_job_output(self, line):
         self.output += line

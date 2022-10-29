@@ -1,5 +1,6 @@
 import os
 import logging
+import datetime
 
 import pytest
 
@@ -209,7 +210,7 @@ def test_remove_dir(tmpdir, caplog):
 )
 def test_runtime(runtime, expected):
     job = MurdockJob(commit, pr=prinfo)
-    job.stop_time = job.start_time + runtime
+    job.set_stop_time(job.start_time + datetime.timedelta(seconds=runtime))
     assert job.runtime_human == expected
 
 
@@ -237,9 +238,9 @@ def test_queued_model():
         uid=job.uid,
         commit=commit,
         prinfo=prinfo,
-        creation_time=job.creation_time,
-        start_time=job.start_time,
-        runtime=0.0,
+        creation_time=job.creation_time.timestamp(),
+        start_time=job.start_time.timestamp(),
+        runtime=datetime.timedelta(seconds=0).total_seconds(),
         fasttracked=False,
         trigger="api",
         triggered_by=None,
@@ -272,9 +273,9 @@ def test_running_model():
         uid=job.uid,
         commit=commit,
         prinfo=prinfo,
-        creation_time=job.creation_time,
-        start_time=job.start_time,
-        runtime=0.0,
+        creation_time=job.creation_time.timestamp(),
+        start_time=job.start_time.timestamp(),
+        runtime=datetime.timedelta(seconds=0).total_seconds(),
         status=job.status,
         fasttracked=False,
         trigger="api",
@@ -307,9 +308,9 @@ def test_to_db_entry():
     job.output = "test output"
     expected_model = JobModel(
         uid=job.uid,
-        start_time=job.start_time,
-        creation_time=job.creation_time,
-        runtime=job.runtime,
+        start_time=job.start_time.timestamp(),
+        creation_time=job.creation_time.timestamp(),
+        runtime=job.runtime.total_seconds(),
         state="passed",
         output=job.output,
         output_text_url=job.output_text_url,

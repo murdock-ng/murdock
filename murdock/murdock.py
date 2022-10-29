@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import re
-import time
+from datetime import datetime, timezone
 
 from typing import List, Optional, Union
 
@@ -146,7 +146,7 @@ class Murdock:
         self.running.add(job)
         job.state = "running"
         LOGGER.debug(f"{job} added to the running jobs")
-        job.start_time = time.time()
+        job.set_start_time(datetime.now(timezone.utc))
         await set_commit_status(
             job.commit.sha,
             {
@@ -159,7 +159,7 @@ class Murdock:
         await self.reload_jobs()
 
     async def job_finalize(self, job: MurdockJob):
-        job.stop_time = time.time()
+        job.set_stop_time(datetime.now(timezone.utc))
         if "status" in job.status and job.status["status"] == "working":
             job.status["status"] = "finished"
         self.running.remove(job)
