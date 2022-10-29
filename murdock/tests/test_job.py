@@ -162,7 +162,7 @@ test_job = MurdockJob(commit, pr=prinfo)
 )
 def test_basic(capsys, pr, ref, config, out, env):
     job = MurdockJob(commit, pr=pr, ref=ref, config=config)
-    job.uid = "6465798f3e104b0ab23adf5554647e63"
+    job._uuid = uuid.UUID("6465798f3e104b0ab23adf5554647e63")
     print(job)
     output = capsys.readouterr()
     assert output.out == out
