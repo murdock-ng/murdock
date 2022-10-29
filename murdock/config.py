@@ -10,6 +10,8 @@ class DatabaseSettings(BaseSettings):
     host: str = Field(env="MURDOCK_DB_HOST", default="localhost")
     port: int = Field(env="MURDOCK_DB_PORT", default=0)
     name: str = Field(env="MURDOCK_DB_NAME", default="murdock")
+    user: str = Field(env="MURDOCK_DB_AUTH_USER", default="murdock")
+    password: str = Field(env="MURDOCK_DB_AUTH_PASSWORD", default="hunter2")
 
 
 class GithubSettings(BaseSettings):

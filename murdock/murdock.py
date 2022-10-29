@@ -11,7 +11,7 @@ from fastapi import WebSocket
 from prometheus_fastapi_instrumentator import Instrumentator
 import prometheus_client
 
-from murdock.config import GLOBAL_CONFIG, CI_CONFIG
+from murdock.config import GLOBAL_CONFIG, CI_CONFIG, DB_CONFIG
 from murdock.log import LOGGER
 from murdock.job import MurdockJob
 from murdock.job_containers import MurdockJobList, MurdockJobPool
@@ -130,7 +130,7 @@ class Murdock:
 
     async def shutdown(self):
         LOGGER.info("Shutting down Murdock")
-        self.db.close()
+        await self.db.close()
         for ws in self.clients:
             LOGGER.debug(f"Closing websocket {ws}")
             await ws.close()

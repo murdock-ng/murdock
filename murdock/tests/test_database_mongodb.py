@@ -63,7 +63,7 @@ async def test_database_mongodb(caplog):
     assert search_job.pr == job_branch.pr
     assert search_job.user_env == job_branch.user_env
 
-    db.close()
+    await db.close()
     assert "Closing database connection" in caplog.text
 
 

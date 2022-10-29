@@ -1,3 +1,4 @@
+import time
 import pytest
 from xprocess import ProcessStarter
 from murdock.murdock import Murdock
@@ -18,6 +19,22 @@ def mongodb(xprocess):
     xprocess.ensure("mongo", Starter)
     yield
     xprocess.getinfo("mongo").terminate()
+
+
+@pytest.fixture
+def postgresql(xprocess):
+    class Starter(ProcessStarter):
+        pattern = ".*database system is ready to accept connections"
+        args = ["docker", "run", "--rm", "-e", "POSTGRES_PASSWORD=hunter2",
+                "-e", "POSTGRES_USER=murdock", "-e", "PGDATA=/tmp/postgres",
+                "-p", "5432:5432", "postgres:13"]
+        terminate_on_interrupt = True
+        timeout = 10
+
+    xprocess.ensure("postgres", Starter)
+    time.sleep(1)
+    yield
+    xprocess.getinfo("postgres").terminate()
 
 
 # Flush the prometheus collector registry after tests

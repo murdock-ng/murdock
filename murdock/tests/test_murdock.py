@@ -8,6 +8,7 @@ from fastapi import WebSocket
 from prometheus_client import REGISTRY
 
 from murdock.murdock import Murdock
+from murdock.database import Database
 from murdock.job import MurdockJob
 from unittest import mock
 
@@ -35,13 +36,14 @@ from murdock.config import CI_CONFIG, GLOBAL_CONFIG, MurdockSettings
         ({}, GLOBAL_CONFIG.num_workers),
     ],
 )
-@mock.patch("murdock.database.mongodb.MongoDatabase.init")
 @mock.patch("murdock.murdock.Murdock.job_processing_task")
 @pytest.mark.usefixtures("clear_prometheus_registry")
-async def test_init(task, db_init, params, expected):
+async def test_init(task, params, expected):
     murdock = Murdock(**params)
+    mock_db = mock.Mock(spec=Database)
+    murdock.db = mock_db
     await murdock.init()
-    db_init.assert_called_once()
+    murdock.db.init.assert_called_once()
     assert task.call_count == expected
 
 
@@ -63,7 +65,6 @@ exit {run_ret}
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
 @pytest.mark.parametrize(
     "ret,job_state,comment_on_pr",
     [
@@ -164,7 +165,6 @@ async def test_schedule_single_job(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
 @pytest.mark.parametrize(
     "prnums,num_queued,free_slots",
     [
@@ -229,7 +229,6 @@ async def test_schedule_multiple_jobs(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
 @mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
 @pytest.mark.murdock_args({"num_workers": 1})
 async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog, murdock):
@@ -981,7 +980,6 @@ async def test_remove_job(queued, running, remove_dir, murdock_mockdb):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
 async def test_remove_jobs(murdock):
     await murdock.init()
     job1 = MurdockJob(
