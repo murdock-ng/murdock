@@ -32,7 +32,7 @@ class MurdockJob:
         self.trigger: Optional[str] = trigger
         self.triggered_by: Optional[str] = triggered_by
         self.user_env: Optional[dict] = user_env
-        self.uid: str = uuid.uuid4().hex
+        self._uuid: uuid.UUID = uuid.uuid4()
         self.config = config
         self.state: Optional[str] = None
         self.current_task: Optional[Task] = None
@@ -104,6 +104,14 @@ class MurdockJob:
         else:
             runtime_format = "%Ss"
         return time.strftime(runtime_format, time.gmtime(runtime))
+
+    @property
+    def uid(self) -> str:
+        return self.uuid.hex
+
+    @property
+    def uuid(self) -> uuid.UUID:
+        return self._uuid
 
     def model(self) -> JobModel:
         return JobModel(
