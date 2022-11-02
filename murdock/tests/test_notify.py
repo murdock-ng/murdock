@@ -189,11 +189,10 @@ prinfo = PullRequestInfo(
 @mock.patch("httpx.AsyncClient.post")
 @mock.patch("aiosmtplib.send")
 async def test_notify(
-    mail_send, matrix_post, job, previous_state, new_state, matrix, mail, caplog
+    mail_send, matrix_post, job, previous_state, new_state, matrix, mail, caplog, murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     matrix_post.return_value = Response(200, text=json.dumps({"details": "ok"}))
-    murdock = Murdock()
     await murdock.init()
     notifier = Notifier()
     if previous_state is not None:

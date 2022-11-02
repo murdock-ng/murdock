@@ -5,12 +5,12 @@ import os
 
 from datetime import datetime
 
+from murdock.murdock import Murdock
 from murdock.job import MurdockJob
 from unittest import mock
 
 import pytest
 
-from murdock.murdock import Murdock
 from murdock.models import (
     CommitModel,
     JobQueryModel,
@@ -44,8 +44,7 @@ async def test_init(task, db_init, params, expected):
 
 @pytest.mark.asyncio
 @mock.patch("murdock.database.Database.close")
-async def test_shutdown(db_close, caplog):
-    murdock = Murdock()
+async def test_shutdown(db_close, caplog, murdock):
     await murdock.shutdown()
     assert "Shutting down Murdock" in caplog.text
     db_close.assert_called_once()
@@ -87,8 +86,9 @@ exit {run_ret}
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.database.Database.insert_job")
 @mock.patch("murdock.notify.Notifier.notify")
+@pytest.mark.murdock_args({"enable_notifications": True})
 async def test_schedule_single_job(
-    notify, insert, status, comment, ret, job_state, comment_on_pr, tmpdir
+    notify, insert, status, comment, ret, job_state, comment_on_pr, tmpdir, murdock
 ):
     commit = CommitModel(
         sha="test_commit", tree="test_tree", message="test message", author="test_user"
@@ -120,7 +120,6 @@ async def test_schedule_single_job(
     )
     job.scripts_dir = scripts_dir
     job.work_dir = work_dir
-    murdock = Murdock(enable_notifications=True)
     await murdock.init()
     await murdock.schedule_job(job)
     assert job in murdock.queued.jobs
@@ -159,7 +158,7 @@ async def test_schedule_single_job(
 )
 @mock.patch("murdock.murdock.set_commit_status")
 async def test_schedule_multiple_jobs(
-    __, prnums, num_queued, free_slots, tmpdir, caplog
+    __, prnums, num_queued, free_slots, tmpdir, caplog, murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
@@ -198,7 +197,6 @@ async def test_schedule_multiple_jobs(
         job.work_dir = work_dir
         jobs.append(job)
 
-    murdock = Murdock()
     await murdock.init()
     for job in jobs:
         await murdock.schedule_job(job)
@@ -215,7 +213,8 @@ async def test_schedule_multiple_jobs(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo")
 @mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
-async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog):
+@pytest.mark.murdock_args({"num_workers": 1})
+async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog, murdock):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
     os.makedirs(scripts_dir)
@@ -256,7 +255,6 @@ async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog):
         job.work_dir = work_dir
         jobs.append(job)
 
-    murdock = Murdock(num_workers=1)
     await murdock.init()
     for job in jobs[: num_jobs - 1]:
         await murdock.schedule_job(job)
@@ -298,8 +296,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog):
 @mock.patch("murdock.murdock.Murdock.schedule_job")
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.database.Database.find_job")
-async def test_restart_job(find, fetch_config, schedule, job_found, caplog):
-    murdock = Murdock()
+async def test_restart_job(find, fetch_config, schedule, job_found, caplog, murdock):
     find.return_value = job_found
     await murdock.restart_job("1234", "token")
     if job_found is None:
@@ -346,7 +343,7 @@ pr_event = {
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_pr_event_action_missing(
-    queued, fetch_commit, fetch_config, caplog
+    queued, fetch_commit, fetch_config, caplog, murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -355,7 +352,6 @@ async def test_handle_pr_event_action_missing(
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message="test", author="me"
     )
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     queued.assert_not_called()
     fetch_config.assert_not_called()
@@ -392,6 +388,7 @@ async def test_handle_pr_event_action(
     allowed,
     queued_called,
     caplog,
+    murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -402,7 +399,6 @@ async def test_handle_pr_event_action(
         sha=commit, tree="test_tree", message="test", author="me"
     )
     update.return_value = 0
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     if allowed:
         fetch_config.assert_called_with(commit)
@@ -430,14 +426,13 @@ async def test_handle_pr_event_action(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_pr_event_missing_commit_info(
-    queued, fetch_commit, fetch_config, caplog
+    queued, fetch_commit, fetch_config, caplog, murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
     event.update({"action": "synchronize"})
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = None
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     queued.assert_not_called()
     fetch_config.assert_not_called()
@@ -475,6 +470,7 @@ async def test_handle_pr_event_skip_commit(
     keywords,
     skipped,
     caplog,
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -485,7 +481,6 @@ async def test_handle_pr_event_skip_commit(
         sha=commit, tree="test_tree", message=commit_message, author="me"
     )
     update.return_value = 0
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_with(commit)
@@ -507,7 +502,7 @@ async def test_handle_pr_event_skip_commit(
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 @mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_missing_ready_label(
-    update, queued, fetch_commit, fetch_config, caplog
+    update, queued, fetch_commit, fetch_config, caplog, murdock
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
@@ -519,7 +514,6 @@ async def test_handle_pr_event_missing_ready_label(
         sha=commit, tree="test_tree", message="test message", author="me"
     )
     update.return_value = 0
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     queued.assert_not_called()
     fetch_config.assert_called_once()
@@ -596,6 +590,7 @@ async def test_handle_pr_event_labeled_action(
     param_queued,
     scheduled,
     caplog,
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
@@ -610,7 +605,6 @@ async def test_handle_pr_event_labeled_action(
     commit_status.return_value = None
     pr_queued.return_value = param_queued
     update.return_value = 0
-    murdock = Murdock()
     await murdock.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_once()
@@ -624,8 +618,8 @@ async def test_handle_pr_event_labeled_action(
 
 
 @pytest.mark.asyncio
-async def test_handle_pr_event_unsupported_repo(caplog):
-    murdock = Murdock(repository="unsupported_repo")
+@pytest.mark.murdock_args({"repository": "unsupported_repo"})
+async def test_handle_pr_event_unsupported_repo(caplog, murdock):
     event = {"action": "labeled", "repository": {"full_name": "unsupported"}}
     assert await murdock.handle_pull_request_event(event) == "Invalid repo"
 
@@ -650,14 +644,13 @@ async def test_handle_pr_event_unsupported_repo(caplog):
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_push_event(
-    queued, fetch_commit, fetch_config, ref, ref_type, ref_name, caplog
+    queued, fetch_commit, fetch_config, ref, ref_type, ref_name, caplog, murdock
 ):
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings(push={ref_type: [ref_name]})
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message="test", author="me"
     )
-    murdock = Murdock()
     event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
     fetch_config.assert_called_with(commit)
@@ -702,14 +695,13 @@ async def test_handle_push_event(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_push_event_ref_not_handled(
-    queued, fetch_commit, fetch_config, ref, ref_name, settings, caplog
+    queued, fetch_commit, fetch_config, ref, ref_name, settings, caplog, murdock
 ):
     commit = "abcdef"
     fetch_config.return_value = settings
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message="test", author="me"
     )
-    murdock = Murdock()
     event = {"ref": ref, "after": commit, "sender": {"login": "user"}}
     await murdock.handle_push_event(event)
     fetch_config.assert_called_with(commit)
@@ -725,13 +717,12 @@ async def test_handle_push_event_ref_not_handled(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
 async def test_handle_push_event_commit_fetch_error(
-    queued, fetch_commit, fetch_config, caplog
+    queued, fetch_commit, fetch_config, caplog, murdock
 ):
     branch = "test_branch"
     commit = "abcdef"
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = None
-    murdock = Murdock()
     event = {
         "ref": f"refs/heads/{branch}",
         "after": commit,
@@ -773,6 +764,7 @@ async def test_handle_push_event_skip_commit(
     keywords,
     skipped,
     caplog,
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     branch = "test_branch"
@@ -783,7 +775,6 @@ async def test_handle_push_event_skip_commit(
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message=commit_message, author="me"
     )
-    murdock = Murdock()
     event = {
         "ref": f"refs/heads/{branch}",
         "after": commit,
@@ -812,7 +803,7 @@ async def test_handle_push_event_skip_commit(
 @mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_ref")
 async def test_handle_push_event_ref_removed(
-    search, stop, cancel, queued, fetch_commit, fetch_config, caplog
+    search, stop, cancel, queued, fetch_commit, fetch_config, caplog, murdock
 ):
     branch = "test_branch"
     commit = "abcdef"
@@ -824,7 +815,6 @@ async def test_handle_push_event_ref_removed(
     search.return_value = [job]
     fetch_config.return_value = MurdockSettings()
     fetch_commit.return_value = commit_model
-    murdock = Murdock()
     event = {
         "ref": ref,
         "before": commit,
@@ -842,8 +832,8 @@ async def test_handle_push_event_ref_removed(
 
 
 @pytest.mark.asyncio
-async def test_handle_push_event_unsupported_repo(caplog):
-    murdock = Murdock(repository="unsupported_repo")
+@pytest.mark.murdock_args({"repository": "unsupported_repo"})
+async def test_handle_push_event_unsupported_repo(caplog, murdock):
     event = {"repository": {"full_name": "unsupported"}}
     assert await murdock.handle_push_event(event) == "Invalid repo"
 
@@ -896,9 +886,8 @@ async def test_handle_push_event_unsupported_repo(caplog):
 )
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 @mock.patch("murdock.murdock.Murdock.notify_message_to_clients")
-async def test_handle_job_status_data(notify, search, job_found, data, called):
+async def test_handle_job_status_data(notify, search, job_found, data, called, murdock):
     search.return_value = job_found
-    murdock = Murdock()
     await murdock.handle_job_status_data("1234", data)
     if called is True:
         data.update({"cmd": "status", "uid": job_found.uid})
@@ -913,8 +902,7 @@ async def test_handle_job_status_data(notify, search, job_found, data, called):
 @mock.patch("murdock.job.MurdockJob.remove_dir")
 @mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.murdock.Murdock.cancel_queued_job")
-async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs):
-    murdock = Murdock()
+async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs, murdock):
     job_queued = MurdockJob(
         CommitModel(
             sha="test_commit",
@@ -961,8 +949,7 @@ async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs):
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo")
-async def test_remove_jobs():
-    murdock = Murdock()
+async def test_remove_jobs(murdock):
     await murdock.init()
     job1 = MurdockJob(
         CommitModel(
@@ -992,8 +979,7 @@ async def test_remove_jobs():
 
 @pytest.mark.asyncio
 @mock.patch("murdock.database.Database.find_jobs")
-async def test_get_job(find_jobs):
-    murdock = Murdock()
+async def test_get_job(find_jobs, murdock):
     job_queued = MurdockJob(
         CommitModel(
             sha="test_commit",
@@ -1074,11 +1060,11 @@ async def test_branch_manual_job(
     commit,
     fasttracked,
     scheduled,
+    murdock
 ):
     fetch_branch_info.return_value = commit
     fetch_murdock_config.return_value = MurdockSettings()
     fetch_user_login.return_value = "test_login"
-    murdock = Murdock()
     job_model = await murdock.start_branch_job(
         "token", ManualJobBranchParamModel(branch="test", fasttrack=fasttracked)
     )
@@ -1098,7 +1084,7 @@ async def test_branch_manual_job(
 @mock.patch("murdock.murdock.fetch_tag_info")
 @mock.patch("murdock.murdock.Murdock.schedule_job")
 async def test_tag_manual_job(
-    schedule_job, fetch_tag_info, fetch_murdock_config, fetch_user_login
+    schedule_job, fetch_tag_info, fetch_murdock_config, fetch_user_login, murdock
 ):
     commit = CommitModel(
         sha="test_sha", tree="test_tree", message="test message", author="test_user"
@@ -1106,7 +1092,6 @@ async def test_tag_manual_job(
     fetch_tag_info.return_value = commit
     fetch_murdock_config.return_value = MurdockSettings()
     fetch_user_login.return_value = "test_login"
-    murdock = Murdock()
     job_model = await murdock.start_tag_job("token", ManualJobTagParamModel(tag="test"))
     schedule_job.assert_called_once()
     assert job_model.commit == commit
@@ -1119,7 +1104,7 @@ async def test_tag_manual_job(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.schedule_job")
 async def test_commit_manual_job(
-    schedule_job, fetch_commit_info, fetch_murdock_config, fetch_user_login
+    schedule_job, fetch_commit_info, fetch_murdock_config, fetch_user_login, murdock
 ):
     commit = CommitModel(
         sha="test_sha", tree="test_tree", message="test message", author="test_user"
@@ -1127,7 +1112,6 @@ async def test_commit_manual_job(
     fetch_commit_info.return_value = commit
     fetch_murdock_config.return_value = MurdockSettings()
     fetch_user_login.return_value = "test_login"
-    murdock = Murdock()
     job_model = await murdock.start_commit_job(
         "token", ManualJobCommitParamModel(sha="test")
     )
