@@ -1,6 +1,6 @@
 import pytest
 from xprocess import ProcessStarter
-
+from murdock.murdock import Murdock
 
 @pytest.fixture
 def mongo(xprocess):
@@ -13,3 +13,12 @@ def mongo(xprocess):
     xprocess.ensure("mongo", Starter)
     yield
     xprocess.getinfo("mongo").terminate()
+
+
+@pytest.fixture
+def murdock(request):
+    args = {}
+    marker = request.node.get_closest_marker("murdock_args")
+    if marker is not None:
+        args = marker.args[0]
+    return Murdock(**args)
