@@ -130,11 +130,11 @@ class JobModel(BaseModel):
     triggered_by: Optional[str] = Field(
         None, title="Github user who triggered the job creation"
     )
-    env: Optional[dict] = Field(
+    env: Optional[dict[str, str]] = Field(
         None,
         title="Dictionnary of environment variables attached to the job",
     )
-    user_env: Optional[dict] = Field(
+    user_env: Optional[dict[str, str]] = Field(
         None,
         title="User defined dictionnary of environment variables atteched to the job",
     )

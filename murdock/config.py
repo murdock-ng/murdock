@@ -79,7 +79,7 @@ class GlobalSettings(BaseSettings):
         env="MURDOCK_ACCEPTED_EVENTS", default=["push", "pull_request"]
     )
     num_workers: int = Field(env="MURDOCK_NUM_WORKERS", default=1)
-    custom_env: dict = Field(env="MURDOCK_CUSTOM_ENV", default=dict())
+    custom_env: dict[str, str] = Field(env="MURDOCK_CUSTOM_ENV", default=dict())
     log_level: str = Field(env="MURDOCK_LOG_LEVEL", default="INFO")
     max_finished_length_default: int = Field(
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
@@ -138,7 +138,7 @@ class MurdockSettings(BaseSettings):
     push: PushSettings = Field(default=PushSettings())
     pr: PRSettings = Field(default=PRSettings())
     commit: CommitSettings = Field(default=CommitSettings())
-    env: dict = Field(default=dict())
+    env: dict[str, str] = Field(default=dict())
     failfast: bool = Field(default=False)
     artifacts: List[str] = Field(default=[])
     tasks: List[TaskSettings] = Field(default=[TaskSettings()])
