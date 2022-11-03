@@ -369,3 +369,8 @@ def test_finished_model():
         prinfo=prinfo.dict(),
         commit=commit.dict(),
     )
+
+
+def test_uuid():
+    job = MurdockJob(commit)
+    assert job.uuid.hex == job.uid
