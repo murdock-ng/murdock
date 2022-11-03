@@ -1,6 +1,6 @@
 import pytest
 
-from ..database.mongodb import MongoDatabase as Database
+from ..database import Database, database, database_from_env
 from ..job import MurdockJob
 from ..models import CommitModel, PullRequestInfo, JobQueryModel
 
@@ -25,8 +25,8 @@ prinfo = PullRequestInfo(
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo")
-async def test_database(caplog):
-    db = Database()
+async def test_database_mongodb(caplog):
+    db = database("mongodb")
     await db.init()
     job_pr = MurdockJob(commit, pr=prinfo)
     await db.insert_job(job_pr)
@@ -65,3 +65,13 @@ async def test_database(caplog):
 
     db.close()
     assert "Closing database connection" in caplog.text
+
+
+def test_database_invalid():
+    with pytest.raises(ValueError):
+        database("postgremongosqlitedb")
+
+
+def test_database_config():
+    db = database_from_env()
+    assert isinstance(db, Database)
