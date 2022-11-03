@@ -55,7 +55,7 @@ async def test_database(caplog):
     await db.delete_jobs(JobQueryModel(prnum=123))
     assert len(await db.find_jobs(JobQueryModel(prnum=123))) == 0
 
-    job_branch = MurdockJob(commit, ref="refs/heads/test", user_env={"TEST": 123})
+    job_branch = MurdockJob(commit, ref="refs/heads/test", user_env={"TEST": "123"})
     await db.insert_job(job_branch)
     search_job = await db.find_job(job_branch.uid)
     assert search_job is not None
