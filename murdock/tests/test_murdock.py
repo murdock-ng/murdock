@@ -45,13 +45,12 @@ async def test_init(task, db_init, params, expected):
 
 
 @pytest.mark.asyncio
-@mock.patch("murdock.database.Database.close")
-async def test_shutdown(db_close, caplog, murdock):
+async def test_shutdown(caplog, murdock_mockdb):
     mock_socket = mock.Mock(spec=WebSocket)
-    murdock.add_ws_client(mock_socket)
-    await murdock.shutdown()
+    murdock_mockdb.add_ws_client(mock_socket)
+    await murdock_mockdb.shutdown()
     assert "Shutting down Murdock" in caplog.text
-    db_close.assert_called_once()
+    murdock_mockdb.db.close.assert_called_once()
     mock_socket.close.assert_called_once()
 
 
@@ -89,11 +88,10 @@ exit {run_ret}
 )
 @mock.patch("murdock.murdock.comment_on_pr")
 @mock.patch("murdock.murdock.set_commit_status")
-@mock.patch("murdock.database.Database.insert_job")
 @mock.patch("murdock.notify.Notifier.notify")
 @pytest.mark.murdock_args({"enable_notifications": True})
 async def test_schedule_single_job(
-    notify, insert, status, comment, ret, job_state, comment_on_pr, tmpdir, murdock
+    notify, status, comment, ret, job_state, comment_on_pr, tmpdir, murdock_mockdb
 ):
     commit = CommitModel(
         sha="test_commit", tree="test_tree", message="test message", author="test_user"
@@ -125,22 +123,22 @@ async def test_schedule_single_job(
     )
     job.scripts_dir = scripts_dir
     job.work_dir = work_dir
-    await murdock.init()
-    await murdock.schedule_job(job)
-    assert job in murdock.queued.jobs
-    assert job not in murdock.running.jobs
+    await murdock_mockdb.init()
+    await murdock_mockdb.schedule_job(job)
+    assert job in murdock_mockdb.queued.jobs
+    assert job not in murdock_mockdb.running.jobs
     await asyncio.sleep(1)
-    assert job not in murdock.queued.jobs
-    assert job in murdock.running.jobs
+    assert job not in murdock_mockdb.queued.jobs
+    assert job in murdock_mockdb.running.jobs
     job.status = {"status": "working"}
     if job_state == "stopped":
-        await murdock.stop_running_job(job)
+        await murdock_mockdb.stop_running_job(job)
         await asyncio.sleep(0.1)
-        assert job not in murdock.running.jobs
+        assert job not in murdock_mockdb.running.jobs
         notify.assert_not_called()
     else:
         await asyncio.sleep(2)
-        insert.assert_called_with(job)
+        murdock_mockdb.db.insert_job.assert_called_with(job)
         assert "BUILD" in job.output
         notify.assert_called_once()
     if comment_on_pr is True:
@@ -150,7 +148,7 @@ async def test_schedule_single_job(
     assert job.status == {"status": "finished"}
     assert job.state == job_state
     assert status.call_count == 3
-    assert murdock.job_status_counter.labels(status=job_state)._value.get() == 1
+    assert murdock_mockdb.job_status_counter.labels(status=job_state)._value.get() == 1
 
 
 @pytest.mark.asyncio
@@ -303,10 +301,9 @@ async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog, murdock):
 )
 @mock.patch("murdock.murdock.Murdock.schedule_job")
 @mock.patch("murdock.murdock.fetch_murdock_config")
-@mock.patch("murdock.database.Database.find_job")
-async def test_restart_job(find, fetch_config, schedule, job_found, caplog, murdock):
-    find.return_value = job_found
-    await murdock.restart_job("1234", "token")
+async def test_restart_job(fetch_config, schedule, job_found, caplog, murdock_mockdb):
+    murdock_mockdb.db.find_job.return_value = job_found
+    await murdock_mockdb.restart_job("1234", "token")
     if job_found is None:
         schedule.assert_not_called()
     else:
@@ -385,9 +382,7 @@ async def test_handle_pr_event_action_missing(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.disable_jobs_matching")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
-@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_action(
-    update,
     queued,
     disable,
     fetch_commit,
@@ -396,7 +391,7 @@ async def test_handle_pr_event_action(
     allowed,
     queued_called,
     caplog,
-    murdock,
+    murdock_mockdb,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -406,8 +401,8 @@ async def test_handle_pr_event_action(
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message="test", author="me"
     )
-    update.return_value = 0
-    await murdock.handle_pull_request_event(event)
+    murdock_mockdb.db.update_jobs.return_value = 0
+    await murdock_mockdb.handle_pull_request_event(event)
     if allowed:
         fetch_config.assert_called_with(commit)
         fetch_commit.assert_called_with(commit)
@@ -467,9 +462,7 @@ async def test_handle_pr_event_missing_commit_info(
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
-@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_skip_commit(
-    update,
     queued,
     commit_status,
     fetch_commit,
@@ -478,7 +471,7 @@ async def test_handle_pr_event_skip_commit(
     keywords,
     skipped,
     caplog,
-    murdock,
+    murdock_mockdb,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     event = pr_event.copy()
@@ -488,8 +481,8 @@ async def test_handle_pr_event_skip_commit(
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message=commit_message, author="me"
     )
-    update.return_value = 0
-    await murdock.handle_pull_request_event(event)
+    murdock_mockdb.db.update_jobs.return_value = 0
+    await murdock_mockdb.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
@@ -508,9 +501,8 @@ async def test_handle_pr_event_skip_commit(
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
-@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_missing_ready_label(
-    update, queued, fetch_commit, fetch_config, caplog, murdock
+    queued, fetch_commit, fetch_config, caplog, murdock_mockdb
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
@@ -521,8 +513,8 @@ async def test_handle_pr_event_missing_ready_label(
     fetch_commit.return_value = CommitModel(
         sha=commit, tree="test_tree", message="test message", author="me"
     )
-    update.return_value = 0
-    await murdock.handle_pull_request_event(event)
+    murdock_mockdb.db.update_jobs.return_value = 0
+    await murdock_mockdb.handle_pull_request_event(event)
     queued.assert_not_called()
     fetch_config.assert_called_once()
     fetch_commit.assert_called_once()
@@ -585,9 +577,7 @@ async def test_handle_pr_event_missing_ready_label(
 @mock.patch("murdock.murdock.fetch_murdock_config")
 @mock.patch("murdock.murdock.fetch_commit_info")
 @mock.patch("murdock.murdock.Murdock.add_job_to_queue")
-@mock.patch("murdock.database.Database.update_jobs")
 async def test_handle_pr_event_labeled_action(
-    update,
     queued,
     fetch_commit,
     fetch_config,
@@ -598,7 +588,7 @@ async def test_handle_pr_event_labeled_action(
     param_queued,
     scheduled,
     caplog,
-    murdock,
+    murdock_mockdb,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
@@ -612,8 +602,8 @@ async def test_handle_pr_event_labeled_action(
     )
     commit_status.return_value = None
     pr_queued.return_value = param_queued
-    update.return_value = 0
-    await murdock.handle_pull_request_event(event)
+    murdock_mockdb.db.update_jobs.return_value = 0
+    await murdock_mockdb.handle_pull_request_event(event)
     assert "Handle pull request event" in caplog.text
     fetch_config.assert_called_once()
     fetch_commit.assert_called_once()
@@ -927,12 +917,10 @@ async def test_handle_job_status_data(notify, search, job_found, data, called, m
 
 
 @pytest.mark.asyncio
-@mock.patch("murdock.database.Database.find_jobs")
-@mock.patch("murdock.database.Database.delete_jobs")
 @mock.patch("murdock.job.MurdockJob.remove_dir")
 @mock.patch("murdock.murdock.Murdock.stop_running_job")
 @mock.patch("murdock.murdock.Murdock.cancel_queued_job")
-async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs, murdock):
+async def test_remove_job(queued, running, remove_dir, murdock_mockdb):
     job_queued = MurdockJob(
         CommitModel(
             sha="test_commit",
@@ -957,23 +945,25 @@ async def test_remove_job(queued, running, remove_dir, delete_jobs, find_jobs, m
             author="user",
         )
     )
-    murdock.queued.add(job_queued)
-    murdock.running.add(job_running)
-    find_jobs.return_value = [job_finished.model()]
+    murdock_mockdb.queued.add(job_queued)
+    murdock_mockdb.running.add(job_running)
+    murdock_mockdb.db.find_jobs.return_value = [job_finished.model()]
 
-    job = await murdock.remove_job(job_queued.uid)
+    job = await murdock_mockdb.remove_job(job_queued.uid)
     queued.assert_called_with(job_queued, reload_jobs=True)
     assert job_queued == job
-    job = await murdock.remove_job(job_running.uid)
+    job = await murdock_mockdb.remove_job(job_running.uid)
     running.assert_called_with(job_running)
     assert job_running == job
-    job = await murdock.remove_job(job_finished.uid)
+    job = await murdock_mockdb.remove_job(job_finished.uid)
     remove_dir.assert_called_once()
-    delete_jobs.assert_called_with(JobQueryModel(uid=job_finished.uid))
+    murdock_mockdb.db.delete_jobs.assert_called_with(
+        JobQueryModel(uid=job_finished.uid)
+    )
     assert job_finished == job
 
-    find_jobs.return_value = []
-    job_none = await murdock.remove_job("abcdef")
+    murdock_mockdb.db.find_jobs.return_value = []
+    job_none = await murdock_mockdb.remove_job("abcdef")
     assert job_none is None
 
 
@@ -1008,8 +998,7 @@ async def test_remove_jobs(murdock):
 
 
 @pytest.mark.asyncio
-@mock.patch("murdock.database.Database.find_jobs")
-async def test_get_job(find_jobs, murdock):
+async def test_get_job(murdock_mockdb):
     job_queued = MurdockJob(
         CommitModel(
             sha="test_commit",
@@ -1034,18 +1023,18 @@ async def test_get_job(find_jobs, murdock):
             author="user",
         )
     )
-    murdock.queued.add(job_queued)
-    murdock.running.add(job_running)
-    find_jobs.return_value = [job_finished.model()]
-    job = await murdock.get_job(job_queued.uid)
+    murdock_mockdb.queued.add(job_queued)
+    murdock_mockdb.running.add(job_running)
+    murdock_mockdb.db.find_jobs.return_value = [job_finished.model()]
+    job = await murdock_mockdb.get_job(job_queued.uid)
     assert job_queued.model() == job
-    job = await murdock.get_job(job_running.uid)
+    job = await murdock_mockdb.get_job(job_running.uid)
     assert job_running.model() == job
-    job = await murdock.get_job(job_finished.uid)
+    job = await murdock_mockdb.get_job(job_finished.uid)
     assert job_finished.model() == job
 
-    find_jobs.return_value = []
-    job_none = await murdock.get_job("abcdef")
+    murdock_mockdb.db.find_jobs.return_value = []
+    job_none = await murdock_mockdb.get_job("abcdef")
     assert job_none is None
 
 

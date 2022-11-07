@@ -1,6 +1,8 @@
 import pytest
 from xprocess import ProcessStarter
 from murdock.murdock import Murdock
+from murdock.database import Database
+from unittest import mock
 
 from prometheus_client import REGISTRY
 
@@ -33,3 +35,10 @@ def murdock(request, clear_prometheus_registry):
     if marker is not None:
         args = marker.args[0]
     return Murdock(**args)
+
+
+@pytest.fixture
+def murdock_mockdb(murdock):
+    mock_db = mock.Mock(spec=Database)
+    murdock.db = mock_db
+    return murdock
