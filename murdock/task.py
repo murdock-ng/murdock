@@ -43,8 +43,10 @@ class Task:
         )
 
     def _docker_cmd_args(self):
+        def _escape_env_value(value):
+            return value.replace("'", "\\'").replace('"', '\\"')
         env_to_docker = " ".join(
-            [f"--env {key}='{value}'" for key, value in self.env.items()]
+            [f"--env {key}='{_escape_env_value(value)}'" for key, value in self.env.items()]
         )
         volumes = GLOBAL_CONFIG.docker_volumes.copy()
         host_job_work_dir = os.path.join(GLOBAL_CONFIG.host_work_dir, self.job_uid)
