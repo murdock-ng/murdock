@@ -1,11 +1,12 @@
 import structlog
+from dataclasses import dataclass, field
 import asyncio
 import json
 import os
 import re
 from datetime import datetime, timezone
 
-from typing import List, Optional, Union, Dict
+from typing import Any, List, Optional, Union, Dict
 
 import websockets
 from fastapi import WebSocket
@@ -49,6 +50,14 @@ ALLOWED_ACTIONS = [
     "reopened",
 ]
 
+JOB_FASTTRACK_BONUS = 100
+
+
+@dataclass(order=True)
+class PrioritizedItem:
+    priority: int
+    item: Any = field(compare=False)
+
 
 class Murdock:
     def __init__(
@@ -75,7 +84,7 @@ class Murdock:
         self.queued: MurdockJobList = MurdockJobList()
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
-        self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
+        self.db = Database()
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
         self.db = database(database_type)
@@ -204,18 +213,14 @@ class Murdock:
         structlog.contextvars.bind_contextvars(worker=current_task)
         LOGGER.debug("Starting worker")
         while True:
-            if self.fasttrack_queue.qsize():
-                job = self.fasttrack_queue.get_nowait()
+            try:
+                prioritized_job = await self.queue.get()
+                job = prioritized_job.item
                 await self._process_job(job)
-                self.fasttrack_queue.task_done()
-            else:
-                try:
-                    job = await self.queue.get()
-                    await self._process_job(job)
-                    self.queue.task_done()
-                except RuntimeError as exc:
-                    LOGGER.warning("Exiting worker", exception=str(exc))
-                    break
+                self.queue.task_done()
+            except RuntimeError as exc:
+                LOGGER.warning(f"Exiting worker {current_task}: {exc}")
+                break
 
     async def job_prepare(self, job: MurdockJob):
         logger = LOGGER.bind(**job.logging_context)
@@ -291,14 +296,19 @@ class Murdock:
                 "target_url": self.base_url,
             },
         )
-        all_busy = all(running is not None for running in self.running.jobs)
         self.queued.add(job)
         job.state = "queued"
-        if all_busy and job.fasttracked:
-            self.fasttrack_queue.put_nowait(job)
+        if job.fasttracked:
+            prio = JOB_FASTTRACK_BONUS
         else:
-            self.queue.put_nowait(job)
-        logger.info("Job added to queued jobs")
+            prio = 0
+
+        # PriorityQueue is a min_queue, but "higher priority equals higher value"
+        # makes more sense. So, invert the priority by multiplying with `-1`
+        self.queue.put_nowait(PrioritizedItem(prio * -1, job))
+
+        LOGGER.info(f"{job} added to queued jobs")
+
         self.job_queue_counter.inc()
         await self.reload_jobs()
 
