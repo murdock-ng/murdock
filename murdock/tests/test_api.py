@@ -321,7 +321,7 @@ def test_update_job_status(
     running.return_value = job_running
     commit_status.return_value = job_found
     status = {"status": "test"}
-    response = client.put("/job/abcdef/status", json.dumps(status), headers=headers)
+    response = client.put("/job/abcdef/status", json=status, headers=headers)
     running.assert_called_with("abcdef")
     assert response.status_code == code
     if response.status_code in [200, 404]:
