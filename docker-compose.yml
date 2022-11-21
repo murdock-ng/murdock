@@ -122,6 +122,7 @@ services:
     container_name: murdock-proxy-${COMPOSE_PROJECT_NAME}
     ports:
       - ${MURDOCK_PORT}:8081
+      - 9982:9982
     volumes:
       - ${PWD}/traefik:/etc/traefik
     environment:
