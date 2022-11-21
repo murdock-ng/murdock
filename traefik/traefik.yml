@@ -1,10 +1,16 @@
 entryPoints:
   web:
     address: :8081
+  metrics:
+    address: :9982
 
 providers:
   file:
     filename: /etc/traefik/http.yml
+
+metrics:
+  prometheus:
+    entryPoint: metrics
 
 # log:
 #   level: DEBUG
