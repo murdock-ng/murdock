@@ -883,6 +883,19 @@ async def test_handle_push_event_unsupported_repo(caplog, murdock):
             True,
             id="job_found_valid_status",
         ),
+        pytest.param(
+            MurdockJob(
+                CommitModel(
+                    sha="test_commit",
+                    tree="test_tree",
+                    message="test message",
+                    author="test_user",
+                )
+            ),
+            {"status": "test", "passed": 5, "failed": 3},
+            True,
+            id="job_found_valid_status_w_numbers",
+        ),
     ],
 )
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
@@ -896,6 +909,14 @@ async def test_handle_job_status_data(notify, search, job_found, data, called, m
         notify.assert_called_with(json.dumps(status_data))
     else:
         notify.assert_not_called()
+    if "passed" in data:
+        assert (
+            murdock.task_status_counter.labels("passed")._value.get() == data["passed"]
+        )
+    if "failed" in data:
+        assert (
+            murdock.task_status_counter.labels("failed")._value.get() == data["failed"]
+        )
 
 
 @pytest.mark.asyncio
