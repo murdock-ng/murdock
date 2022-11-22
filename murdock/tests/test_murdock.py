@@ -866,7 +866,7 @@ async def test_handle_push_event_unsupported_repo(caplog, murdock):
                     author="test_user",
                 )
             ),
-            {"status": ""},
+            {},
             False,
             id="job_found_empty_status",
         ),
@@ -888,11 +888,12 @@ async def test_handle_push_event_unsupported_repo(caplog, murdock):
 @mock.patch("murdock.job_containers.MurdockJobListBase.search_by_uid")
 @mock.patch("murdock.murdock.Murdock.notify_message_to_clients")
 async def test_handle_job_status_data(notify, search, job_found, data, called, murdock):
+    status_data = {"status": data}
     search.return_value = job_found
-    await murdock.handle_job_status_data("1234", data)
+    await murdock.handle_job_status_data("1234", status_data)
     if called is True:
-        data.update({"cmd": "status", "uid": job_found.uid})
-        notify.assert_called_with(json.dumps(data))
+        status_data.update({"cmd": "status", "uid": job_found.uid})
+        notify.assert_called_with(json.dumps(status_data))
     else:
         notify.assert_not_called()
 
