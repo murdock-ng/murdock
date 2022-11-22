@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 import websockets
 from fastapi import WebSocket
@@ -83,11 +83,16 @@ class Murdock:
         self.job_status_counter = prometheus_client.Counter(
             "murdock_job_result", "Murdock CI jobs results", ["status"]
         )
+        self.task_status_counter = prometheus_client.Counter(
+            "murdock_task_result", "Murdock CI task results", ["status"]
+        )
 
     async def init(self):
         # Initialize counter labels
         for status in ["passed", "errored", "stopped", "canceled"]:
             self.job_status_counter.labels(status)
+        for status in ["passed", "failed"]:
+            self.task_status_counter.labels(status)
         await self.db.init()
         for index in range(self.num_workers):
             asyncio.create_task(
@@ -661,12 +666,23 @@ class Murdock:
         ref = f"Commit {param.sha}"
         return await self.start_job(ref, commit, token, param)
 
+    def _update_job_task_counters(self, job: MurdockJob, status: Dict):
+        keys = ["passed", "failed"]
+        for key in keys:
+            new = status.get(key, 0)
+            old = job.status.get(key, 0)
+            diff = new - old
+            if diff > 0:
+                self.task_status_counter.labels(key).inc(diff)
+
     async def handle_job_status_data(
         self, uid: str, data: dict
     ) -> Optional[MurdockJob]:
         job = self.running.search_by_uid(uid)
         if job is not None and "status" in data and data["status"]:
-            job.status = data["status"]
+            status = data["status"]
+            self._update_job_task_counters(job, status)
+            job.status = status
             if (
                 job.config is not None
                 and job.config.failfast is True
