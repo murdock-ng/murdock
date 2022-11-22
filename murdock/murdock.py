@@ -1,12 +1,11 @@
 import structlog
-from dataclasses import dataclass, field
 import asyncio
 import json
 import os
 import re
 from datetime import datetime, timezone
 
-from typing import Any, List, Optional, Union, Dict
+from typing import List, Optional, Union, Dict
 
 import websockets
 from fastapi import WebSocket
@@ -49,14 +48,6 @@ ALLOWED_ACTIONS = [
     "opened",
     "reopened",
 ]
-
-JOB_FASTTRACK_BONUS = 100
-
-
-@dataclass(order=True)
-class PrioritizedItem:
-    priority: int
-    item: Any = field(compare=False)
 
 
 class Murdock:
@@ -214,8 +205,7 @@ class Murdock:
         LOGGER.debug("Starting worker")
         while True:
             try:
-                prioritized_job = await self.queue.get()
-                job = prioritized_job.item
+                job = await self.queue.get()
                 await self._process_job(job)
                 self.queue.task_done()
             except RuntimeError as exc:
@@ -298,14 +288,8 @@ class Murdock:
         )
         self.queued.add(job)
         job.state = "queued"
-        if job.fasttracked:
-            prio = JOB_FASTTRACK_BONUS
-        else:
-            prio = 0
 
-        # PriorityQueue is a min_queue, but "higher priority equals higher value"
-        # makes more sense. So, invert the priority by multiplying with `-1`
-        self.queue.put_nowait(PrioritizedItem(prio * -1, job))
+        self.queue.put_nowait(job)
 
         LOGGER.info(f"{job} added to queued jobs")
 
