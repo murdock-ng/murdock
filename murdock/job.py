@@ -86,6 +86,13 @@ class MurdockJob:
         if fasttracked:
             priority += JOB_FASTTRACK_BONUS
 
+        if config.priorities:
+            if pr and config.priorities.labels:
+                for label in pr.labels:
+                    priority += config.priorities.labels.get(label, 0)
+            elif ref and config.priorities.branches:
+                priority += config.priorities.branches.get(ref, 0)
+
         return priority
 
     @staticmethod
