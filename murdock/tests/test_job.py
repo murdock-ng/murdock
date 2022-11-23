@@ -268,6 +268,13 @@ def test_queued_model():
     assert job.model() == expected_model
 
 
+@pytest.mark.asyncio
+async def test_extend_job_output():
+    job = MurdockJob(commit, pr=prinfo)
+    job.notify = None
+    await job.extend_job_output("testline")
+
+
 def test_running_model():
     job = MurdockJob(commit, pr=prinfo, triggered_by="user")
     expected_model = JobModel(
@@ -374,3 +381,17 @@ def test_finished_model():
 def test_uuid():
     job = MurdockJob(commit)
     assert job.uuid.hex == job.uid
+
+
+def test_start_time_timezone():
+    job = MurdockJob(commit)
+    timestamp = datetime.datetime.utcnow()
+    with pytest.raises(ValueError):
+        job.set_start_time(timestamp)
+
+
+def test_stop_time_timezone():
+    job = MurdockJob(commit)
+    timestamp = datetime.datetime.utcnow()
+    with pytest.raises(ValueError):
+        job.set_stop_time(timestamp)
