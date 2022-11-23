@@ -21,6 +21,10 @@ class MurdockJobListBase(ABC):
     def remove(self, job: MurdockJob) -> None:
         ...  # pragma: nocover
 
+    def len(self) -> int:
+        # Get the length of the generator without having to cast it to a list/tuple
+        return sum(1 for job in self.jobs if job is not None)
+
     def search_by_uid(self, uid: str) -> Optional[MurdockJob]:
         for job in self._jobs:
             if job is not None and job.uid == uid:
