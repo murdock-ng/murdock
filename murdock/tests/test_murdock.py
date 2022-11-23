@@ -208,8 +208,10 @@ async def test_schedule_multiple_jobs(
         await murdock.schedule_job(job)
 
     assert len(murdock.queued.jobs) == num_queued
+    assert murdock.job_queue_counter._value.get() == len(prnums)
     await asyncio.sleep(1)
     assert len(murdock.running.jobs) == 2
+    assert murdock.job_start_counter._value.get() == 2
     await asyncio.sleep(2.5)
     assert murdock.running.jobs.count(None) == free_slots
     await asyncio.sleep(1)

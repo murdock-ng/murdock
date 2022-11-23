@@ -77,8 +77,12 @@ class Murdock:
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
 
+        # Prometheus / openmetrics initialization
         self.job_queue_counter = prometheus_client.Counter(
             "murdock_job_queued", "Murdock CI jobs queued"
+        )
+        self.job_start_counter = prometheus_client.Counter(
+            "murdock_job_start", "Murdock CI jobs started"
         )
         self.job_status_counter = prometheus_client.Counter(
             "murdock_job_result", "Murdock CI jobs results", ["status"]
@@ -86,6 +90,11 @@ class Murdock:
         self.task_status_counter = prometheus_client.Counter(
             "murdock_task_result", "Murdock CI task results", ["status"]
         )
+
+        # No need to store this one, it is self-sufficient with the function
+        prometheus_client.Gauge(
+            "murdock_jobs_running", "Murdock CI jobs currently running"
+        ).set_function(lambda: self.running.len())
 
     async def init(self):
         # Initialize counter labels
@@ -172,6 +181,7 @@ class Murdock:
                 "target_url": job.details_url,
             },
         )
+        self.job_start_counter.inc()
         await self.reload_jobs()
 
     async def job_finalize(self, job: MurdockJob):
