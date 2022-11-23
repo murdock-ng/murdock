@@ -2,8 +2,9 @@ import asyncio
 import json
 import logging
 import os
-
 from datetime import datetime
+
+from fastapi import WebSocket
 
 from murdock.murdock import Murdock
 from murdock.job import MurdockJob
@@ -46,9 +47,12 @@ async def test_init(task, db_init, params, expected):
 @pytest.mark.asyncio
 @mock.patch("murdock.database.Database.close")
 async def test_shutdown(db_close, caplog, murdock):
+    mock_socket = mock.Mock(spec=WebSocket)
+    murdock.add_ws_client(mock_socket)
     await murdock.shutdown()
     assert "Shutting down Murdock" in caplog.text
     db_close.assert_called_once()
+    mock_socket.close.assert_called_once()
 
 
 TEST_SCRIPT = """#!/bin/bash
