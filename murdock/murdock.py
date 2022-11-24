@@ -280,7 +280,6 @@ class Murdock:
             job.state = "errored"
 
         await job.stop()
-        self.job_status_counter.labels(status="stopped").inc()
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
