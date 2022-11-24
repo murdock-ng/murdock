@@ -90,11 +90,27 @@ class Murdock:
         self.task_status_counter = prometheus_client.Counter(
             "murdock_task_result", "Murdock CI task results", ["status"]
         )
+        self.webhook_push_event_counter = prometheus_client.Counter(
+            "murdock_webhook_push_events",
+            "Murdock CI push type webhook events",
+            ["repository", "push"],
+        )
+        self.webhook_pull_event_counter = prometheus_client.Counter(
+            "murdock_webhook_pull_events",
+            "Murdock CI pull type webhook events",
+            ["repository", "action"],
+        )
 
-        # No need to store this one, it is self-sufficient with the function
+        # No need to store these, they are self-sufficient with the functions
         prometheus_client.Gauge(
             "murdock_jobs_running", "Murdock CI jobs currently running"
         ).set_function(lambda: self.running.len())
+        prometheus_client.Gauge(
+            "murdock_num_workers", "Murdock CI number of workers"
+        ).set_function(lambda: self.num_workers)
+        prometheus_client.Gauge(
+            "murdock_websockets_active", "Murdock CI status websockets active"
+        ).set_function(lambda: len(self.clients))
 
     async def init(self):
         # Initialize counter labels
@@ -406,6 +422,13 @@ class Murdock:
         if "action" not in event:
             return "Unsupported event"
         action = event["action"]
+        # catchall name
+        metric_repo_name = "undefined"
+        if "repository" in event and "full_name" in event["repository"]:
+            metric_repo_name = event["repository"]["full_name"]
+        self.webhook_pull_event_counter.labels(
+            repository=metric_repo_name, action=action
+        ).inc()
         if action not in ALLOWED_ACTIONS:
             return f"Unsupported action '{action}'"
         if (
@@ -497,6 +520,16 @@ class Murdock:
         )
 
     async def handle_push_event(self, event: dict):
+        # catchall name
+        metric_repo_name = "undefined"
+        if "repository" in event and "full_name" in event["repository"]:
+            metric_repo_name = event["repository"]["full_name"]
+        push = "commit"
+        if "ref" in event and event["ref"].startswith("refs/tags/"):
+            push = "tag"
+        self.webhook_push_event_counter.labels(
+            repository=metric_repo_name, push=push
+        ).inc()
         if (
             self.repository is not None
             and event["repository"]["full_name"] != self.repository
