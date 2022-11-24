@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 from fastapi import WebSocket
+from prometheus_client import REGISTRY
 
 from murdock.murdock import Murdock
 from murdock.job import MurdockJob
@@ -123,6 +124,15 @@ async def test_schedule_single_job(
     )
     job.scripts_dir = scripts_dir
     job.work_dir = work_dir
+    info_dict = {
+        "worker": "MurdockWorker_0",
+        "uuid": job.uid,
+        "commit": "test_commit",
+        "title": job.title,
+        "creation_time": int(job.creation_time.timestamp() * 1000),
+        "fasttracked": False,
+        "state": "running",
+    }
     await murdock_mockdb.init()
     await murdock_mockdb.schedule_job(job)
     assert job in murdock_mockdb.queued.jobs
@@ -130,6 +140,7 @@ async def test_schedule_single_job(
     await asyncio.sleep(1)
     assert job not in murdock_mockdb.queued.jobs
     assert job in murdock_mockdb.running.jobs
+    assert REGISTRY.get_sample_value("murdock_build_info", info_dict) == 1
     job.status = {"status": "working"}
     if job_state == "stopped":
         await murdock_mockdb.stop_running_job(job)
@@ -149,6 +160,7 @@ async def test_schedule_single_job(
     assert job.state == job_state
     assert status.call_count == 3
     assert murdock_mockdb.job_status_counter.labels(status=job_state)._value.get() == 1
+    assert REGISTRY.get_sample_value("murdock_build_info", info_dict) is None
 
 
 @pytest.mark.asyncio

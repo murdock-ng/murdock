@@ -100,6 +100,9 @@ class Murdock:
             "Murdock CI pull type webhook events",
             ["repository", "action"],
         )
+        self.worker_build_info = prometheus_client.Info(
+            "murdock_build", "Murdock CI build info", ["worker"]
+        )
 
         # No need to store these, they are self-sufficient with the functions
         prometheus_client.Gauge(
@@ -138,11 +141,30 @@ class Murdock:
                 LOGGER.debug(f"Stopping {job}")
                 await job.stop()
 
+    def _set_worker_metric(self, job: MurdockJob, state: str):
+        current_task = asyncio.current_task()
+        task_name = current_task.get_name() if current_task is not None else "Murdock"
+        self.worker_build_info.labels(worker=task_name).info(
+            {
+                "uuid": job.uid,
+                "commit": job.commit.sha,
+                "title": job.title,
+                "creation_time": int(job.creation_time.timestamp() * 1000),
+                "fasttracked": job.fasttracked,
+                "state": state,
+            }
+        )
+
+    def _remove_worker_metric(self):
+        current_task = asyncio.current_task().get_name()
+        self.worker_build_info.remove(current_task)
+
     async def _process_job(self, job: MurdockJob):
         if job.canceled is True:
             LOGGER.debug(f"Ignoring canceled {job}")
         else:
             LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")  # type: ignore[union-attr]
+            self._set_worker_metric(job, "prepare")
             try:
                 await self.job_prepare(job)
             except Exception as exc:
@@ -150,6 +172,7 @@ class Murdock:
                 LOGGER.warning(message)
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
+            self._set_worker_metric(job, "running")
             try:
                 await job.exec(self.notify_message_to_clients)
             except Exception as exc:
@@ -164,6 +187,7 @@ class Murdock:
                 LOGGER.warning(message)
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
+            self._remove_worker_metric()
             LOGGER.info(f"{job} completed")
 
     async def job_processing_task(self):
