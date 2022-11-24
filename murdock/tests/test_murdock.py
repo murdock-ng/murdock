@@ -150,6 +150,7 @@ async def test_schedule_single_job(
     assert job.status == {"status": "finished"}
     assert job.state == job_state
     assert status.call_count == 3
+    assert murdock.job_status_counter.labels(status=job_state)._value.get() == 1
 
 
 @pytest.mark.asyncio
