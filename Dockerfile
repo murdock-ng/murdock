@@ -28,4 +28,4 @@ USER murdock
 WORKDIR /var/lib/murdock
 EXPOSE 8000
 
-ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "murdock"]
+ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "murdock", "--log-level", "${UVICORN_LOG_LEVEL}"]
