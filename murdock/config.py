@@ -139,8 +139,8 @@ class TaskSettings(BaseSettings):
 
 
 class PrioritySettings(BaseSettings):
-    labels: Optional[dict[str, int]] = Field(default={})
-    branches: Optional[dict[str, int]] = Field(default={})
+    labels: dict[str, int] = Field(default={})
+    branches: dict[str, int] = Field(default={})
 
 
 class MurdockSettings(BaseSettings):
