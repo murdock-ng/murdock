@@ -634,13 +634,17 @@ class Murdock:
         await self.notify_message_to_clients(json.dumps({"cmd": "reload"}))
 
     def get_queued_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
-        return sorted(
-            [
-                job.model()
-                for job in self.queued.search_with_query(query)
-                if query.states is None or "queued" in query.states
-            ],
-            key=lambda job: job.fasttracked,  # type: ignore[return-value,arg-type]
+        return list(
+            map(
+                lambda job: job.model(),
+                sorted(
+                    [
+                        job
+                        for job in self.queued.search_with_query(query)
+                        if query.states is None or "queued" in query.states
+                    ]
+                ),
+            )
         )
 
     def get_running_jobs(
