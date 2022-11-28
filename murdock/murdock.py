@@ -541,14 +541,16 @@ class Murdock:
             return
 
         if action == "labeled":
-            if event["label"]["name"] != CI_CONFIG.ready_label:
-                return
-            # Skip already queued jobs
-            if event["label"][
-                "name"
-            ] == CI_CONFIG.ready_label and self.queued.search_by_pr_number(
-                pull_request.number
-            ):
+            # return if the ready label was set for an already queued job,
+            # or if the label wouldn't change the job's priority (and thus
+            # queue position).
+            # otherwise, fall through to re-scheduling the job.
+            label_name = event["label"]["name"]
+            if label_name == CI_CONFIG.ready_label:
+                # Skip already queued jobs for ready label
+                if self.queued.search_by_pr_number(pull_request.number):
+                    return
+            elif label_name not in config.priorities.labels.keys():
                 return
 
         await self.schedule_job(job)
