@@ -552,6 +552,9 @@ class Murdock:
                     return
             elif label_name not in config.priorities.labels.keys():
                 return
+            elif not self.queued.search_by_pr_number(pull_request.number):
+                # skip re-queing if there's no queued job
+                return
 
         await self.schedule_job(job)
 
