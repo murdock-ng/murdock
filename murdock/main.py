@@ -230,7 +230,12 @@ async def job_get_last_branch_badge_handler(branch: str):
     )
     env.globals.update(zip=zip)
     template = env.get_template("badge.svg.j2")
-    return Response(template.render(state=jobs[0].state), media_type="image/svg+xml")
+    headers = {"ETag": jobs[0].uid, "Cache-Control": "no-cache"}
+    return Response(
+        template.render(state=jobs[0].state),
+        headers=headers,
+        media_type="image/svg+xml",
+    )
 
 
 @app.post(
