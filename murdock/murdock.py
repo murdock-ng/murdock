@@ -532,8 +532,16 @@ class Murdock:
             await set_commit_status(job.commit.sha, status)
             return
 
-        if action in ["unlabeled", "edited"]:
+        if action in ["edited"]:
             return
+
+        if action in ["unlabeled"]:
+            label_name = event["label"]["name"]
+            if label_name not in config.priorities.labels.keys():
+                return
+            elif not self.queued.search_by_pr_number(pull_request.number):
+                # skip re-queing if there's no queued job
+                return
 
         if action == "opened" and CI_CONFIG.ready_label in pull_request.labels:
             # A PR opened with "Ready label" already set will be scheduled via
