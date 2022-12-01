@@ -8,7 +8,7 @@ from prometheus_client import REGISTRY
 
 
 @pytest.fixture
-def mongo(xprocess):
+def mongodb(xprocess):
     class Starter(ProcessStarter):
         pattern = "index build: done building index*"
         args = ["docker", "run", "--rm", "-p", "27017:27017", "mongo:4.2.16"]

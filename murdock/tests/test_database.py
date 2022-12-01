@@ -24,7 +24,7 @@ prinfo = PullRequestInfo(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
+@pytest.mark.usefixtures("mongodb")
 async def test_database_mongodb(caplog):
     db = database("mongodb")
     await db.init()
