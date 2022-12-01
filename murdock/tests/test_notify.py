@@ -40,7 +40,6 @@ def clear_prometheus_registry():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo")
 @pytest.mark.parametrize(
     "job,previous_state,new_state,matrix,mail",
     [

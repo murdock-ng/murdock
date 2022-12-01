@@ -911,6 +911,9 @@ async def test_handle_push_event_unsupported_repo(caplog, murdock):
 async def test_handle_job_status_data(notify, search, job_found, data, called, murdock):
     status_data = {"status": data}
     search.return_value = job_found
+    if job_found is not None:
+        # handle_job_status_data updates the object, reset the status to the default here
+        job_found.status = {"status": ""}
     await murdock.handle_job_status_data("1234", status_data)
     if called is True:
         status_data.update({"cmd": "status", "uid": job_found.uid})

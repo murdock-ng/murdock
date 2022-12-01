@@ -29,6 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install tox==3.28.0 tox-envfile
         docker pull mongo:4.2.16
+        docker pull postgres:13
     - name: Test with tox
       run: tox -e test
     - name: Check style
