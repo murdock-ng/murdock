@@ -32,7 +32,7 @@ from murdock.github import (
     set_commit_status,
     fetch_murdock_config,
 )
-from murdock.database import database_from_env
+from murdock.database import database
 from murdock.notify import Notifier
 
 
@@ -59,6 +59,7 @@ class Murdock:
         cancel_on_update: bool = GLOBAL_CONFIG.cancel_on_update,
         store_stopped_jobs: bool = GLOBAL_CONFIG.store_stopped_jobs,
         enable_notifications: bool = GLOBAL_CONFIG.enable_notifications,
+        database_type: str = DB_CONFIG.type,
     ):
         self.base_url: str = base_url
         self.repository: Optional[str] = repository
@@ -73,9 +74,9 @@ class Murdock:
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
         self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
-        self.db = database_from_env()
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
+        self.db = database(database_type)
 
         # Prometheus / openmetrics initialization
         self.job_queue_counter = prometheus_client.Counter(
