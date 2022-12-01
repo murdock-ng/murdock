@@ -14,9 +14,10 @@ from murdock.database import Database
 
 class MongoDatabase(Database):
     def __init__(self):
-        LOGGER.info("Initializing database connection")
+        LOGGER.info("Initializing MongoDB database connection")
+        port = DB_CONFIG.port if DB_CONFIG.port else 27017
         conn = aiomotor.AsyncIOMotorClient(
-            f"mongodb://{DB_CONFIG.host}:{DB_CONFIG.port}",
+            f"mongodb://{DB_CONFIG.host}:{port}",
             maxPoolSize=5,
             io_loop=asyncio.get_event_loop(),
         )

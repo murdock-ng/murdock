@@ -8,7 +8,7 @@ from pydantic import BaseSettings, Field, validator
 class DatabaseSettings(BaseSettings):
     type: str = Field(env="MURDOCK_DB_TYPE", default="mongodb")
     host: str = Field(env="MURDOCK_DB_HOST", default="localhost")
-    port: int = Field(env="MURDOCK_DB_PORT", default=27017)
+    port: int = Field(env="MURDOCK_DB_PORT", default=0)
     name: str = Field(env="MURDOCK_DB_NAME", default="murdock")
 
 
