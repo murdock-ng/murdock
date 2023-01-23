@@ -149,8 +149,8 @@ class Murdock:
                 "uuid": job.uid,
                 "commit": job.commit.sha,
                 "title": job.title,
-                "creation_time": int(job.creation_time.timestamp() * 1000),
-                "fasttracked": job.fasttracked,
+                "creation_time": str(int(job.creation_time.timestamp() * 1000)),
+                "fasttracked": str(job.fasttracked),
                 "state": state,
             }
         )

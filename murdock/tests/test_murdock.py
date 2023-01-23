@@ -129,8 +129,8 @@ async def test_schedule_single_job(
         "uuid": job.uid,
         "commit": "test_commit",
         "title": job.title,
-        "creation_time": int(job.creation_time.timestamp() * 1000),
-        "fasttracked": False,
+        "creation_time": str(int(job.creation_time.timestamp() * 1000)),
+        "fasttracked": str(False),
         "state": "running",
     }
     await murdock_mockdb.init()
