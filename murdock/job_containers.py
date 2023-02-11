@@ -6,7 +6,6 @@ from murdock.models import JobQueryModel
 
 
 class MurdockJobListBase(ABC):
-
     _jobs: List[Optional[MurdockJob]]
 
     @abstractproperty
