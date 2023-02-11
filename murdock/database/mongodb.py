@@ -20,6 +20,7 @@ class MongoDatabase(Database):
             maxPoolSize=5,
             io_loop=asyncio.get_event_loop(),
         )
+        conn.get_io_loop = asyncio.get_event_loop
         self.db = conn[DB_CONFIG.name]
 
     async def init(self):
