@@ -707,6 +707,7 @@ async def test_handle_push_event(
 async def test_handle_push_event_ref_not_handled(
     queued, fetch_commit, fetch_config, ref, ref_name, settings, caplog, murdock
 ):
+    caplog.set_level(logging.DEBUG, logger="murdock")
     commit = "abcdef"
     fetch_config.return_value = settings
     fetch_commit.return_value = CommitModel(
@@ -717,7 +718,7 @@ async def test_handle_push_event_ref_not_handled(
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
     queued.assert_not_called()
-    assert f"Ref '{ref_name}' not accepted for push events" not in caplog.text
+    assert f"Ref '{ref_name}' not accepted for push events" in caplog.text
     assert f"Handle push event on ref '{ref_name}'" not in caplog.text
     assert "Scheduling new job" not in caplog.text
 
