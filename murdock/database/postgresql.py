@@ -105,6 +105,9 @@ class PostgresDatabase(Database):
 
     def __init__(self):
         self.db_pool = None
+        self._port = DB_CONFIG.port if DB_CONFIG.port else 5432
+        url = f"postgresql://{DB_CONFIG.user}@{DB_CONFIG.host}:{self._port}"
+        self._logger = LOGGER.bind(url=url, db=DB_CONFIG.name)
 
     @staticmethod
     async def _load_extensions(conn):
@@ -211,22 +214,19 @@ class PostgresDatabase(Database):
         conn.add_termination_listener(self._termination_listener)
 
     def _termination_listener(self, conn):
-        LOGGER.warning(f"Lost connection to PostgreSQL database {conn}")
+        self._logger.warning("Lost connection to PostgreSQL database", conn=conn)
 
     async def init(self):
-        port = DB_CONFIG.port if DB_CONFIG.port else 5432
-        LOGGER.info(
-            f"Connecting to postgres on {DB_CONFIG.host}:{port} with {DB_CONFIG.user} on {DB_CONFIG.name}"
-        )
+        self._logger.info("Connecting to postgres")
         conn_args = {
             "host": DB_CONFIG.host,
-            "port": port,
+            "port": self._port,
             "user": DB_CONFIG.user,
             "database": DB_CONFIG.name,
             "password": DB_CONFIG.password,
         }
 
-        LOGGER.info("Initializing PostgreSQL database connection")
+        self._logger.info("Initializing PostgreSQL database connection")
         # Register extensions before using them in the pool init
         temp_conn = await asyncpg.connect(**conn_args)
         await self._load_extensions(temp_conn)
@@ -246,7 +246,9 @@ class PostgresDatabase(Database):
         try:
             await self.db_pool.close()
         except AttributeError:
-            LOGGER.error("Attempting to close database pool before initializing it")
+            self._logger.error(
+                "Attempting to close database pool before initializing it"
+            )
 
     async def insert_job(self, job: MurdockJob):
         return await self.insert_job_model(job.model())
@@ -322,7 +324,7 @@ class PostgresDatabase(Database):
                 uid,
             )
         if not entry:
-            LOGGER.warning(f"Cannot find job matching uid '{uid}'")
+            self._logger.warning(f"Cannot find job matching uid '{uid}'")
             return None
         commit = self._commit_from_entry(entry)
         prinfo = self._prinfo_from_entry(entry)

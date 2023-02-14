@@ -79,7 +79,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             False,
             1,
-            {"details": "error"},
+            '{"details": "error"}',
             id="not_sticky_comment_error",
         ),
         pytest.param(
@@ -119,7 +119,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             True,
             False,
             MAX_PAGES_COUNT,
-            {"details": "error"},
+            '{"details": "error"}',
             id="sticky_comment_creation_error",
         ),
         pytest.param(
@@ -159,7 +159,7 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
             False,
             True,
             1,
-            {"details": "error"},
+            '{"details": "error"}',
             id="sticky_comment_update_error",
         ),
     ],
@@ -240,7 +240,8 @@ async def test_comment_on_pr(
         patch.assert_not_called()
 
     if error is not None:
-        assert f"<Response [401 Unauthorized]>: {error}" in caplog.text
+        assert "'response': '<Response [401 Unauthorized]>'" in caplog.text
+        assert f"'content': '{error}'" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -423,7 +424,8 @@ async def test_set_commit_status(post, caplog, code, text, status):
         content=json.dumps(status),
     )
     if code == 403:
-        assert f"<Response [403 Forbidden]>: {json.loads(text)}" in caplog.text
+        assert "'response': '<Response [403 Forbidden]>'" in caplog.text
+        assert f"'content': '{text}'" in caplog.text
 
 
 @pytest.mark.asyncio

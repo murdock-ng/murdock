@@ -40,7 +40,7 @@ async def check_permissions(
         )
 
     if response.status_code != 200:
-        LOGGER.warning(f"Cannot fetch push permissions ({response})")
+        LOGGER.warning("Cannot fetch push permissions", response=str(response))
 
     if response.status_code == 200 and response.json()["permissions"][level]:
         return token
@@ -49,8 +49,11 @@ async def check_permissions(
 
 
 async def comment_on_pr(job: MurdockJob):
+    logger = LOGGER.bind(job=job.uid)
+    if job.pr:
+        logger = logger.bind(pr=job.pr.number)
     if GLOBAL_CONFIG.enable_pr_comment is False:
-        LOGGER.debug("Skipping pr comment")
+        logger.debug("Skipping pr comment, disabled by config")
         return
 
     if (
@@ -107,9 +110,14 @@ async def comment_on_pr(job: MurdockJob):
                 issues_comments_url, headers=request_headers, content=request_data
             )
         if response.status_code != 201:
-            LOGGER.warning(f"{response}: {response.json()}")
+            logger.error(
+                "Unable to post comment on PR",
+                response=str(response),
+                status_code=response.status_code,
+                content=str(response.text),
+            )
         else:
-            LOGGER.info(f"Comment posted on PR #{job.pr.number}")
+            logger.info("Comment posted on PR")
     else:
         async with httpx.AsyncClient() as client:
             response = await client.patch(
@@ -120,13 +128,15 @@ async def comment_on_pr(job: MurdockJob):
                 headers=request_headers,
                 content=request_data,
             )
+        logger = logger.bind(response=str(response), content=str(response.text))
         if response.status_code != 200:
-            LOGGER.warning(f"{response}: {response.json()}")
+            logger.error("Failed to put comment on PR")
         else:
-            LOGGER.info(f"Comment posted on PR #{job.pr.number}")
+            logger.info("Comment posted on PR")
 
 
 async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
+    logger = LOGGER.bind(commit=commit)
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/commits/{commit}",
@@ -136,7 +146,11 @@ async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
             },
         )
         if response.status_code != 200:
-            LOGGER.debug(f"Failed to fetch commit: {response} {response.json()}")
+            logger.error(
+                "Failed to fetch commit",
+                response=str(response),
+                content=str(response.text),
+            )
             return None
 
         commit_data = response.json()
@@ -155,6 +169,7 @@ async def fetch_commit_info(commit: str) -> Optional[CommitModel]:
 
 
 async def fetch_branch_info(branch: str) -> Optional[CommitModel]:
+    logger = LOGGER.bind(branch=branch)
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/branches/{branch}",
@@ -164,7 +179,11 @@ async def fetch_branch_info(branch: str) -> Optional[CommitModel]:
             },
         )
         if response.status_code != 200:
-            LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
+            logger.error(
+                "Failed to fetch branch",
+                response=str(response),
+                content=str(response.text),
+            )
             return None
 
         branch_data = response.json()
@@ -172,6 +191,7 @@ async def fetch_branch_info(branch: str) -> Optional[CommitModel]:
 
 
 async def fetch_tag_info(tag: str) -> Optional[CommitModel]:
+    logger = LOGGER.bind(tag=tag)
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/git/refs/tags/{tag}",
@@ -181,7 +201,11 @@ async def fetch_tag_info(tag: str) -> Optional[CommitModel]:
             },
         )
         if response.status_code != 200:
-            LOGGER.debug(f"Failed to fetch branch: {response} {response.json()}")
+            logger.error(
+                "Failed to fetch tag",
+                response=str(response),
+                content=str(response.text),
+            )
             return None
 
         tag_data = response.json()
@@ -198,7 +222,7 @@ async def fetch_user_login(token: str) -> Optional[str]:
             },
         )
         if response.status_code != 200:
-            LOGGER.debug(f"Failed to fetch user info: {response} {response.json()}")
+            LOGGER.debug(f"Failed to fetch user info: {response} {response.text}")
             return None
 
         user_data = response.json()
@@ -206,11 +230,12 @@ async def fetch_user_login(token: str) -> Optional[str]:
 
 
 async def set_commit_status(commit: str, status: dict):
+    logger = LOGGER.bind(commit=str)
     if GLOBAL_CONFIG.enable_commit_status is False:
-        LOGGER.debug("Skipping commit status update")
+        LOGGER.debug("Skipping commit status update, disabled by config")
         return None
 
-    LOGGER.debug(f"Setting commit {commit[0:7]} status to '{status['description']}'")
+    LOGGER.debug("Setting commit status description", description=status["description"])
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}/statuses/{commit}",
@@ -221,10 +246,16 @@ async def set_commit_status(commit: str, status: dict):
             content=json.dumps(status),
         )
         if response.status_code != 201:
-            LOGGER.warning(f"{response}: {response.json()}")
+            logger.error(
+                "Unable to set commit status",
+                response=str(response),
+                status_code=response.status_code,
+                content=str(response.text),
+            )
 
 
 async def fetch_murdock_config(commit: str) -> MurdockSettings:
+    logger = LOGGER.bind(commit=str)
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.github.com/repos/{GITHUB_CONFIG.repo}"
@@ -235,7 +266,11 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
             },
         )
         if response.status_code != 200:
-            LOGGER.debug("No config file found, using default config")
+            logger.warning(
+                "No config file found, using default config",
+                response=str(response),
+                status_code=response.status_code,
+            )
             return MurdockSettings()
 
         try:
@@ -243,7 +278,7 @@ async def fetch_murdock_config(commit: str) -> MurdockSettings:
                 base64.b64decode(response.json()["content"]).decode(),
             )
         except yaml.YAMLError as exc:
-            LOGGER.warning(f"Cannot parse config file: {exc}")
+            logger.error("Cannot parse config file", exception=str(exc))
             return MurdockSettings()
 
         if not content:

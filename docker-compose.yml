@@ -55,6 +55,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
       - /usr/bin/docker:/usr/bin/docker
+      - /run/systemd/journal/socket:/run/systemd/journal/socket
       - ./murdock:/var/lib/murdock/murdock
       - ${MURDOCK_WORK_DIR}:/var/lib/murdock-data
       - ${MURDOCK_SCRIPTS_DIR}:/var/lib/murdock-scripts
