@@ -5,6 +5,7 @@ LABEL maintainer="alexandre.abadie@inria.fr"
 # Install tools required by the build.sh script
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        libsystemd-dev \
         python3-pip \
         docker.io \
         && \
@@ -28,4 +29,4 @@ USER murdock
 WORKDIR /var/lib/murdock
 EXPOSE 8000
 
-ENTRYPOINT ["uvicorn", "murdock.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "murdock"]
+ENTRYPOINT ["./murdock.py"]
