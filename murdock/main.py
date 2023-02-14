@@ -57,6 +57,7 @@ LOGGER.debug(
     f"\nMurdock default:\n{json.dumps(MurdockSettings().dict(), indent=4)}\n"
 )
 
+
 murdock = Murdock(repository=GITHUB_CONFIG.repo)
 app = FastAPI(
     debug=GLOBAL_CONFIG.log_level == "DEBUG",
@@ -79,11 +80,11 @@ app.mount(
     StaticFiles(directory=GLOBAL_CONFIG.work_dir, html=True, check_dir=False),
     name="results",
 )
+murdock.instrumentator.instrument(app).expose(app)
 
 
 @app.on_event("startup")
 async def startup():
-    murdock.instrumentator.instrument(app).expose(app)
     await murdock.init()
 
 
