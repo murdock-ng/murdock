@@ -321,7 +321,8 @@ async def test_restart_job(fetch_config, schedule, job_found, caplog, murdock_mo
         fetch_config.assert_called_once()
         schedule.assert_called_once()
         schedule.call_args[0][0].commit == job_found.commit
-        assert f"Restarting {job_found}" in caplog.text
+        assert "Restarting job" in caplog.text
+        assert f"'job_description': '{job_found}'" in caplog.text
 
 
 pr_event = {
@@ -417,11 +418,13 @@ async def test_handle_pr_event_action(
     if allowed:
         fetch_config.assert_called_with(commit)
         fetch_commit.assert_called_with(commit)
-        assert f"Handle pull request event '{action}'" in caplog.text
+        assert "Handle pull request event" in caplog.text
+        assert f"'action': '{action}'" in caplog.text
     else:
         fetch_config.assert_not_called()
         fetch_commit.assert_not_called()
-        assert f"Handle pull request event '{action}'" not in caplog.text
+        assert "Handle pull request event" not in caplog.text
+        assert f"'action': '{action}'" not in caplog.text
 
     if queued_called:
         queued.assert_called_once()
@@ -429,10 +432,11 @@ async def test_handle_pr_event_action(
         queued.assert_not_called()
 
     if action == "closed":
-        assert "PR #123 closed, disabling matching jobs" in caplog.text
+        assert "PR closed, disabling matching jobs" in caplog.text
+        assert "'pr': '123'" in caplog.text
         disable.assert_called_once()
     else:
-        assert "PR #123 closed, disabling matching jobs" not in caplog.text
+        assert "PR closed, disabling matching jobs" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -452,7 +456,7 @@ async def test_handle_pr_event_missing_commit_info(
     fetch_config.assert_not_called()
     fetch_commit.assert_called_once()
     assert "Handle pull request event" in caplog.text
-    assert "Cannot fetch commit information, aborting" in caplog.text
+    assert "'error': 'Cannot fetch commit information'" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -530,7 +534,7 @@ async def test_handle_pr_event_missing_ready_label(
     fetch_config.assert_called_once()
     fetch_commit.assert_called_once()
     assert "Handle pull request event" in caplog.text
-    assert f"'{CI_CONFIG.ready_label}' label not set" in caplog.text
+    assert "Required ready label not set" in caplog.text
     assert "Scheduling new job" not in caplog.text
 
 
@@ -665,7 +669,8 @@ async def test_handle_push_event(
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
     queued.assert_called_once()
-    assert f"Handle push event on ref '{ref_name}'" in caplog.text
+    assert "Handle push event on ref" in caplog.text
+    assert f"'ref': '{ref_name}'" in caplog.text
     assert "Scheduling new job" in caplog.text
     assert "Cannot fetch commit information, aborting" not in caplog.text
 
@@ -717,7 +722,8 @@ async def test_handle_push_event_ref_not_handled(
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
     queued.assert_not_called()
-    assert f"Ref '{ref_name}' not accepted for push events" in caplog.text
+    assert "Ref not accepted for push events" in caplog.text
+    assert f"'ref': '{ref_name}'" in caplog.text
     assert f"Handle push event on ref '{ref_name}'" not in caplog.text
     assert "Scheduling new job" not in caplog.text
 
@@ -794,7 +800,8 @@ async def test_handle_push_event_skip_commit(
     fetch_config.assert_called_with(commit)
     fetch_commit.assert_called_with(commit)
     assert f"Ref '{branch}' not accepted for push events" not in caplog.text
-    assert f"Handle push event on ref '{branch}'" in caplog.text
+    assert "Handle push event on ref" in caplog.text
+    assert f"'ref': '{branch}'" in caplog.text
     assert "Scheduling new job" in caplog.text
     if skipped is False:
         commit_status.assert_not_called()
@@ -837,7 +844,8 @@ async def test_handle_push_event_ref_removed(
     fetch_config.assert_not_called()
     fetch_commit.assert_not_called()
     queued.assert_not_called()
-    assert f"Handle push event on ref '{branch}'" not in caplog.text
+    assert "Handle push event on ref" not in caplog.text
+    assert f"'ref': '{branch}'" not in caplog.text
     assert "Scheduling new job" not in caplog.text
 
 

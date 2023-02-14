@@ -6,3 +6,5 @@ aiosmtplib
 prometheus-fastapi-instrumentator
 asyncpg
 orjson
+structlog
+cysystemd

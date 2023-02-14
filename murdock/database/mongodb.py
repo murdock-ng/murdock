@@ -14,10 +14,12 @@ from murdock.database import Database
 
 class MongoDatabase(Database):
     def __init__(self):
-        LOGGER.info("Initializing MongoDB database connection")
         port = DB_CONFIG.port if DB_CONFIG.port else 27017
+        url = f"mongodb://{DB_CONFIG.host}:{port}"
+        self._logger = LOGGER.bind(url=url, db=DB_CONFIG.name)
+        self._logger.info("Initializing database connection")
         conn = aiomotor.AsyncIOMotorClient(
-            f"mongodb://{DB_CONFIG.host}:{port}",
+            url,
             maxPoolSize=5,
             io_loop=asyncio.get_event_loop(),
         )
@@ -31,16 +33,18 @@ class MongoDatabase(Database):
         )
 
     async def close(self):
-        LOGGER.info("Closing database connection")
+        self._logger.info("Closing database connection")
         self.db.client.close()
 
     async def insert_job(self, job: MurdockJob):
-        LOGGER.debug(f"Inserting {job} to database")
+        # Merge the two contexts
+        logger = self._logger.bind(**job.logging_context)
+        logger.debug("Inserting job to database")
         await self.db.job.insert_one(MurdockJob.to_db_entry(job))
 
     async def find_job(self, uid: str) -> Optional[MurdockJob]:
         if not (entry := await self.db.job.find_one({"uid": uid})):
-            LOGGER.warning(f"Cannot find job matching uid '{uid}'")
+            self._logger.warning("Cannot find job matching uid", job=uid)
             return None
 
         commit = CommitModel(**entry["commit"])

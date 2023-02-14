@@ -61,24 +61,34 @@ class MurdockJob:
         self.output_url = os.path.join(
             GLOBAL_CONFIG.base_url, "results", self.uid, "output"
         )
+        self._logger_context = {
+            "job": str(self.uuid),
+            "job_description": str(self),
+            "commit": self.commit.sha,
+        }
+        if self.pr is not None:
+            self._logger_context["pr"] = str(self.pr.number)
+        self._logger = LOGGER.bind(**self._logger_context)
 
     @staticmethod
     def create_dir(work_dir: str) -> None:
+        logger = LOGGER.bind(dir=str(work_dir))
         try:
-            LOGGER.debug(f"Creating directory '{work_dir}'")
+            logger.info("Creating work directory")
             os.makedirs(work_dir)
         except FileExistsError:
-            LOGGER.debug(f"Directory '{work_dir}' already exists, recreate")
+            logger.info("Directory already exists, recreating")
             shutil.rmtree(work_dir)
             os.makedirs(work_dir)
 
     @staticmethod
     def remove_dir(work_dir):
-        LOGGER.info(f"Removing directory '{work_dir}'")
+        logger = LOGGER.bind(dir=str(work_dir))
+        logger.info("Removing work directory")
         try:
             shutil.rmtree(work_dir)
         except FileNotFoundError:
-            LOGGER.debug(f"Directory '{work_dir}' doesn't exist, cannot remove")
+            logger.warning("Work directory doesn't exist, cannot remove")
 
     @property
     def start_time(self) -> datetime:
@@ -235,8 +245,14 @@ class MurdockJob:
                 json.dumps({"cmd": "output", "uid": self.uid, "line": line})
             )
 
+    @property
+    def logging_context(self):
+        # Copy over the dict
+        return dict(self._logger_context)
+
     async def exec(self, notify: Callable) -> None:
         MurdockJob.create_dir(self.work_dir)
+        self._logger.debug("Starting execution")
 
         self.notify = notify
         for index, task_setting in enumerate(self.config.tasks):
@@ -248,6 +264,7 @@ class MurdockJob:
                 self.extend_job_output,
                 self.scripts_dir,
                 self.work_dir,
+                logger=self._logger,
             )
             if len(self.config.tasks) > 1:
                 self.output += f"-- Running {self.current_task} --\n"
@@ -256,7 +273,11 @@ class MurdockJob:
                 self.output += f"-- {self.current_task} completed ({state}) --\n"
             self.state = state
             if state in ["stopped", "errored"]:
-                LOGGER.info(f"{self.current_task} {state}")
+                self._logger.info(
+                    "Stopping execution",
+                    task=str(self.current_task),
+                    state=state,
+                )
                 break
 
         # Store job output in text file
@@ -265,7 +286,11 @@ class MurdockJob:
             with open(output_text_path, "w") as out:
                 out.write(self.output)
         except Exception as exc:
-            LOGGER.warning(f"Error for {self}: cannot write output.txt: {exc}")
+            self._logger.warning(
+                "Cannot write output",
+                file="output.txt",
+                exception=str(exc),
+            )
 
         output_text_url = os.path.join(
             GLOBAL_CONFIG.base_url, self.http_dir, "output.txt"
@@ -285,9 +310,8 @@ class MurdockJob:
             self.artifacts = artifacts
 
     async def stop(self) -> None:
-        LOGGER.debug(f"{self} immediate stop requested")
+        self._logger.info("immediate stop requested")
         if self.current_task is not None:
             await self.current_task.stop()
         if not GLOBAL_CONFIG.store_stopped_jobs:
-            LOGGER.debug(f"Removing job working directory '{self.work_dir}'")
             MurdockJob.remove_dir(self.work_dir)

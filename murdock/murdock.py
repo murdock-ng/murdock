@@ -1,3 +1,4 @@
+import structlog
 import asyncio
 import json
 import os
@@ -10,6 +11,7 @@ import websockets
 from fastapi import WebSocket
 from prometheus_fastapi_instrumentator import Instrumentator
 import prometheus_client
+import structlog.contextvars
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, DB_CONFIG
 from murdock.log import LOGGER
@@ -117,6 +119,7 @@ class Murdock:
         ).set_function(lambda: len(self.clients))
 
     async def init(self):
+        LOGGER.info("Starting murdock workers", num_workers=self.num_workers)
         # Initialize counter labels
         for status in ["passed", "errored", "stopped", "canceled"]:
             self.job_status_counter.labels(status)
@@ -124,22 +127,22 @@ class Murdock:
             self.task_status_counter.labels(status)
         await self.db.init()
         for index in range(self.num_workers):
-            asyncio.create_task(
-                self.job_processing_task(), name=f"MurdockWorker_{index}"
-            )
+            name = f"MurdockWorker_{index}"
+            LOGGER.debug("Starting individual worker task", worker=name)
+            asyncio.create_task(self.job_processing_task(), name=name)
 
     async def shutdown(self):
         LOGGER.info("Shutting down Murdock")
         await self.db.close()
         for ws in self.clients:
-            LOGGER.debug(f"Closing websocket {ws}")
+            LOGGER.debug("Closing websocket", ws=ws)
             await ws.close()
         for job in self.queued.jobs:
-            LOGGER.debug(f"Canceling {job}")
+            LOGGER.debug("Canceling queued job", job=job)
             job.cancelled = True
         for job in self.running.jobs:
             if job is not None:
-                LOGGER.debug(f"Stopping {job}")
+                LOGGER.debug("Stopping running job", job=job)
                 await job.stop()
 
     def _set_worker_metric(self, job: MurdockJob, state: str):
@@ -161,38 +164,45 @@ class Murdock:
         self.worker_build_info.remove(current_task)
 
     async def _process_job(self, job: MurdockJob):
+        logger = LOGGER.bind(**job.logging_context)
         if job.canceled is True:
-            LOGGER.debug(f"Ignoring canceled {job}")
+            logger.debug("Ignoring canceled job")
         else:
-            LOGGER.info(f"Processing {job} [{asyncio.current_task().get_name()}]")  # type: ignore[union-attr]
+            logger.info("Processing job")  # type: ignore[union-attr]
             self._set_worker_metric(job, "prepare")
             try:
                 await self.job_prepare(job)
             except Exception as exc:
                 message = f"The {job} prepare step failed:\n{exc}"
-                LOGGER.warning(message)
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
+                logger.warning(
+                    "The prepare step failed", exception=str(exc), state=job.state
+                )
             self._set_worker_metric(job, "running")
             try:
                 await job.exec(self.notify_message_to_clients)
             except Exception as exc:
                 message = f"The {job} failed:\n{exc}"
-                LOGGER.warning(message)
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
+                logger.warning("The job failed", exception=str(exc), state=job.state)
             try:
                 await self.job_finalize(job)
             except Exception as exc:
                 message = f"The {job} finalize step failed:\n{exc}"
-                LOGGER.warning(message)
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
+                logger.warning(
+                    "Finalize step failed", exception=str(exc), state=job.state
+                )
             self._remove_worker_metric()
-            LOGGER.info(f"{job} completed")
+            logger.info("job completed", state=job.state)
 
     async def job_processing_task(self):
         current_task = asyncio.current_task().get_name()
+        structlog.contextvars.bind_contextvars(worker=current_task)
+        LOGGER.debug("Starting worker")
         while True:
             if self.fasttrack_queue.qsize():
                 job = self.fasttrack_queue.get_nowait()
@@ -204,14 +214,15 @@ class Murdock:
                     await self._process_job(job)
                     self.queue.task_done()
                 except RuntimeError as exc:
-                    LOGGER.info(f"Exiting worker {current_task}: {exc}")
+                    LOGGER.warning("Exiting worker", exception=str(exc))
                     break
 
     async def job_prepare(self, job: MurdockJob):
+        logger = LOGGER.bind(**job.logging_context)
         self.queued.remove(job)
         self.running.add(job)
         job.state = "running"
-        LOGGER.debug(f"{job} added to the running jobs")
+        logger.debug("Job added to the running jobs")
         job.set_start_time(datetime.now(timezone.utc))
         await set_commit_status(
             job.commit.sha,
@@ -226,11 +237,12 @@ class Murdock:
         await self.reload_jobs()
 
     async def job_finalize(self, job: MurdockJob):
+        logger = LOGGER.bind(**job.logging_context)
         job.set_stop_time(datetime.now(timezone.utc))
         if "status" in job.status and job.status["status"] == "working":
             job.status["status"] = "finished"
         self.running.remove(job)
-        LOGGER.debug(f"{job} removed from running jobs")
+        logger.debug("Job removed from running jobs")
         if job.state == "stopped":
             status = {
                 "state": "pending",
@@ -254,7 +266,7 @@ class Murdock:
                 and job.config is not None
                 and job.config.pr.enable_comments
             ):
-                LOGGER.info(f"Posting comment on PR #{job.pr.number}")
+                logger.info("Posting comment on PR")
                 await comment_on_pr(job)
         await set_commit_status(job.commit.sha, status)
         # Notifications must be called before inserting the job in DB
@@ -269,6 +281,7 @@ class Murdock:
         await self.reload_jobs()
 
     async def add_job_to_queue(self, job: MurdockJob):
+        logger = LOGGER.bind(**job.logging_context)
         await set_commit_status(
             job.commit.sha,
             {
@@ -285,7 +298,7 @@ class Murdock:
             self.fasttrack_queue.put_nowait(job)
         else:
             self.queue.put_nowait(job)
-        LOGGER.info(f"{job} added to queued jobs")
+        logger.info("Job added to queued jobs")
         self.job_queue_counter.inc()
         await self.reload_jobs()
 
@@ -300,7 +313,8 @@ class Murdock:
         return jobs_to_cancel
 
     async def cancel_queued_job(self, job: MurdockJob, reload_jobs=False):
-        LOGGER.debug(f"Canceling {job}")
+        logger = LOGGER.bind(**job.logging_context)
+        logger.debug("Canceling job")
         job.canceled = True
         self.queued.remove(job)
         status = {
@@ -325,16 +339,17 @@ class Murdock:
         return jobs_to_stop
 
     async def stop_running_job(self, job: MurdockJob, fail=False) -> MurdockJob:
-        LOGGER.debug(f"Stopping {job}")
+        logger = LOGGER.bind(**job.logging_context)
         if fail is True:
-            LOGGER.debug(f"Stopping {job} with errored state")
             job.state = "errored"
+        logger.debug("Stopping job", state=job.state)
 
         await job.stop()
         return job
 
     async def disable_jobs_matching(self, job: MurdockJob) -> List[MurdockJob]:
-        LOGGER.debug(f"Disable jobs matching {job}")
+        logger = LOGGER.bind(**job.logging_context)
+        logger.info("Disable all jobs matching job")
         disabled_jobs = []
         disabled_jobs += await self.cancel_queued_jobs_matching(job)
         disabled_jobs += await self.stop_running_jobs_matching(job)
@@ -348,22 +363,25 @@ class Murdock:
         matching_jobs += self.running.search_by_pr_number(pull_request.number)
         modified_jobs = 0
         for matching_job in matching_jobs:
+            logger = LOGGER.bind(**matching_job.logging_context)
             if matching_job.pr is None:
                 continue
             if matching_job.pr.labels != pull_request.labels:
-                LOGGER.debug(f"Updating {matching_job} labels")
+                logger.debug(
+                    "Updating job labels", labels=" ".join(pull_request.labels)
+                )
                 matching_job.pr.labels = pull_request.labels
                 modified_jobs += 1
             if matching_job.pr.title != pull_request.title:
-                LOGGER.debug(f"Updating {matching_job} title")
+                logger.debug("Updating job title", title=pull_request.title)
                 matching_job.pr.title = pull_request.title
                 modified_jobs += 1
             if matching_job.pr.state != pull_request.state:
-                LOGGER.debug(f"Updating {matching_job} state")
+                logger.debug("Updating job state", pr_state=pull_request.state)
                 matching_job.pr.state = pull_request.state
                 modified_jobs += 1
             if matching_job.pr.is_merged != pull_request.is_merged:
-                LOGGER.debug(f"Updating {matching_job} merged state")
+                logger.debug("Updating job merged state", merged=pull_request.is_merged)
                 matching_job.pr.is_merged = pull_request.is_merged
                 modified_jobs += 1
 
@@ -395,7 +413,8 @@ class Murdock:
         if (job := await self.db.find_job(uid)) is None:
             return job
         login = await fetch_user_login(token)
-        LOGGER.info(f"Restarting {job}")
+        logger = LOGGER.bind(**job.logging_context)
+        logger.info("Restarting job")
         config = await fetch_murdock_config(job.commit.sha)
         new_job = MurdockJob(
             job.commit,
@@ -418,7 +437,8 @@ class Murdock:
                 for skip_keyword in job.config.commit.skip_keywords
             )
         ):
-            LOGGER.debug(f"Commit message contains skip keywords, skipping {job}")
+            logger = LOGGER.bind(**job.logging_context)
+            logger.debug("Commit message contains skip keywords, skipping job", job=job)
             await set_commit_status(
                 job.commit.sha,
                 {
@@ -431,7 +451,8 @@ class Murdock:
         return False
 
     async def schedule_job(self, job: MurdockJob) -> Optional[MurdockJob]:
-        LOGGER.info(f"Scheduling new {job}")
+        logger = LOGGER.bind(**job.logging_context)
+        logger.info("Scheduling new job")
         # Check if the job should be skipped (using keywords in commit message)
         if await self.handle_skip_job(job) is True:
             return None
@@ -461,13 +482,13 @@ class Murdock:
             and event["repository"]["full_name"] != self.repository
         ):
             return "Invalid repo"
-        LOGGER.info(f"Handle pull request event '{action}'")
+        LOGGER.info("Handle pull request event", action=action)
         pr_data = event["pull_request"]
         sender = event["sender"]["login"]
         commit = await fetch_commit_info(pr_data["head"]["sha"])
         if commit is None:
             error_msg = "Cannot fetch commit information"
-            LOGGER.error(f"{error_msg}, aborting")
+            LOGGER.error("Aborting pull request event", error=error_msg)
             return error_msg
         config = await fetch_murdock_config(commit.sha)
         pull_request = PullRequestInfo(
@@ -494,17 +515,19 @@ class Murdock:
             triggered_by=sender,
         )
 
+        logger = LOGGER.bind(**job.logging_context)
+
         # Update matching PRs (queued, running and finished)
         await self.update_matching_prs(pull_request)
 
         action = event["action"]
         if action == "closed":
-            LOGGER.info(f"PR #{pull_request.number} closed, disabling matching jobs")
+            logger.info("PR closed, disabling matching jobs")
             await self.disable_jobs_matching(job)
             return
 
         if CI_CONFIG.ready_label not in pull_request.labels:
-            LOGGER.debug(f"'{CI_CONFIG.ready_label}' label not set")
+            logger.debug("Required ready label not set", label=CI_CONFIG.ready_label)
             await self.disable_jobs_matching(job)
             status = {
                 "state": "pending",
@@ -565,7 +588,7 @@ class Murdock:
         ref_type, ref_name = ref.split("/", 2)[-2:]
         if event["after"] == "0000000000000000000000000000000000000000":
             LOGGER.debug(
-                f"Ref was removed upstream, aborting all jobs related to ref '{ref}'"
+                "Ref was removed upstream, aborting all jobs related to ref", ref=ref
             )
             for job in self.running.search_by_ref(ref):
                 await self.cancel_queued_job(job, reload_jobs=True)
@@ -583,10 +606,10 @@ class Murdock:
         ) or (
             ref_type == "tags" and not Murdock.handle_ref(ref_name, config.push.tags)
         ):
-            LOGGER.debug(f"Ref '{ref_name}' not accepted for push events")
+            LOGGER.debug("Ref not accepted for push events", ref=ref_name)
             return
 
-        LOGGER.info(f"Handle push event on ref '{ref_name}'")
+        LOGGER.info("Handle push event on ref", ref=ref_name)
         await self.schedule_job(
             MurdockJob(
                 commit, ref=ref, config=config, trigger="push", triggered_by=sender
@@ -605,7 +628,7 @@ class Murdock:
         try:
             await client.send_text(msg)
         except websockets.exceptions.ConnectionClosedError as exc:
-            LOGGER.warning(f"Could send msg to websocket client: {exc}")
+            LOGGER.warning("Could send msg to websocket client", exception=str(exc))
             await asyncio.sleep(0.1)
 
     async def notify_message_to_clients(self, msg: str):
@@ -645,7 +668,7 @@ class Murdock:
         for job in jobs_to_remove:
             self._remove_job_data(job.uid)
         await self.db.delete_jobs(query)
-        LOGGER.info(f"{len(jobs_to_remove)} jobs removed")
+        LOGGER.info("Finished jobs removed", num_jobs=str(len(jobs_to_remove)))
         await self.reload_jobs()
         return jobs_to_remove
 
@@ -695,7 +718,6 @@ class Murdock:
         # Fetch and setup job configuration
         config = await fetch_murdock_config(commit.sha)
 
-        LOGGER.info(f"Schedule manual job for ref '{ref}'")
         job = MurdockJob(
             commit,
             ref=ref,
@@ -704,6 +726,7 @@ class Murdock:
             triggered_by=login,
             user_env=param.env,
         )
+        LOGGER.bind(**job.logging_context).info("Schedule manual job from ref")
         if param.fasttrack is True:
             job.fasttracked = True
         await self.schedule_job(job)
@@ -712,23 +735,30 @@ class Murdock:
     async def start_branch_job(
         self, token, param: ManualJobBranchParamModel
     ) -> Optional[JobModel]:
-        LOGGER.debug(f"Starting manual job on branch {param.branch}")
         commit = await fetch_branch_info(param.branch)
+        LOGGER.debug(
+            "Starting manual job on branch",
+            branch=param.branch,
+            commit=commit.sha if commit else "",
+        )
         ref = f"refs/heads/{param.branch}"
         return await self.start_job(ref, commit, token, param)
 
     async def start_tag_job(
         self, token, param: ManualJobTagParamModel
     ) -> Optional[JobModel]:
-        LOGGER.debug(f"Starting manual job on tag {param.tag}")
         commit = await fetch_tag_info(param.tag)
+        if commit is not None:
+            LOGGER.debug("Starting manual job on tag", tag=param.tag, commit=commit.sha)
+        else:
+            LOGGER.info("No commit info found for manual job on tag", tag=param.tag)
         ref = f"refs/tags/{param.tag}"
         return await self.start_job(ref, commit, token, param)
 
     async def start_commit_job(
         self, token, param: ManualJobCommitParamModel
     ) -> Optional[JobModel]:
-        LOGGER.debug(f"Starting manual job on commit {param.sha}")
+        LOGGER.debug("Starting manual job on commit", commit=param.sha)
         commit = await fetch_commit_info(param.sha)
         ref = f"Commit {param.sha}"
         return await self.start_job(ref, commit, token, param)
@@ -759,7 +789,8 @@ class Murdock:
                     or "failed_tests" in job.status
                 )
             ):
-                LOGGER.debug(f"Failfast enabled and failures detected, stopping {job}")
+                logger = LOGGER.bind(**job.logging_context)
+                logger.info("Failfast enabled and failures detected, stopping job")
                 job = await self.stop_running_job(job, fail=True)
             data.update({"cmd": "status", "uid": job.uid})
             await self.notify_message_to_clients(json.dumps(data))

@@ -6,6 +6,8 @@ import signal
 from typing import Optional, Callable
 from asyncio.subprocess import Process
 
+import structlog
+
 from murdock.config import GLOBAL_CONFIG, TaskSettings
 from murdock.log import LOGGER
 
@@ -21,6 +23,7 @@ class Task:
         scripts_dir: str,
         work_dir: str,
         run_in_docker: bool = GLOBAL_CONFIG.run_in_docker,
+        logger: Optional[structlog.BoundLogger] = None,
     ):
         self.index = index
         self.config = config
@@ -34,6 +37,11 @@ class Task:
         self.extend_job_output = extend_job_output
         self.proc: Optional[Process] = None
         self.stopped: bool = False
+
+        logger = logger or LOGGER
+        self._logger = logger.bind(
+            task=self.index, name=self.config.name or "", dir=self.work_dir
+        )
 
     def __repr__(self):
         return (
@@ -78,7 +86,7 @@ class Task:
         else:
             command = os.path.join(self.scripts_dir, GLOBAL_CONFIG.script_name)
             args = []
-        LOGGER.debug(f"Launching {self} (command: {command} {' '.join(args)})")
+        self._logger.debug("Launching", command=command, command_args=" ".join(args))
         self.proc = await asyncio.create_subprocess_exec(
             command,
             *args,
@@ -104,14 +112,16 @@ class Task:
         else:
             state = "errored"
 
-        LOGGER.debug(f"{self} {state} (ret: {self.proc.returncode})")
+        self._logger.debug(
+            "Task executed", state=state, return_code=self.proc.returncode
+        )
 
         self.proc = None
 
         return state
 
     async def stop(self) -> None:
-        LOGGER.debug(f"{self} immediate stop requested")
+        self._logger.info("Immediate stop requested")
         if self.proc is not None:
             self.stopped = True
         if self.run_in_docker:
@@ -123,9 +133,9 @@ class Task:
             )
         else:
             if self.proc is not None and self.proc.returncode is None:
-                LOGGER.debug(f"Send signal {signal.SIGINT} to {self}")
+                self._logger.debug("Send signal SIGINT to task")
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGINT)
                 try:
                     await asyncio.wait_for(self.proc.wait(), timeout=5.0)
                 except asyncio.TimeoutError:
-                    LOGGER.debug(f"Couldn't stop {self} with {signal.SIGINT}")
+                    self._logger.warning("Couldn't stop task with SIGINT")

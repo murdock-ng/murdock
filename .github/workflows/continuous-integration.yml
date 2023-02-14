@@ -26,6 +26,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        sudo apt install build-essential libsystemd-dev libpython3-dev
         python -m pip install --upgrade pip
         python -m pip install tox==3.28.0 tox-envfile
         docker pull mongo:4.2.16

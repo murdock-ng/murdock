@@ -186,9 +186,11 @@ def test_create_dir(tmpdir, caplog):
     new_dir = tmpdir.join("new").realpath()
     MurdockJob.create_dir(new_dir)
     assert os.path.exists(new_dir)
-    assert f"Creating directory '{new_dir}'" in caplog.text
+    assert "Creating work directory" in caplog.text
+    assert f"'dir': '{new_dir}'" in caplog.text
     MurdockJob.create_dir(new_dir)
-    assert f"Directory '{new_dir}' already exists, recreate" in caplog.text
+    assert "Directory already exists, recreating" in caplog.text
+    assert f"'dir': '{new_dir}'" in caplog.text
 
 
 def test_remove_dir(tmpdir, caplog):
@@ -197,12 +199,12 @@ def test_remove_dir(tmpdir, caplog):
     MurdockJob.create_dir(dir_to_remove)
     assert os.path.exists(dir_to_remove)
     MurdockJob.remove_dir(dir_to_remove)
-    assert f"Removing directory '{dir_to_remove}'" in caplog.text
-    assert (
-        f"Directory '{dir_to_remove}' doesn't exist, cannot remove"
-    ) not in caplog.text
+    assert "Removing work directory" in caplog.text
+    assert f"'dir': '{dir_to_remove}'" in caplog.text
+    assert "Work directory doesn't exist, cannot remove" not in caplog.text
     MurdockJob.remove_dir(dir_to_remove)
-    assert (f"Directory '{dir_to_remove}' doesn't exist, cannot remove") in caplog.text
+    assert ("Work directory doesn't exist, cannot remove") in caplog.text
+    assert f"'dir': '{dir_to_remove}'" in caplog.text
 
 
 @pytest.mark.parametrize(
