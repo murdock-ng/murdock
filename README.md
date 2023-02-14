@@ -63,7 +63,13 @@ Launch the MongoDB service:
 $ docker-compose up mongo-dev
 ```
 
-Launch the `uvicorn` server with the `--reload` option:
+Launch the Murdock application with:
+
+```
+$ ./murdock.py
+```
+
+Or via `uvicorn` server with the `--reload` option:
 
 ```
 $ uvicorn murdock.main:app --reload --reload-dir murdock
