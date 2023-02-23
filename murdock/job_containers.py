@@ -78,13 +78,7 @@ class MurdockJobListBase(ABC):
         if query.is_branch is not None:
             if query.is_branch is True:
                 is_branch_jobs = {
-                    job
-                    for job in self.jobs
-                    if (
-                        job is not None
-                        and job.ref is not None
-                        and job.ref.startswith("refs/heads/")
-                    )
+                    job for job in self.jobs if job is not None and job.is_branch()
                 }
             else:
                 is_branch_jobs = {
@@ -104,13 +98,7 @@ class MurdockJobListBase(ABC):
         if query.is_tag is not None:
             if query.is_tag is True:
                 is_tag_jobs = {
-                    job
-                    for job in self.jobs
-                    if (
-                        job is not None
-                        and job.ref is not None
-                        and job.ref.startswith("refs/tags/")
-                    )
+                    job for job in self.jobs if job is not None and job.is_tag()
                 }
             else:
                 is_tag_jobs = {
