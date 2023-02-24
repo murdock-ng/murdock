@@ -1,0 +1,12 @@
+services:
+  murdock:
+    extends:
+      file: docker-compose.yml
+      service: murdock
+    ports:
+      - ${MURDOCK_API_PORT}:8000
+  frontend-build:
+    extends:
+      file: docker-compose.yml
+      service: frontend-build
+    profiles: ["setup"]
