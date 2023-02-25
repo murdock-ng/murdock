@@ -75,7 +75,6 @@ class Murdock:
         self.queued: MurdockJobList = MurdockJobList()
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
-        self.db = Database()
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
         self.db = database(database_type)
