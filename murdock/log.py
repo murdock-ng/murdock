@@ -73,6 +73,11 @@ stdlib_config = {
             "level": GLOBAL_CONFIG.log_level,
             "propagate": True,
         },
+        "uvicorn.access": {
+            "handlers": [GLOBAL_CONFIG.log_output],
+            "level": GLOBAL_CONFIG.uvicorn_access_log_output,
+            "propagate": True,
+        },
     },
 }
 logging.config.dictConfig(stdlib_config)
