@@ -84,6 +84,7 @@ class GlobalSettings(BaseSettings):
     num_workers: int = Field(env="MURDOCK_NUM_WORKERS", default=1)
     custom_env: dict[str, str] = Field(env="MURDOCK_CUSTOM_ENV", default=dict())
     log_level: str = Field(env="MURDOCK_LOG_LEVEL", default="DEBUG")
+    uvicorn_access_log_output: str = Field(env="UVICORN_LOG_LEVEl", default="INFO")
     log_output: str = Field(env="MURDOCK_LOG_OUTPUT", default="console")
     max_finished_length_default: int = Field(
         env="MURDOCK_MAX_FINISHED_LENGTH_DEFAULT", default=25
