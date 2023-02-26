@@ -374,13 +374,24 @@ class PostgresDatabase(Database):
     def _to_postgres_field(cls, field: str) -> str:
         return cls.JOB_TO_COLUMN.get(field, field).replace("'", "''")
 
-    async def update_jobs(self, query: JobQueryModel, field: str, value: Any) -> int:
-        postgres_field = self._to_postgres_field(field)
-        condition, args = self._gen_condition_clause(query, nargs=2)
+    def _update_prinfo_job(self, field: str) -> str:
+        jsonb_field = field.split(".", maxsplit=1)[1]
+        return f"UPDATE JOBS SET prinfo = JSONB_SET(COALESCE(prinfo, '{{}}'), '{{{jsonb_field}}}', $1) "  # nosec - postgres_field is protected and the rest is supplied as argument
 
-        sql_query = (  # nosec - postgres_field is protected and the rest is supplied as argument
-            f"UPDATE jobs SET {postgres_field} = $1 " + condition
+    def _sql_query_regular_field(self, field: str) -> str:
+        postgres_field = self._to_postgres_field(field)
+        return (  # nosec - postgres_field is protected and the rest is supplied as argument
+            f"UPDATE jobs SET {postgres_field} = $1 "
         )
+
+    async def update_jobs(self, query: JobQueryModel, field: str, value: Any) -> int:
+        if field.startswith("prinfo."):
+            sql_query = self._update_prinfo_job(field)
+        else:
+            sql_query = self._sql_query_regular_field(field)
+        condition, args = self._gen_condition_clause(query, nargs=2)
+        sql_query = sql_query + condition
+
         async with self.db_pool.acquire() as conn:
             count = await conn.execute(sql_query, value, *args)
         return int(count.split()[1])
