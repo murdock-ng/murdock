@@ -58,6 +58,13 @@ async def test_database_postgres(caplog):
     search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum))
     assert search_jobs[0].commit.sha == "456"
 
+    assert (
+        await db.update_jobs(JobQueryModel(prnum=prnum), "prinfo.title", "new title")
+        == 1
+    )
+    search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum))
+    assert search_jobs[0].prinfo.title == "new title"
+
     await db.delete_jobs(JobQueryModel(prnum=prnum))
     assert len(await db.find_jobs(JobQueryModel(prnum=prnum))) == 0
 
