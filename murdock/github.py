@@ -128,9 +128,9 @@ async def comment_on_pr(job: MurdockJob):
                 headers=request_headers,
                 content=request_data,
             )
-        logger = logger.bind(response=str(response), content=str(response.text))
+        logger = logger.bind(response=str(response))
         if response.status_code != 200:
-            logger.error("Failed to put comment on PR")
+            logger.error("Failed to put comment on PR", content=str(response.text))
         else:
             logger.info("Comment posted on PR")
 
