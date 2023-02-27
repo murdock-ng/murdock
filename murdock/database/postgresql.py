@@ -20,6 +20,8 @@ class PostgresDatabase(Database):
         "commit.author": "commit_author",
         "env": "environment",
         "user_env": "user_environment",
+        "prinfo.state": "prinfo_state",
+        "prinfo.number": "prinfo_number",
     }
 
     @staticmethod
@@ -379,16 +381,16 @@ class PostgresDatabase(Database):
         return f"UPDATE JOBS SET prinfo = JSONB_SET(COALESCE(prinfo, '{{}}'), '{{{jsonb_field}}}', $1) "  # nosec - postgres_field is protected and the rest is supplied as argument
 
     def _sql_query_regular_field(self, field: str) -> str:
-        postgres_field = self._to_postgres_field(field)
         return (  # nosec - postgres_field is protected and the rest is supplied as argument
-            f"UPDATE jobs SET {postgres_field} = $1 "
+            f"UPDATE jobs SET {field} = $1 "
         )
 
     async def update_jobs(self, query: JobQueryModel, field: str, value: Any) -> int:
-        if field.startswith("prinfo."):
-            sql_query = self._update_prinfo_job(field)
+        postgres_field = self._to_postgres_field(field)
+        if postgres_field.startswith("prinfo."):
+            sql_query = self._update_prinfo_job(postgres_field)
         else:
-            sql_query = self._sql_query_regular_field(field)
+            sql_query = self._sql_query_regular_field(postgres_field)
         condition, args = self._gen_condition_clause(query, nargs=2)
         sql_query = sql_query + condition
 

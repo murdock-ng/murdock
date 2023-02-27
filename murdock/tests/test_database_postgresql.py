@@ -65,6 +65,27 @@ async def test_database_postgres(caplog):
     search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum))
     assert search_jobs[0].prinfo.title == "new title"
 
+    assert (
+        await db.update_jobs(JobQueryModel(prnum=prnum), "prinfo.state", "closed") == 1
+    )
+    search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum, state="closed"))
+    assert search_jobs[0].prinfo.state == "closed"
+
+    assert (
+        await db.update_jobs(
+            JobQueryModel(prnum=prnum), "prinfo.labels", ["test", "bug"]
+        )
+        == 1
+    )
+    search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum))
+    assert "bug" in search_jobs[0].prinfo.labels
+
+    assert (
+        await db.update_jobs(JobQueryModel(prnum=prnum), "prinfo.is_merged", True) == 1
+    )
+    search_jobs = await db.find_jobs(JobQueryModel(prnum=prnum))
+    assert search_jobs[0].prinfo.is_merged
+
     await db.delete_jobs(JobQueryModel(prnum=prnum))
     assert len(await db.find_jobs(JobQueryModel(prnum=prnum))) == 0
 
