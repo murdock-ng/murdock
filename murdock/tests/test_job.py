@@ -184,11 +184,13 @@ def test_basic(capsys, pr, ref, config, out, env):
 def test_create_dir(tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
     new_dir = tmpdir.join("new").realpath()
-    MurdockJob.create_dir(new_dir)
+    job = MurdockJob(commit)
+    job.work_dir = new_dir
+    job.create_dir()
     assert os.path.exists(new_dir)
     assert "Creating work directory" in caplog.text
     assert f"'dir': '{new_dir}'" in caplog.text
-    MurdockJob.create_dir(new_dir)
+    job.create_dir()
     assert "Directory already exists, recreating" in caplog.text
     assert f"'dir': '{new_dir}'" in caplog.text
 
@@ -196,7 +198,10 @@ def test_create_dir(tmpdir, caplog):
 def test_remove_dir(tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
     dir_to_remove = tmpdir.join("remove").realpath()
-    MurdockJob.create_dir(dir_to_remove)
+
+    job = MurdockJob(commit)
+    job.work_dir = dir_to_remove
+    job.create_dir()
     assert os.path.exists(dir_to_remove)
     MurdockJob.remove_dir(dir_to_remove)
     assert "Removing work directory" in caplog.text
