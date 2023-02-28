@@ -70,16 +70,15 @@ class MurdockJob:
             self._logger_context["pr"] = str(self.pr.number)
         self._logger = LOGGER.bind(**self._logger_context)
 
-    @staticmethod
-    def create_dir(work_dir: str) -> None:
-        logger = LOGGER.bind(dir=str(work_dir))
+    def create_dir(self) -> None:
+        logger = self._logger.bind(dir=str(self.work_dir))
         try:
             logger.info("Creating work directory")
-            os.makedirs(work_dir)
+            os.makedirs(self.work_dir)
         except FileExistsError:
             logger.info("Directory already exists, recreating")
-            shutil.rmtree(work_dir)
-            os.makedirs(work_dir)
+            shutil.rmtree(self.work_dir)
+            os.makedirs(self.work_dir)
 
     @staticmethod
     def remove_dir(work_dir):
@@ -251,7 +250,7 @@ class MurdockJob:
         return dict(self._logger_context)
 
     async def exec(self, notify: Callable) -> None:
-        MurdockJob.create_dir(self.work_dir)
+        self.create_dir()
         self._logger.debug("Starting execution")
 
         self.notify = notify
