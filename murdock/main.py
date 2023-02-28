@@ -80,7 +80,7 @@ app.mount(
     StaticFiles(directory=GLOBAL_CONFIG.work_dir, html=True, check_dir=False),
     name="results",
 )
-murdock.instrumentator.instrument(app).expose(app)
+murdock.instrumentator.instrument(app).expose(app, include_in_schema=False)
 
 
 @app.on_event("startup")
