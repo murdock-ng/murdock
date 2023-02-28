@@ -53,11 +53,7 @@ class MurdockJob:
         )  # type: ignore[union-attr]
         self.artifacts: Optional[List[str]] = None
         self.token: str = secrets.token_urlsafe(32)
-        self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
-        self.work_dir: str = os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
-        self.http_dir: str = os.path.join("results", self.uid)
         self.output_text_url: Optional[str] = None
-        self.details_url = os.path.join(GLOBAL_CONFIG.base_url, "details", self.uid)
         self.output_url = os.path.join(
             GLOBAL_CONFIG.base_url, "results", self.uid, "output"
         )
@@ -121,6 +117,22 @@ class MurdockJob:
     @property
     def uuid(self) -> uuid.UUID:
         return self._uuid
+
+    @property
+    def scripts_dir(self) -> str:
+        return GLOBAL_CONFIG.scripts_dir
+
+    @property
+    def work_dir(self) -> str:
+        return os.path.join(GLOBAL_CONFIG.work_dir, self.uid)
+
+    @property
+    def http_dir(self) -> str:
+        return os.path.join("results", self.uid)
+
+    @property
+    def details_url(self) -> str:
+        return os.path.join(GLOBAL_CONFIG.base_url, "details", self.uid)
 
     def model(self) -> JobModel:
         return JobModel(
