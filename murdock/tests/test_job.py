@@ -2,6 +2,7 @@ import os
 import logging
 import datetime
 import uuid
+from unittest import mock
 
 import pytest
 
@@ -181,11 +182,12 @@ def test_basic(capsys, pr, ref, config, out, env):
     assert job.env == env
 
 
-def test_create_dir(tmpdir, caplog):
+@mock.patch("murdock.job.MurdockJob.work_dir", new_callable=mock.PropertyMock)
+def test_create_dir(work_dir, tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
     new_dir = tmpdir.join("new").realpath()
     job = MurdockJob(commit)
-    job.work_dir = new_dir
+    work_dir.return_value = new_dir
     job.create_dir()
     assert os.path.exists(new_dir)
     assert "Creating work directory" in caplog.text
@@ -195,12 +197,13 @@ def test_create_dir(tmpdir, caplog):
     assert f"'dir': '{new_dir}'" in caplog.text
 
 
-def test_remove_dir(tmpdir, caplog):
+@mock.patch("murdock.job.MurdockJob.work_dir", new_callable=mock.PropertyMock)
+def test_remove_dir(work_dir, tmpdir, caplog):
     caplog.set_level(logging.DEBUG, logger="murdock")
     dir_to_remove = tmpdir.join("remove").realpath()
 
     job = MurdockJob(commit)
-    job.work_dir = dir_to_remove
+    work_dir.return_value = dir_to_remove
     job.create_dir()
     assert os.path.exists(dir_to_remove)
     MurdockJob.remove_dir(dir_to_remove)

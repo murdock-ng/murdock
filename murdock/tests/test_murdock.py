@@ -88,12 +88,23 @@ exit {run_ret}
         ),
     ],
 )
+@mock.patch("murdock.job.MurdockJob.work_dir", new_callable=mock.PropertyMock)
+@mock.patch("murdock.job.MurdockJob.scripts_dir", new_callable=mock.PropertyMock)
 @mock.patch("murdock.murdock.comment_on_pr")
 @mock.patch("murdock.murdock.set_commit_status")
 @mock.patch("murdock.notify.Notifier.notify")
 @pytest.mark.murdock_args({"enable_notifications": True})
 async def test_schedule_single_job(
-    notify, status, comment, ret, job_state, comment_on_pr, tmpdir, murdock_mockdb
+    notify,
+    status,
+    comment,
+    job_scripts_dir,
+    work_dir,
+    ret,
+    job_state,
+    comment_on_pr,
+    tmpdir,
+    murdock_mockdb,
 ):
     commit = CommitModel(
         sha="test_commit", tree="test_tree", message="test message", author="test_user"
@@ -119,12 +130,12 @@ async def test_schedule_single_job(
     with open(script_file, "w") as f:
         f.write(TEST_SCRIPT.format(**ret))
     os.chmod(script_file, 0o744)
-    work_dir = tmpdir.join("result").realpath()
+    work_dir.return_value = tmpdir.join("result").realpath()
+    job_scripts_dir.return_value = scripts_dir
+
     job = MurdockJob(
         commit, pr=prinfo, config=MurdockSettings(pr={"enable_comments": comment_on_pr})
     )
-    job.scripts_dir = scripts_dir
-    job.work_dir = work_dir
     info_dict = {
         "worker": "MurdockWorker_0",
         "uuid": job.uid,
@@ -172,9 +183,19 @@ async def test_schedule_single_job(
         pytest.param([1, 2, 1, 2], 2, 2, id="queued_some_matching"),
     ],
 )
+@mock.patch("murdock.job.MurdockJob.work_dir", new_callable=mock.PropertyMock)
+@mock.patch("murdock.job.MurdockJob.scripts_dir", new_callable=mock.PropertyMock)
 @mock.patch("murdock.murdock.set_commit_status")
 async def test_schedule_multiple_jobs(
-    __, prnums, num_queued, free_slots, tmpdir, caplog, murdock
+    __,
+    job_scripts_dir,
+    work_dir,
+    prnums,
+    num_queued,
+    free_slots,
+    tmpdir,
+    caplog,
+    murdock,
 ):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
@@ -208,9 +229,8 @@ async def test_schedule_multiple_jobs(
             is_merged=False,
         )
         job = MurdockJob(commit, pr=prinfo)
-        job.scripts_dir = scripts_dir
-        work_dir = tmpdir.join("result", job.uid).realpath()
-        job.work_dir = work_dir
+        job_scripts_dir.return_value = scripts_dir
+        work_dir.return_value = tmpdir.join("result", job.uid).realpath()
         jobs.append(job)
 
     await murdock.init()
@@ -229,11 +249,16 @@ async def test_schedule_multiple_jobs(
 
 
 @pytest.mark.asyncio
+@mock.patch("murdock.job.MurdockJob.work_dir", new_callable=mock.PropertyMock)
+@mock.patch("murdock.job.MurdockJob.scripts_dir", new_callable=mock.PropertyMock)
 @mock.patch("murdock.murdock.set_commit_status", mock.AsyncMock())
 @pytest.mark.murdock_args({"num_workers": 1})
-async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog, murdock):
+async def test_schedule_multiple_jobs_with_fasttracked(
+    job_scripts_dir, work_dir, tmpdir, caplog, murdock
+):
     caplog.set_level(logging.DEBUG, logger="murdock")
     scripts_dir = tmpdir.join("scripts").realpath()
+    job_scripts_dir.return_value = scripts_dir
     os.makedirs(scripts_dir)
     script_file = os.path.join(scripts_dir, "run.sh")
     with open(script_file, "w") as f:
@@ -267,9 +292,7 @@ async def test_schedule_multiple_jobs_with_fasttracked(tmpdir, caplog, murdock):
         job = MurdockJob(commit, pr=prinfo)
         if prnum == num_jobs:
             job.fasttracked = True
-        job.scripts_dir = scripts_dir
-        work_dir = tmpdir.join("result", job.uid).realpath()
-        job.work_dir = work_dir
+        work_dir.return_value = tmpdir.join("result", job.uid).realpath()
         jobs.append(job)
 
     await murdock.init()

@@ -167,7 +167,9 @@ async def test_comment_on_pr_disabled(post, patch, get, job):
 @mock.patch("httpx.AsyncClient.get")
 @mock.patch("httpx.AsyncClient.patch")
 @mock.patch("httpx.AsyncClient.post")
+@mock.patch("murdock.job.MurdockJob.details_url", new_callable=mock.PropertyMock)
 async def test_comment_on_pr(
+    details_url,
     post,
     patch,
     get,
@@ -195,7 +197,7 @@ async def test_comment_on_pr(
             }
         ),
     )
-    job.details_url = f"http://localhost:8000/details/{job.uid}"
+    details_url.return_value = f"http://localhost:8000/details/{job.uid}"
     job.state = "passed"
     comment = (
         "### Murdock results\n"
