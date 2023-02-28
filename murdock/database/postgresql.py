@@ -216,7 +216,7 @@ class PostgresDatabase(Database):
         conn.add_termination_listener(self._termination_listener)
 
     def _termination_listener(self, conn):
-        self._logger.warning("Lost connection to PostgreSQL database", conn=conn)
+        self._logger.info("Closed connection to PostgreSQL database", conn=conn)
 
     async def init(self):
         self._logger.info("Connecting to postgres")
