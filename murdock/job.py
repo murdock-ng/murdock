@@ -16,6 +16,7 @@ from murdock.task import Task
 
 
 UNSAFE_ENVS = ["CI_JOB_TOKEN", "CI_SCRIPTS_DIR"]
+JOB_FASTTRACK_BONUS = 100
 
 
 class MurdockJob:
@@ -51,6 +52,9 @@ class MurdockJob:
             if self.pr is not None
             else False
         )  # type: ignore[union-attr]
+        self.priority: int = MurdockJob.calculate_priority(
+            config, pr, ref, self.fasttracked
+        )
         self.artifacts: Optional[List[str]] = None
         self.token: str = secrets.token_urlsafe(32)
         self.scripts_dir: str = GLOBAL_CONFIG.scripts_dir
@@ -69,6 +73,27 @@ class MurdockJob:
         if self.pr is not None:
             self._logger_context["pr"] = str(self.pr.number)
         self._logger = LOGGER.bind(**self._logger_context)
+
+    @staticmethod
+    def calculate_priority(
+        config: MurdockSettings = MurdockSettings(),
+        pr: Optional[PullRequestInfo] = None,
+        ref: Optional[str] = None,
+        fasttracked: bool = False,
+    ):
+        priority = 0
+
+        if fasttracked:
+            priority += JOB_FASTTRACK_BONUS
+
+        if config.priorities:
+            if pr and config.priorities.labels:
+                for label in pr.labels:
+                    priority += config.priorities.labels.get(label, 0)
+            elif ref and config.priorities.branches:
+                priority += config.priorities.branches.get(ref, 0)
+
+        return priority
 
     @staticmethod
     def create_dir(work_dir: str) -> None:
@@ -137,6 +162,7 @@ class MurdockJob:
             prinfo=self.pr,
             ref=self.ref,
             fasttracked=self.fasttracked,
+            priority=self.priority,
             trigger=self.trigger,
             triggered_by=self.triggered_by,
             env=self.safe_env,
@@ -227,6 +253,15 @@ class MurdockJob:
 
     def __hash__(self) -> int:
         return hash(self.uid)
+
+    def __lt__(self, other):
+        """
+        Helper to enable putting MurdockJob into PriorityQueue.
+
+        The logic is turned around here, as PriorityQueue returns *smallest*
+        value, but we prefer "higher priority value == higher priority"
+        """
+        return self.priority >= other.priority
 
     def set_start_time(self, start_time: datetime):
         if start_time.tzinfo is None:

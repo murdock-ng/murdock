@@ -104,6 +104,10 @@ class JobModel(BaseModel):
         None,
         title="Whether the job can be fasttracked",
     )
+    priority: int = Field(
+        0,
+        title="Job priority",
+    )
     status: Optional[dict] = Field(
         None,
         title="Status of the job",
@@ -155,6 +159,7 @@ class ManualJobParamModel(BaseModel):
     fasttrack: Optional[bool] = Field(
         default=False, title="Run the job in fasttrack mode."
     )
+    priority: Optional[int] = Field(default=0, title="Change job priority.")
 
 
 class ManualJobBranchParamModel(ManualJobParamModel):

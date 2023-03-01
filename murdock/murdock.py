@@ -75,7 +75,6 @@ class Murdock:
         self.queued: MurdockJobList = MurdockJobList()
         self.running: MurdockJobPool = MurdockJobPool(num_workers)
         self.queue: asyncio.Queue = asyncio.Queue()
-        self.fasttrack_queue: asyncio.Queue = asyncio.Queue()
         self.notifier = Notifier()
         self.instrumentator = Instrumentator()
         self.db = database(database_type)
@@ -204,18 +203,13 @@ class Murdock:
         structlog.contextvars.bind_contextvars(worker=current_task)
         LOGGER.debug("Starting worker")
         while True:
-            if self.fasttrack_queue.qsize():
-                job = self.fasttrack_queue.get_nowait()
+            try:
+                job = await self.queue.get()
                 await self._process_job(job)
-                self.fasttrack_queue.task_done()
-            else:
-                try:
-                    job = await self.queue.get()
-                    await self._process_job(job)
-                    self.queue.task_done()
-                except RuntimeError as exc:
-                    LOGGER.warning("Exiting worker", exception=str(exc))
-                    break
+                self.queue.task_done()
+            except RuntimeError as exc:
+                LOGGER.warning(f"Exiting worker {current_task}: {exc}")
+                break
 
     async def job_prepare(self, job: MurdockJob):
         logger = LOGGER.bind(**job.logging_context)
@@ -291,14 +285,13 @@ class Murdock:
                 "target_url": self.base_url,
             },
         )
-        all_busy = all(running is not None for running in self.running.jobs)
         self.queued.add(job)
         job.state = "queued"
-        if all_busy and job.fasttracked:
-            self.fasttrack_queue.put_nowait(job)
-        else:
-            self.queue.put_nowait(job)
-        logger.info("Job added to queued jobs")
+
+        self.queue.put_nowait(job)
+
+        LOGGER.info(f"{job} added to queued jobs")
+
         self.job_queue_counter.inc()
         await self.reload_jobs()
 
@@ -538,8 +531,16 @@ class Murdock:
             await set_commit_status(job.commit.sha, status)
             return
 
-        if action in ["unlabeled", "edited"]:
+        if action in ["edited"]:
             return
+
+        if action in ["unlabeled"]:
+            label_name = event["label"]["name"]
+            if label_name not in config.priorities.labels.keys():
+                return
+            elif not self.queued.search_by_pr_number(pull_request.number):
+                # skip re-queing if there's no queued job
+                return
 
         if action == "opened" and CI_CONFIG.ready_label in pull_request.labels:
             # A PR opened with "Ready label" already set will be scheduled via
@@ -547,14 +548,19 @@ class Murdock:
             return
 
         if action == "labeled":
-            if event["label"]["name"] != CI_CONFIG.ready_label:
+            # return if the ready label was set for an already queued job,
+            # or if the label wouldn't change the job's priority (and thus
+            # queue position).
+            # otherwise, fall through to re-scheduling the job.
+            label_name = event["label"]["name"]
+            if label_name == CI_CONFIG.ready_label:
+                # Skip already queued jobs for ready label
+                if self.queued.search_by_pr_number(pull_request.number):
+                    return
+            elif label_name not in config.priorities.labels.keys():
                 return
-            # Skip already queued jobs
-            if event["label"][
-                "name"
-            ] == CI_CONFIG.ready_label and self.queued.search_by_pr_number(
-                pull_request.number
-            ):
+            elif not self.queued.search_by_pr_number(pull_request.number):
+                # skip re-queing if there's no queued job
                 return
 
         await self.schedule_job(job)
@@ -640,13 +646,17 @@ class Murdock:
         await self.notify_message_to_clients(json.dumps({"cmd": "reload"}))
 
     def get_queued_jobs(self, query: JobQueryModel = JobQueryModel()) -> List[JobModel]:
-        return sorted(
-            [
-                job.model()
-                for job in self.queued.search_with_query(query)
-                if query.states is None or "queued" in query.states
-            ],
-            key=lambda job: job.fasttracked,  # type: ignore[return-value,arg-type]
+        return list(
+            map(
+                lambda job: job.model(),
+                sorted(
+                    [
+                        job
+                        for job in self.queued.search_with_query(query)
+                        if query.states is None or "queued" in query.states
+                    ]
+                ),
+            )
         )
 
     def get_running_jobs(

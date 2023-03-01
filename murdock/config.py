@@ -139,6 +139,11 @@ class TaskSettings(BaseSettings):
     env: dict = Field(default=dict())
 
 
+class PrioritySettings(BaseSettings):
+    labels: dict[str, int] = Field(default={})
+    branches: dict[str, int] = Field(default={})
+
+
 class MurdockSettings(BaseSettings):
     push: PushSettings = Field(default=PushSettings())
     pr: PRSettings = Field(default=PRSettings())
@@ -147,6 +152,7 @@ class MurdockSettings(BaseSettings):
     failfast: bool = Field(default=False)
     artifacts: List[str] = Field(default=[])
     tasks: List[TaskSettings] = Field(default=[TaskSettings()])
+    priorities: PrioritySettings = Field(default=PrioritySettings())
 
 
 _ENV_FILE = os.getenv("ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env"))
