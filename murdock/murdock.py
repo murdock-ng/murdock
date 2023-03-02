@@ -181,7 +181,7 @@ class Murdock:
                 )
             self._set_worker_metric(job, "running")
             try:
-                await job.exec(self.notify_message_to_clients)
+                await job.exec(self.notify_line_update)
             except Exception as exc:
                 message = f"The {job} failed:\n{exc}"
                 await job.extend_job_output(f"\n\n{message}")
@@ -630,6 +630,10 @@ class Murdock:
         except websockets.exceptions.ConnectionClosedError as exc:
             LOGGER.warning("Could send msg to websocket client", exception=str(exc))
             await asyncio.sleep(0.1)
+
+    async def notify_line_update(self, job: MurdockJob, line: str):
+        msg = json.dumps({"cmd": "output", "uid": job.uid, "line": line})
+        await self.notify_message_to_clients(msg)
 
     async def notify_message_to_clients(self, msg: str):
         await asyncio.gather(

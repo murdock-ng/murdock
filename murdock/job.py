@@ -1,4 +1,3 @@
-import json
 import os
 import secrets
 import shutil
@@ -37,7 +36,7 @@ class MurdockJob:
         self.state: Optional[str] = None
         self.current_task: Optional[Task] = None
         self.output: str = ""
-        self.notify = lambda _: None  # Notify do nothing by default
+        self.notify = lambda _, __: None  # Notify do nothing by default
         self.commit: CommitModel = commit
         self.ref: Optional[str] = ref
         self.pr: Optional[PullRequestInfo] = pr
@@ -252,9 +251,7 @@ class MurdockJob:
     async def extend_job_output(self, line):
         self.output += line
         if self.notify is not None:
-            await self.notify(
-                json.dumps({"cmd": "output", "uid": self.uid, "line": line})
-            )
+            await self.notify(self, line)
 
     @property
     def logging_context(self):
