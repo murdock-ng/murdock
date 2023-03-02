@@ -177,7 +177,7 @@ class Murdock:
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
                 logger.warning(
-                    "The prepare step failed", exception=str(exc), state=job.state
+                    "The prepare step failed", exception=repr(exc), state=job.state
                 )
             self._set_worker_metric(job, "running")
             try:
@@ -186,7 +186,7 @@ class Murdock:
                 message = f"The {job} failed:\n{exc}"
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
-                logger.warning("The job failed", exception=str(exc), state=job.state)
+                logger.warning("The job failed", exception=repr(exc), state=job.state)
             try:
                 await self.job_finalize(job)
             except Exception as exc:
@@ -194,7 +194,7 @@ class Murdock:
                 await job.extend_job_output(f"\n\n{message}")
                 job.state = "errored"
                 logger.warning(
-                    "Finalize step failed", exception=str(exc), state=job.state
+                    "Finalize step failed", exception=repr(exc), state=job.state
                 )
             self._remove_worker_metric()
             logger.info("job completed", state=job.state)
@@ -214,7 +214,7 @@ class Murdock:
                     await self._process_job(job)
                     self.queue.task_done()
                 except RuntimeError as exc:
-                    LOGGER.warning("Exiting worker", exception=str(exc))
+                    LOGGER.warning("Exiting worker", exception=repr(exc))
                     break
 
     async def job_prepare(self, job: MurdockJob):
@@ -628,7 +628,7 @@ class Murdock:
         try:
             await client.send_text(msg)
         except websockets.exceptions.ConnectionClosedError as exc:
-            LOGGER.warning("Could send msg to websocket client", exception=str(exc))
+            LOGGER.warning("Could send msg to websocket client", exception=repr(exc))
             await asyncio.sleep(0.1)
 
     async def notify_line_update(self, job: MurdockJob, line: str):
