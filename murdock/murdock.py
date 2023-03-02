@@ -170,6 +170,7 @@ class Murdock:
         else:
             logger.info("Processing job")  # type: ignore[union-attr]
             self._set_worker_metric(job, "prepare")
+            self.job_start_counter.inc()
             try:
                 await self.job_prepare(job)
             except Exception as exc:
@@ -196,6 +197,7 @@ class Murdock:
                 logger.warning(
                     "Finalize step failed", exception=str(exc), state=job.state
                 )
+            self.job_status_counter.labels(status=job.state).inc()
             self._remove_worker_metric()
             logger.info("job completed", state=job.state)
 
@@ -233,7 +235,6 @@ class Murdock:
                 "target_url": job.details_url,
             },
         )
-        self.job_start_counter.inc()
         await self.reload_jobs()
 
     async def job_finalize(self, job: MurdockJob):
@@ -277,7 +278,6 @@ class Murdock:
             job.state == "stopped" and self.store_stopped_jobs
         ):
             await self.db.insert_job(job)
-        self.job_status_counter.labels(status=job.state).inc()
         await self.reload_jobs()
 
     async def add_job_to_queue(self, job: MurdockJob):
