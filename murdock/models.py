@@ -1,6 +1,6 @@
 from datetime import datetime
 from datetime import time as dtime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -48,7 +48,7 @@ class PullRequestInfo(BaseModel):
         None,
         title="True if the pull request is mergeable, False otherwise",
     )
-    labels: list[str] = Field(
+    labels: List[str] = Field(
         None,
         title="List of Github labels assigned to the pull request",
     )
@@ -130,11 +130,11 @@ class JobModel(BaseModel):
     triggered_by: Optional[str] = Field(
         None, title="Github user who triggered the job creation"
     )
-    env: Optional[dict[str, str]] = Field(
+    env: Optional[Dict[str, str]] = Field(
         None,
         title="Dictionnary of environment variables attached to the job",
     )
-    user_env: Optional[dict[str, str]] = Field(
+    user_env: Optional[Dict[str, str]] = Field(
         None,
         title="User defined dictionnary of environment variables atteched to the job",
     )
