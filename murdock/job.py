@@ -26,7 +26,7 @@ class MurdockJob:
         config: MurdockSettings = MurdockSettings(),
         trigger: Optional[str] = "api",
         triggered_by: Optional[str] = None,
-        user_env: Optional[dict[str, str]] = None,
+        user_env: Optional[Dict[str, str]] = None,
     ):
         self.trigger: Optional[str] = trigger
         self.triggered_by: Optional[str] = triggered_by
