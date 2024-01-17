@@ -108,7 +108,7 @@ class JobModel(BaseModel):
         None,
         title="Status of the job",
     )
-    state: str = Field(
+    state: Optional[str] = Field(
         None,
         title="State of a job (queued, running, passed, errored or stopped)",
     )
