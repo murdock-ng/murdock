@@ -5,7 +5,7 @@ import time
 import uuid
 
 from datetime import datetime, timedelta, timezone
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from murdock.config import GLOBAL_CONFIG, CI_CONFIG, GITHUB_CONFIG
 from murdock.log import LOGGER
@@ -26,7 +26,7 @@ class MurdockJob:
         config: MurdockSettings = MurdockSettings(),
         trigger: Optional[str] = "api",
         triggered_by: Optional[str] = None,
-        user_env: Optional[dict] = None,
+        user_env: Optional[Dict[str, str]] = None,
     ):
         self.trigger: Optional[str] = trigger
         self.triggered_by: Optional[str] = triggered_by
