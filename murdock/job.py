@@ -84,6 +84,12 @@ class MurdockJob:
         except FileNotFoundError:
             logger.warning("Work directory doesn't exist, cannot remove")
 
+    def is_branch(self) -> bool:
+        return self.ref is not None and self.ref.startswith("refs/heads/")
+
+    def is_tag(self) -> bool:
+        return self.ref is not None and self.ref.startswith("refs/tags/")
+
     @property
     def start_time(self) -> datetime:
         return self._start_time
@@ -203,9 +209,9 @@ class MurdockJob:
                     "CI_BUILD_REPO": GITHUB_CONFIG.repo,
                 }
             )
-            if self.ref.startswith("refs/tags"):
+            if self.is_tag():
                 _env.update({"CI_BUILD_TAG": self.ref[10:]})
-            if self.ref.startswith("refs/heads"):
+            if self.is_branch():
                 _env.update({"CI_BUILD_BRANCH": self.ref[11:]})
 
         return _env
@@ -222,9 +228,9 @@ class MurdockJob:
         commit = self.commit.sha[0:7]
         if self.pr is not None:
             return f"PR #{self.pr.number} ({commit})"
-        elif self.ref is not None and self.ref.startswith("refs/tags"):
+        elif self.is_tag():
             return f"tag {self.ref[10:]} ({commit})"
-        elif self.ref is not None and self.ref.startswith("refs/heads"):
+        elif self.is_branch():
             return f"branch {self.ref[11:]} ({commit})"
         else:
             return f"commit {commit}"

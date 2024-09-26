@@ -99,13 +99,13 @@ class MatrixNotifier(NotifierBase):
                 f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>) '
                 f"by {author}"
             )
-        elif job.ref is not None and job.ref.startswith("refs/tags"):
+        elif job.is_tag():
             tag_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[10:]}"
             job_html_description = (
                 f'tag <a href="{tag_url}" target="_blank" rel="noreferrer noopener">{job.ref[10:]}</a> '
                 f'(<a href="{commit_url}" target="_blank" rel="noreferrer noopener">{commit_short}</a>)'
             )
-        elif job.ref is not None and job.ref.startswith("refs/heads"):
+        elif job.is_branch():
             branch_url = f"https://github.com/{GITHUB_CONFIG.repo}/tree/{job.ref[11:]}"
             job_html_description = (
                 f'branch <a href="{branch_url}" target="_blank" rel="noreferrer noopener">{job.ref[11:]}</a> '
@@ -167,10 +167,10 @@ class Notifier:
                         f"{job} result still successful, skipping notification"
                     )
                     return
-            if job.ref.startswith("refs/heads"):
+            if job.is_branch():
                 for notifier_type in self.config.branch:
                     await self._notifiers[notifier_type].notify(job)
-            elif job.ref.startswith("refs/tags"):
+            elif job.is_tag():
                 for notifier_type in self.config.tag:
                     await self._notifiers[notifier_type].notify(job)
         else:
