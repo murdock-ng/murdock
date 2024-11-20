@@ -7,4 +7,5 @@ prometheus-fastapi-instrumentator
 asyncpg
 orjson
 structlog
+pydantic == 1.10
 cysystemd

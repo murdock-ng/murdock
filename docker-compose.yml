@@ -52,7 +52,7 @@ services:
         - MURDOCK_NOTIFIER_MAIL_PASSWORD
         - MURDOCK_NOTIFIER_MATRIX_ROOM
         - MURDOCK_NOTIFIER_MATRIX_TOKEN
-        - UVICORN_LOG_LEVEL=info
+        - UVICORN_LOG_LEVEL=INFO
         - CI_READY_LABEL
         - CI_FASTTRACK_LABELS
     volumes:
@@ -130,7 +130,7 @@ services:
       - ${MURDOCK_PORT}:8081
       - 9982:9982
     volumes:
-      - ${PWD}/traefik:/etc/traefik
+      - ./traefik:/etc/traefik
     environment:
       - MURDOCK_PROJECT=${COMPOSE_PROJECT_NAME}
     logging:
