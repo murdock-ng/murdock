@@ -44,4 +44,4 @@ jobs:
     - uses: actions/checkout@master
     - run: |
         make init-env
-        docker-compose build
+        docker compose build
