@@ -39,7 +39,7 @@ jobs:
       if: matrix.python-version == 3.10
       run: bash <(curl -s https://codecov.io/bash)
   docker-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@master
     - run: |
