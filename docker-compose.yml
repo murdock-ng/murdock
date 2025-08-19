@@ -79,6 +79,7 @@ services:
       - REACT_APP_NIGHTLIES_ROOT_URL=${MURDOCK_BASE_URL}
       - REACT_APP_MURDOCK_GITHUP_APP_CLIENT_ID=${MURDOCK_GITHUB_APP_CLIENT_ID}
       - REACT_APP_GITHUB_REPO=${GITHUB_REPO}
+      - REACT_APP_PRIVACY_URL="https://www.riot-os.org/privacy-policy.html"
     command: >
       /bin/sh -c "
         cd /frontend &&
